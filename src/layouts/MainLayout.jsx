@@ -51,7 +51,7 @@ export default function MainLayout() {
     const monitorSession = () => {
       if (isTokenExpired() || checkTokenExpiry()) {
         const currentPath = location.pathname + location.search;
-        handleSessionExpired('Phiên làm việc OpenStack đã hết hạn. Vui lòng đăng nhập lại.');
+        handleSessionExpired();
       }
     };
 
@@ -124,7 +124,8 @@ export default function MainLayout() {
                     />
                   );
                 }
-                return <Outlet />;
+                // key by locale: pages using the plain t() re-render in the new language
+                return <Outlet key={locale} />;
               })()}
             </Content>
           </Layout>

@@ -37,7 +37,15 @@ and form field of a legacy container must exist in the ported page (labels may b
 - Form field types (`ActionModal`): `input, textarea, number, select (mode), tags, radio, checkbox, switch, slider, password, label, alert`,
   plus `visible: (values) => bool` for conditional fields and `render: ({ form, item, field }) => node` for anything custom
   (e.g. a select-table, rule editor). Keep payloads identical to the legacy `onSubmit`.
-- i18n: `import { t } from '@/core/i18n'` (or `useTranslation`). Use the same English keys as legacy so the merged translations apply. Do not edit `src/locales/*`.
+- i18n: `import { t } from '@/core/i18n'` (or `useTranslation`). Every user-visible string goes through `t('English key')` (same keys as legacy).
+  Do not edit `src/locales/{vi,en,zh}.json`; ship the module's strings in `src/locales/modules/<module>.vi.json` / `.en.json` / `.zh.json`
+  (keys = English source strings; vi must be complete — the default UI language is Vietnamese; zh from legacy zh-hans.json when available).
+- Permissions: administrator routes (`*-admin`) are only reachable with a system admin/reader role (`useAuthStore().hasAdminPageRole`);
+  hide admin-only actions with `adminOnly: true` / `allowed`.
+- Service availability: add the module's paths to `MENU_ENDPOINTS` in `src/layouts/menuConfig.jsx` if legacy menu had `endpoints`
+  (menu entry hidden and route shows "Service unavailable" when the endpoint is missing).
+- Auto refresh: `ResourcePage` / `ResourceDetail` already poll (10s in transition, 30s auto). Pass `isTransition(item)` when the
+  resource's busy states are not plain `*ing` / `PENDING_*` statuses.
 
 ## Route module example (`src/routes/modules/storage.jsx`)
 

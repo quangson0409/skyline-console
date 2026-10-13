@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
 import { useAuthStore } from '@/store/authStore';
 
@@ -23,12 +24,12 @@ const normalizeServer = (srv) => {
   }
 
   const imageName = typeof srv.image === 'string'
-    ? (srv.image || 'Boot from Volume')
-    : (srv.image?.name || srv.image?.id || 'Boot from Volume');
+    ? (srv.image || t('Boot from Volume'))
+    : (srv.image?.name || srv.image?.id || t('Boot from Volume'));
 
   const flavorName = typeof srv.flavor === 'string'
     ? srv.flavor
-    : (srv.flavor?.original_name || srv.flavor?.name || srv.flavor?.id || 'Custom Flavor');
+    : (srv.flavor?.original_name || srv.flavor?.name || srv.flavor?.id || t('Custom Flavor'));
 
   return {
     key: srv.id,
@@ -159,12 +160,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.startServer(id);
-        message.success('Đã gửi lệnh khởi động máy ảo (Start)!');
+        message.success(t('Start instance request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi khởi động máy ảo';
-        message.error(`Không thể khởi động: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to start instance');
+        message.error(t('Unable to start: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -178,12 +179,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.stopServer(id);
-        message.success('Đã gửi lệnh tắt nguồn máy ảo (Stop)!');
+        message.success(t('Stop instance request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi tắt máy ảo';
-        message.error(`Không thể tắt máy: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to stop instance');
+        message.error(t('Unable to stop: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -197,12 +198,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.rebootServer(id, type);
-        message.success(`Đã gửi lệnh khởi động lại (${type === 'HARD' ? 'Cứng' : 'Mềm'}) máy ảo!`);
+        message.success(type === 'HARD' ? t('Hard reboot instance request sent!') : t('Soft reboot instance request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi khởi động lại máy ảo';
-        message.error(`Không thể khởi động lại: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to reboot instance');
+        message.error(t('Unable to reboot: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -216,12 +217,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.pauseServer(id);
-        message.success('Đã gửi lệnh tạm dừng máy ảo (Pause)!');
+        message.success(t('Pause instance request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi tạm dừng máy ảo';
-        message.error(`Không thể tạm dừng: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to pause instance');
+        message.error(t('Unable to pause: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -235,12 +236,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.unpauseServer(id);
-        message.success('Đã gửi lệnh tiếp tục máy ảo (Unpause)!');
+        message.success(t('Unpause instance request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi tiếp tục máy ảo';
-        message.error(`Không thể tiếp tục: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to unpause instance');
+        message.error(t('Unable to unpause: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -254,12 +255,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.lockServer(id);
-        message.success('Đã khóa máy ảo (Lock)!');
+        message.success(t('Instance locked!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khóa máy ảo';
-        message.error(`Không thể khóa: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to lock instance');
+        message.error(t('Unable to lock: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -273,12 +274,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.unlockServer(id);
-        message.success('Đã mở khóa máy ảo (Unlock)!');
+        message.success(t('Instance unlocked!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi mở khóa máy ảo';
-        message.error(`Không thể mở khóa: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to unlock instance');
+        message.error(t('Unable to unlock: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -294,13 +295,13 @@ export function useInstances({ allProjects = false } = {}) {
         const url = res?.console?.url;
         if (url) {
           window.open(url, '_blank', 'noopener,noreferrer');
-          message.success('Đã mở cửa sổ VNC Console!');
+          message.success(t('VNC console window opened!'));
         } else {
-          message.warning('Không lấy được URL console từ máy chủ');
+          message.warning(t('Could not get the console URL from the server'));
         }
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi mở console';
-        message.error(`Không thể mở VNC Console: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to open console');
+        message.error(t('Unable to open VNC console: {msg}', { msg }));
       }
     },
     []
@@ -312,12 +313,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.migrateServer(id);
-        message.success('Đã gửi lệnh di chuyển máy ảo (Cold Migrate)!');
+        message.success(t('Cold migrate request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi di chuyển máy ảo';
-        message.error(`Không thể migrate: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to migrate instance');
+        message.error(t('Unable to migrate: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -331,12 +332,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.liveMigrateServer(id);
-        message.success('Đã gửi lệnh di chuyển trực tiếp (Live Migrate)!');
+        message.success(t('Live migrate request sent!'));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi live-migrate';
-        message.error(`Không thể live-migrate: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to live migrate instance');
+        message.error(t('Unable to live migrate: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -350,12 +351,12 @@ export function useInstances({ allProjects = false } = {}) {
       setActionLoading(true);
       try {
         await novaApi.resetServerState(id, state);
-        message.success(`Đã đặt lại trạng thái máy ảo thành ${state}!`);
+        message.success(t('Instance state reset to {state}!', { state }));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi reset state';
-        message.error(`Không thể reset state: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to reset state');
+        message.error(t('Unable to reset state: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -425,12 +426,12 @@ export function useInstances({ allProjects = false } = {}) {
         }
 
         await novaApi.createServer(payload);
-        message.success(`Đã gửi lệnh tạo máy ảo ${values.name} lên OpenStack!`);
+        message.success(t('Create instance {name} request sent to OpenStack!', { name: values.name }));
         await fetchServers();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi tạo máy ảo';
-        message.error(`Không thể tạo máy ảo: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to create instance');
+        message.error(t('Unable to create instance: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -443,11 +444,11 @@ export function useInstances({ allProjects = false } = {}) {
     async (key) => {
       try {
         await novaApi.deleteServer(key);
-        message.success('Đã gửi lệnh xóa máy ảo lên OpenStack Nova!');
+        message.success(t('Delete instance request sent to OpenStack Nova!'));
         await fetchServers();
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi xóa máy ảo';
-        message.error(`Không thể xóa máy ảo: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to delete instance');
+        message.error(t('Unable to delete instance: {msg}', { msg }));
       }
     },
     [fetchServers]
@@ -457,10 +458,10 @@ export function useInstances({ allProjects = false } = {}) {
     async (keys) => {
       try {
         await Promise.all(keys.map((k) => novaApi.deleteServer(k)));
-        message.success(`Đã gửi lệnh xóa ${keys.length} máy ảo lên OpenStack Nova!`);
+        message.success(t('Delete request for {count} instances sent to OpenStack Nova!', { count: keys.length }));
         await fetchServers();
       } catch (err) {
-        message.error(`Lỗi xóa máy ảo: ${err.message}`);
+        message.error(t('Failed to delete instances: {msg}', { msg: err.message }));
       }
     },
     [fetchServers]

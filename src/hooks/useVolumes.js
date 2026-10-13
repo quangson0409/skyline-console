@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { cinderApi } from '@/api/cinder';
 import { useAuthStore } from '@/store/authStore';
 
@@ -96,12 +97,12 @@ export function useVolumes() {
           description: values.description || '',
         };
         const res = await cinderApi.createVolume(projectId, payload);
-        message.success(`Đã gửi lệnh tạo Volume ${values.name} (${values.size} GiB) thành công!`);
+        message.success(t('Create volume {name} ({size} GiB) request sent!', { name: values.name, size: values.size }));
         await fetchVolumes();
         return { success: true, data: res?.volume };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi tạo Volume';
-        message.error(`Không thể tạo Volume: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to create volume');
+        message.error(t('Unable to create volume: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -116,12 +117,12 @@ export function useVolumes() {
       setActionLoading(true);
       try {
         await cinderApi.deleteVolume(projectId, volumeId);
-        message.success(`Đã gửi lệnh xóa Volume ${volumeName || volumeId}!`);
+        message.success(t('Delete volume {name} request sent!', { name: volumeName || volumeId }));
         await fetchVolumes();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi xóa Volume';
-        message.error(`Không thể xóa Volume: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to delete volume');
+        message.error(t('Unable to delete volume: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);

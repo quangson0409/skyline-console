@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { skylineApi } from '@/api/skyline';
 import apiClient from '@/api/client';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { saveEndpoints, serviceBase } from '@/api/endpoints';
 
 export const formatErrorMessage = (err) => {
-  if (!err) return 'Lỗi không xác định';
+  if (!err) return t('Unknown error');
   if (typeof err === 'string') return err;
   if (err.response?.data) {
     const data = err.response.data;
@@ -17,7 +18,7 @@ export const formatErrorMessage = (err) => {
     if (typeof data === 'string') return data;
   }
   if (err.message) return err.message;
-  return 'Lỗi kết nối máy chủ';
+  return t('Server connection error');
 };
 
 const readJSON = (key, fallback = null) => {
@@ -239,10 +240,10 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await skylineApi.login({ domain, username, password, ...(region ? { region } : {}) });
       if (!res?.keystone_token) {
-        throw new Error('Không nhận được Keystone Token từ phản hồi của máy chủ');
+        throw new Error(t('No Keystone token received in the server response'));
       }
       await get().applyProfile(res);
-      message.success(`Đăng nhập Keystone thành công với tài khoản ${username}!`);
+      message.success(t('Logged in to Keystone successfully as {username}!', { username }));
       return { success: true };
     } catch (err) {
       const detail = err?.response?.data?.detail;
@@ -251,7 +252,7 @@ export const useAuthStore = create((set, get) => ({
         return { success: false, totpRequired: true, receipt: detail.receipt };
       }
       const errorMsg = formatErrorMessage(err);
-      message.error(`Đăng nhập thất bại: ${errorMsg}`);
+      message.error(t('Login failed: {msg}', { msg: errorMsg }));
       return { success: false, error: errorMsg };
     }
   },
@@ -261,11 +262,11 @@ export const useAuthStore = create((set, get) => ({
     try {
       const res = await skylineApi.loginTotp({ domain, username, passcode, receipt });
       await get().applyProfile(res);
-      message.success(`Đăng nhập Keystone thành công với tài khoản ${username}!`);
+      message.success(t('Logged in to Keystone successfully as {username}!', { username }));
       return { success: true };
     } catch (err) {
       const errorMsg = formatErrorMessage(err);
-      message.error(`Đăng nhập thất bại: ${errorMsg}`);
+      message.error(t('Login failed: {msg}', { msg: errorMsg }));
       return { success: false, error: errorMsg };
     }
   },
@@ -304,7 +305,7 @@ export const useAuthStore = create((set, get) => ({
         user: { id: '', username: '', domain: '', roles: [], email: '' },
       });
       if (!silent) {
-        message.info('Đã đăng xuất phiên làm việc OpenStack.');
+        message.info(t('You have been logged out of your OpenStack session.'));
       }
     }
   },

@@ -63,7 +63,7 @@ export default function QuotaChart({
                 />
                 <div style={{ marginTop: 8, fontWeight: 600, fontSize: 13 }}>{q.name}</div>
                 <div style={{ fontSize: 11, color: '#64748b' }}>
-                  {q.used} / {q.limit === -1 ? 'Unlimited' : q.limit} {q.unit || ''}
+                  {q.used} / {q.limit === -1 ? t('Unlimited') : q.limit} {q.unit || ''}
                 </div>
               </Col>
             );
@@ -80,7 +80,7 @@ export default function QuotaChart({
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <Text strong style={{ fontSize: 13 }}>{q.name}</Text>
                   <span style={{ fontSize: 12, color: '#64748b' }}>
-                    <b>{q.used}</b> / {q.limit === -1 ? 'Unlimited' : q.limit} {q.unit || ''} ({percent}%)
+                    <b>{q.used}</b> / {q.limit === -1 ? t('Unlimited') : q.limit} {q.unit || ''} ({percent}%)
                   </span>
                 </div>
                 <Progress percent={percent} strokeColor={color} size="small" />

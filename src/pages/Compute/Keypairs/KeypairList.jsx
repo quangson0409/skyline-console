@@ -142,7 +142,7 @@ export default function KeypairList() {
         <KpiCards
           items={[
             { title: t('Total Keypairs'), value: data.length },
-            { title: 'SSH Protocol', value: 'RSA / Ed25519', color: '#10b981' },
+            { title: t('SSH Protocol'), value: 'RSA / Ed25519', color: '#10b981' },
           ]}
         />
       )}

@@ -123,7 +123,7 @@ export default function Login() {
         <Alert
           type="warning"
           showIcon
-          message={t('Phiên làm việc OpenStack đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.')}
+          message={t('Your OpenStack session has expired. Please log in again to continue.')}
           style={{ marginBottom: 16, borderRadius: 8 }}
           closable
         />

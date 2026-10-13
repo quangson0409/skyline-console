@@ -1,50 +1,184 @@
-import React from 'react';
-import { Card, Row, Col, Statistic, Tag, Table, Space, Button } from 'antd';
+import React, { useMemo } from 'react';
+import { Row, Col, Button, Descriptions, Tag, Badge, List, Skeleton, Empty, theme } from 'antd';
 import {
-  ArrowUpOutlined,
+  ReloadOutlined,
   CloudServerOutlined,
   HddOutlined,
   ClusterOutlined,
-  SafetyCertificateOutlined,
-  ReloadOutlined,
-  ApiOutlined,
+  ApartmentOutlined,
 } from '@ant-design/icons';
-import QuotaChart from '@/components/QuotaChart';
-import Status from '@/components/Status';
+import { Link } from 'react-router-dom';
 import { useTranslation } from '@/core/i18n';
-import { useOverview } from '@/hooks/useOverview';
-import { useThemeStore, THEMES } from '@/store/themeStore';
+import { useProjectOverview } from '@/hooks/useOverview';
+import { useAuthStore } from '@/store/authStore';
+import { OverviewCard, QuotaItem, LabelWithTip, useQuotaColors, NO_VALUE, isNum } from './components';
+
+/** Legacy Overview quota card definitions (QuotaOverview.quotaCardList & friends) */
+const buildQuotaCards = (t, services) => {
+  const firewallQuota = services.firewall
+    ? [
+        { text: t('Firewalls'), key: 'firewall_group' },
+        { text: t('Firewall Policies'), key: 'firewall_policy' },
+        { text: t('Firewall Rules'), key: 'firewall_rule' },
+      ]
+    : [];
+  const cards = [
+    {
+      text: t('Compute'),
+      type: 'compute',
+      value: [
+        { text: t('Instances'), key: 'instances' },
+        { text: t('vCPUs'), key: 'cores' },
+        {
+          text: t('Memory (GiB)'),
+          key: 'ram',
+          hint: (q) =>
+            q && isNum(q.limit_mb)
+              ? `${q.in_use_mb ?? 0} / ${q.limit_mb === -1 ? t('Unlimit') : q.limit_mb} MiB`
+              : null,
+        },
+        {
+          text: <LabelWithTip label={t('Key Pairs')} tip={t('The number of allowed key pairs for each user.')} />,
+          key: 'key_pairs',
+        },
+        { text: t('Server Groups'), key: 'server_groups' },
+      ],
+    },
+  ];
+  if (services.cinder) {
+    cards.push({
+      text: t('Storage'),
+      type: 'storage',
+      value: [
+        { text: t('Volumes'), key: 'volumes' },
+        { text: t('Volume Capacity (GiB)'), key: 'gigabytes' },
+        { text: t('Volume Snapshots'), key: 'snapshots' },
+        { text: t('Volume Backups'), key: 'backups' },
+        { text: t('Volume Backup Capacity (GiB)'), key: 'backup_gigabytes' },
+      ],
+    });
+  }
+  cards.push({
+    text: t('Network'),
+    type: 'networks',
+    value: [
+      { text: t('Routers'), key: 'router' },
+      { text: t('Networks'), key: 'network' },
+      { text: t('Subnets'), key: 'subnet' },
+      { text: t('Floating IPs'), key: 'floatingip' },
+      { text: t('Ports'), key: 'port' },
+      { text: t('Security Groups'), key: 'security_group' },
+      { text: t('Security Group Rules'), key: 'security_group_rule' },
+      ...firewallQuota,
+    ],
+  });
+  if (services.share) {
+    cards.push({
+      text: t('Share'),
+      type: 'share',
+      value: [
+        { text: t('Shares'), key: 'shares' },
+        { text: t('Share Capacity (GiB)'), key: 'share_gigabytes' },
+        { text: t('Share Networks'), key: 'share_networks' },
+        { text: t('Share Groups'), key: 'share_groups' },
+      ],
+    });
+  }
+  if (services.zun) {
+    cards.push({
+      text: t('Containers Management'),
+      type: 'zun',
+      value: [
+        { text: t('Containers'), key: 'zun_containers' },
+        { text: t('Containers CPU'), key: 'zun_cpu' },
+        { text: t('Containers Memory (MiB)'), key: 'zun_memory' },
+        { text: t('Containers Disk (GiB)'), key: 'zun_disk' },
+      ],
+    });
+  }
+  if (services.magnum) {
+    cards.push({
+      text: t('Clusters Management'),
+      type: 'magnum',
+      value: [{ text: t('Clusters'), key: 'magnum_cluster' }],
+    });
+  }
+  if (services.trove) {
+    cards.push({
+      text: t('Databases'),
+      type: 'trove',
+      value: [
+        { text: t('Database Instances'), key: 'trove_instances' },
+        { text: t('Database Disk (GiB)'), key: 'trove_volumes' },
+      ],
+    });
+  }
+  return cards;
+};
+
+/** Legacy getVolumeTypeCards */
+const buildVolumeTypeRows = (t, volumeTypes) =>
+  volumeTypes.map((item, index) => ({
+    index,
+    name: item.name,
+    value: [
+      { text: t('{name} type', { name: item.name }), key: `volumes_${item.name}` },
+      { text: t('{name} type capacity (GiB)', { name: item.name }), key: `gigabytes_${item.name}` },
+      { text: t('{name} type snapshots', { name: item.name }), key: `snapshots_${item.name}` },
+    ],
+  }));
+
+function SectionTitle({ children }) {
+  const { token } = theme.useToken();
+  return (
+    <div
+      style={{
+        fontSize: 13,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: 0.4,
+        color: token.colorTextSecondary,
+        margin: '4px 0 8px',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
 
 export default function Overview() {
   const { t } = useTranslation();
-  const { services, stats, loading, isLiveApi, refetch } = useOverview();
-  const { currentTheme } = useThemeStore();
-  const isDark = currentTheme === THEMES.DARK_OPS;
+  const { token } = theme.useToken();
+  const { quota, volumeTypes, services, loading, refetch } = useProjectOverview();
+  const user = useAuthStore((s) => s.user);
+  const currentProject = useAuthStore((s) => s.currentProject);
+  const quotaColors = useQuotaColors();
 
-  const columns = [
-    {
-      title: t('Cluster Services'),
-      dataIndex: 'service',
-      key: 'service',
-      render: (text) => <b style={{ color: isDark ? '#60a5fa' : '#0068ff' }}>{text}</b>,
-    },
-    {
-      title: t('Status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (s) => <Status status={s} text="Up & Active" />,
-    },
-    { title: 'Version', dataIndex: 'version', key: 'version' },
-    {
-      title: t('Response Latency'),
-      dataIndex: 'latency',
-      key: 'latency',
-      render: (l) => <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{l}</span>,
-    },
+  const cards = useMemo(() => buildQuotaCards(t, services), [t, services]);
+  const volumeTypeRows = useMemo(() => buildVolumeTypeRows(t, volumeTypes), [t, volumeTypes]);
+
+  // Legacy Overview action buttons (Volumes hidden without cinder), with the in-use count from quota usage
+  const actions = [
+    { key: 'instance', label: t('Instances'), icon: <CloudServerOutlined />, to: '/compute/instance', quotaKey: 'instances' },
+    services.cinder
+      ? { key: 'volume', label: t('Volumes'), icon: <HddOutlined />, to: '/storage/volume', quotaKey: 'volumes' }
+      : null,
+    { key: 'network', label: t('Networks'), icon: <ClusterOutlined />, to: '/network/networks', quotaKey: 'network' },
+    { key: 'router', label: t('Routers'), icon: <ApartmentOutlined />, to: '/network/router', quotaKey: 'router' },
+  ].filter(Boolean);
+  const actionSpan = 24 / actions.length;
+
+  // legacy rootStore.roles = project roles of the token
+  const roleNames = (user?.roles || []).map((r) => (typeof r === 'string' ? r : r?.name)).filter(Boolean);
+
+  const legend = [
+    { key: 'normal', color: quotaColors.normal, text: t('Normal') },
+    { key: 'danger', color: quotaColors.danger, text: t('Danger') },
+    { key: 'full', color: quotaColors.full, text: t('Full') },
   ];
 
   return (
-    <div>
+    <div style={{ maxWidth: 1600, margin: '0 auto' }}>
       <div
         style={{
           display: 'flex',
@@ -56,151 +190,153 @@ export default function Overview() {
         }}
       >
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: isDark ? '#ffffff' : '#0f172a' }}>
-              {t('Cloud Cluster Overview')}
-            </h2>
-            <Tag
-              color={isLiveApi ? 'success' : 'blue'}
-              style={{ borderRadius: 12, fontSize: 11, padding: '2px 10px', display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              <ApiOutlined />
-              {isLiveApi ? 'Live OpenStack (10.0.29.10:9999)' : 'Proxy Ready (10.0.29.10:9999)'}
-            </Tag>
-          </div>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
-            Tình trạng sức khỏe hạ tầng OpenStack, phân bổ hạn mức tài nguyên và các dịch vụ cốt lõi.
+          <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0, color: token.colorText }}>
+            {t('Overview')}
+          </h1>
+          <p style={{ color: token.colorTextSecondary, fontSize: 13, margin: '4px 0 0' }}>
+            {t('Project')}: {currentProject?.displayName || currentProject?.name || NO_VALUE}
           </p>
         </div>
-
         <Button icon={<ReloadOutlined />} onClick={refetch} loading={loading}>
           {t('Refresh')}
         </Button>
       </div>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            variant="borderless"
-            style={{
-              borderRadius: 12,
-              border: isDark ? '1px solid #1f293d' : '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            <Statistic
-              title={`${t('Total')} ${t('Instances')}`}
-              value={stats.instances.current}
-              prefix={<CloudServerOutlined style={{ color: '#0068ff' }} />}
-              suffix={`/ ${stats.instances.max}`}
-              valueStyle={{ fontWeight: 700 }}
-            />
-            <div style={{ fontSize: 12, color: '#10b981', marginTop: 8 }}>
-              <ArrowUpOutlined /> {stats.instances.trend} máy ảo tuần này
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            variant="borderless"
-            style={{
-              borderRadius: 12,
-              border: isDark ? '1px solid #1f293d' : '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            <Statistic
-              title={`${t('Storage')} (TB)`}
-              value={stats.storage.current}
-              precision={1}
-              prefix={<HddOutlined style={{ color: '#f59e0b' }} />}
-              suffix={`/ ${stats.storage.max}`}
-              valueStyle={{ fontWeight: 700 }}
-            />
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 8 }}>
-              Ceph RBD Storage Pool
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            variant="borderless"
-            style={{
-              borderRadius: 12,
-              border: isDark ? '1px solid #1f293d' : '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            <Statistic
-              title={`${t('Networks')} & Router`}
-              value={8}
-              prefix={<ClusterOutlined style={{ color: '#10b981' }} />}
-              suffix="Networks"
-              valueStyle={{ fontWeight: 700 }}
-            />
-            <div style={{ fontSize: 12, color: '#0068ff', marginTop: 8 }}>
-              12 Floating IPs gán ngoài
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <Card
-            variant="borderless"
-            style={{
-              borderRadius: 12,
-              border: isDark ? '1px solid #1f293d' : '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
-          >
-            <Statistic
-              title="SLA Availability"
-              value={99.98}
-              precision={2}
-              prefix={<SafetyCertificateOutlined style={{ color: '#8b5cf6' }} />}
-              suffix="%"
-              valueStyle={{ fontWeight: 700 }}
-            />
-            <div style={{ fontSize: 12, color: '#10b981', marginTop: 8 }}>
-              Toàn bộ Compute Nodes ổn định
-            </div>
-          </Card>
-        </Col>
+      {/* Quick links (legacy action buttons) + current usage from the quota API */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        {actions.map((a) => {
+          const q = quota[a.quotaKey];
+          return (
+            <Col key={a.key} xs={12} md={actionSpan}>
+              <Link to={a.to} className="ov-action" data-action={a.key}>
+                <OverviewCard hoverable styles={{ body: { padding: 16 } }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 22,
+                        color: token.colorPrimary,
+                        background: token.colorPrimaryBg,
+                        flex: 'none',
+                      }}
+                    >
+                      {a.icon}
+                    </div>
+                    <div>
+                      <div style={{ color: token.colorTextSecondary, fontSize: 13 }}>{a.label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color: token.colorText }}>
+                        {!loading && isNum(q?.used) ? q.used : NO_VALUE}
+                      </div>
+                    </div>
+                  </div>
+                </OverviewCard>
+              </Link>
+            </Col>
+          );
+        })}
       </Row>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
-          <QuotaChart
-            title={`${t('Quota')}`}
-            quotas={[
-              { name: 'vCPUs', used: stats.vcpus.current, limit: stats.vcpus.max, unit: 'Cores' },
-              { name: 'RAM (Memory)', used: stats.ram.current, limit: stats.ram.max, unit: 'GB' },
-              { name: 'Storage (Cinder Pool)', used: 3.4, limit: 10, unit: 'TB' },
-              { name: 'Floating IPs (Public)', used: 12, limit: 20, unit: 'IPs' },
-            ]}
-          />
+        <Col xs={24} xl={16}>
+          <OverviewCard
+            className="ov-quota-overview"
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <span>{t('Quota Overview')}</span>
+                {legend.map((l) => (
+                  <Badge
+                    key={l.key}
+                    color={l.color}
+                    text={<span style={{ fontWeight: 400, fontSize: 12 }}>{l.text}</span>}
+                  />
+                ))}
+              </div>
+            }
+          >
+            {loading ? (
+              <Skeleton active paragraph={{ rows: 10 }} />
+            ) : (
+              <>
+                {cards.map((card) => (
+                  <div key={card.type} className={`ov-quota-card ov-quota-${card.type}`} style={{ marginBottom: 20 }}>
+                    <SectionTitle>{card.text}</SectionTitle>
+                    <Row gutter={[32, 4]}>
+                      {card.value.map((item) => (
+                        <Col key={item.key} xs={24} md={12}>
+                          <QuotaItem data={quota} item={item} t={t} />
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                ))}
+                {services.cinder ? (
+                  <div className="ov-quota-card ov-quota-volumeTypes">
+                    <SectionTitle>{t('Storage Types')}</SectionTitle>
+                    {volumeTypeRows.length ? (
+                      <List
+                        split
+                        pagination={volumeTypeRows.length > 5 ? { pageSize: 5, size: 'small' } : false}
+                        dataSource={volumeTypeRows}
+                        renderItem={(row) => (
+                          <List.Item key={row.index} style={{ display: 'block', padding: '8px 0' }}>
+                            <Row gutter={[16, 4]}>
+                              {row.value.map((i) => (
+                                <Col key={i.key} xs={24} md={8}>
+                                  <QuotaItem data={quota} item={i} t={t} compact />
+                                </Col>
+                              ))}
+                            </Row>
+                          </List.Item>
+                        )}
+                      />
+                    ) : (
+                      <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                    )}
+                  </div>
+                ) : null}
+              </>
+            )}
+          </OverviewCard>
         </Col>
 
-        <Col xs={24} lg={12}>
-          <Card
-            title={t('Core Services Status')}
-            variant="borderless"
-            style={{
-              borderRadius: 12,
-              border: isDark ? '1px solid #1f293d' : '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-            }}
+        <Col xs={24} xl={8}>
+          <OverviewCard
+            className="ov-project-info"
+            title={user?.username ? t('Hello, {name}', { name: user.username }) : t('Project Info')}
+            style={{ height: 'auto' }}
           >
-            <Table
-              columns={columns}
-              dataSource={services}
-              pagination={false}
-              size="small"
-              loading={loading}
-            />
-          </Card>
+            <Descriptions column={1} size="small" styles={{ label: { color: token.colorTextSecondary } }}>
+              <Descriptions.Item label={t('User Account')}>{user?.username || NO_VALUE}</Descriptions.Item>
+              <Descriptions.Item label={t('My Role')}>
+                {roleNames.length ? (
+                  <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
+                    {roleNames.map((r) => (
+                      <Tag key={r} style={{ marginInlineEnd: 0 }}>
+                        {r}
+                      </Tag>
+                    ))}
+                  </span>
+                ) : (
+                  NO_VALUE
+                )}
+              </Descriptions.Item>
+              <Descriptions.Item label={t('Domain')}>{user?.domain || NO_VALUE}</Descriptions.Item>
+              <Descriptions.Item label={t('Project Name')}>{currentProject?.name || NO_VALUE}</Descriptions.Item>
+              <Descriptions.Item label={t('Project ID')}>
+                <span style={{ fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all' }}>
+                  {currentProject?.id || NO_VALUE}
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label={t('Project Domain')}>
+                {currentProject?.domainName || NO_VALUE}
+              </Descriptions.Item>
+            </Descriptions>
+          </OverviewCard>
         </Col>
       </Row>
     </div>

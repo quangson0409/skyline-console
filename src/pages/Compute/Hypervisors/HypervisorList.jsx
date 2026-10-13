@@ -239,13 +239,13 @@ const hypervisorKpis = (data) => {
   return [
     { title: t('Total Hypervisors'), value: data.length },
     {
-      title: 'vCPUs Allocation',
+      title: t('vCPUs Allocation'),
       value: sum('vcpus_used'),
       suffix: `/ ${Number(sum('vcpus').toFixed(2))}`,
       color: '#10b981',
     },
     {
-      title: 'RAM Allocation',
+      title: t('RAM Allocation'),
       value: (sum('memory_mb_used') / 1024).toFixed(1),
       suffix: `/ ${(sum('memory_mb') / 1024).toFixed(1)} GiB`,
       color: '#8b5cf6',

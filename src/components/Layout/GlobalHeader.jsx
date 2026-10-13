@@ -71,7 +71,7 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
         if (rName === currentRegion) return;
         try {
           await switchRegion(rName);
-          message.success(`Region: ${rName}`);
+          message.success(`${t('Region')}: ${rName}`);
           window.location.reload();
         } catch (err) {
           message.error(err?.response?.data?.detail || err.message);
@@ -160,9 +160,9 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
   ];
 
   const themeOptions = [
-    { label: 'Light', value: THEMES.SKYLINE_LIGHT },
-    { label: 'Tech', value: THEMES.TECH_BLUE },
-    { label: 'Dark', value: THEMES.DARK_OPS },
+    { label: t('Light'), value: THEMES.SKYLINE_LIGHT },
+    { label: t('Tech'), value: THEMES.TECH_BLUE },
+    { label: t('Dark'), value: THEMES.DARK_OPS },
   ];
 
   return (

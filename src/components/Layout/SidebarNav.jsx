@@ -132,7 +132,7 @@ export default function SidebarNav({ collapsed }) {
             variant="borderless"
             style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0, borderRadius: 10 }}
           >
-            {isAdmin ? 'System-Admin' : t('Project')}
+            {isAdmin ? t('System Admin') : t('Project')}
           </Tag>
         </div>
       )}

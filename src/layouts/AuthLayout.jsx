@@ -44,7 +44,7 @@ export default function AuthLayout() {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', paddingTop: 20 }}>
-          <span>© 2026 OpenStack Skyline Console. All rights reserved.</span>
+          <span>© 2026 OpenStack Skyline Console. {t('All rights reserved.')}</span>
         </div>
       </div>
 
@@ -115,7 +115,7 @@ export default function AuthLayout() {
               }}
             />
             <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', letterSpacing: 0.3 }}>
-              OpenStack Yoga / 2024.1 Ready
+              {t('OpenStack Yoga / 2024.1 Ready')}
             </span>
           </div>
 
@@ -129,7 +129,7 @@ export default function AuthLayout() {
               letterSpacing: -0.8,
             }}
           >
-            Nền Tảng Điện Toán Đám Mây{' '}
+            {t('Cloud Computing Platform for')}{' '}
             <span
               style={{
                 background: 'linear-gradient(135deg, #60a5fa, #38bdf8)',
@@ -137,7 +137,7 @@ export default function AuthLayout() {
                 WebkitTextFillColor: 'transparent',
               }}
             >
-              Doanh Nghiệp
+              {t('Enterprises')}
             </span>
           </h1>
 
@@ -149,16 +149,16 @@ export default function AuthLayout() {
               margin: '0 0 36px',
             }}
           >
-            Giao diện điều khiển thế hệ mới cho hạ tầng IaaS OpenStack. Tối ưu hóa hiệu năng, bảo mật đa tầng, và quản trị tài nguyên điện toán, lưu trữ, mạng ảo tập trung.
+            {t('A next-generation control panel for OpenStack IaaS infrastructure. Optimized performance, multi-layer security, and centralized management of compute, storage and virtual network resources.')}
           </p>
 
           {/* Infrastructure Feature Badges */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {[
-              { title: 'Nova & Ironic', desc: 'Máy ảo KVM & Bare Metal chuyên dụng' },
-              { title: 'Neutron SDN', desc: 'VPC ảo hóa, OVN Router & Floating IP' },
-              { title: 'Cinder & Ceph', desc: 'Lưu trữ khối phân tán độ trễ cực thấp' },
-              { title: 'Keystone v3', desc: 'Xác thực phân quyền Domain đa cấp' },
+              { title: 'Nova & Ironic', desc: t('KVM instances & dedicated bare metal') },
+              { title: 'Neutron SDN', desc: t('Virtual VPC, OVN routers & floating IPs') },
+              { title: 'Cinder & Ceph', desc: t('Ultra-low-latency distributed block storage') },
+              { title: 'Keystone v3', desc: t('Multi-level domain authentication & authorization') },
             ].map((f, i) => (
               <div
                 key={i}

@@ -285,7 +285,7 @@ export function AggregateTab() {
           items={[
             { title: t('Total Aggregates'), value: data.length },
             {
-              title: 'Total Associated Hosts',
+              title: t('Total Associated Hosts'),
               value: data.reduce((acc, a) => acc + (a.hosts?.length || 0), 0),
               color: '#10b981',
             },
@@ -359,7 +359,7 @@ export function AggregateTab() {
           sorter: (a, b) => a.hosts_count - b.hosts_count,
           render: (v) => (
             <span>
-              <b>{v}</b> hosts
+              <b>{v}</b> {t('hosts')}
             </span>
           ),
         },

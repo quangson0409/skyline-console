@@ -196,11 +196,11 @@ export default function ServerGroupList() {
           items={[
             { title: t('Total Groups'), value: data.length },
             {
-              title: 'Anti-affinity Groups',
+              title: t('Anti-affinity Groups'),
               value: data.filter((g) => g.policy === 'anti-affinity').length,
               color: '#f97316',
             },
-            { title: 'Affinity Groups', value: data.filter((g) => g.policy === 'affinity').length, color: '#3b82f6' },
+            { title: t('Affinity Groups'), value: data.filter((g) => g.policy === 'affinity').length, color: '#3b82f6' },
           ]}
         />
       )}

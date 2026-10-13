@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 
 // OpenStack API Client
 const apiClient = axios.create({
@@ -26,7 +27,7 @@ export const generateRequestId = () => `req-${generateUUID()}`;
 
 // Debounced session expiry redirect handler
 let isHandlingExpiry = false;
-export const handleSessionExpired = (customMsg = 'Phiên làm việc OpenStack đã hết hạn. Vui lòng đăng nhập lại.') => {
+export const handleSessionExpired = (customMsg) => {
   if (isHandlingExpiry) return;
   isHandlingExpiry = true;
 
@@ -34,7 +35,7 @@ export const handleSessionExpired = (customMsg = 'Phiên làm việc OpenStack �
   localStorage.removeItem('keystone_token');
   localStorage.removeItem('keystone_token_expires_at');
 
-  message.warning(customMsg);
+  message.warning(customMsg || t('Your OpenStack session has expired. Please log in again.'));
 
   setTimeout(() => {
     if (typeof window !== 'undefined') {
@@ -60,7 +61,7 @@ apiClient.interceptors.request.use(
     // 1. Proactively check if token has already expired before sending request
     const isLoginEndpoint = config.url?.includes('/login');
     if (!isLoginEndpoint && isTokenExpired()) {
-      handleSessionExpired('Phiên làm việc OpenStack đã hết hạn.');
+      handleSessionExpired(t('Your OpenStack session has expired.'));
       return Promise.reject(new axios.Cancel('Session expired'));
     }
 
@@ -86,7 +87,7 @@ apiClient.interceptors.response.use(
       // Only handle expiry if not in login attempt (so login errors show as invalid credentials)
       if (!isLoginRequest) {
         console.warn('Keystone session expired (401). Triggering re-authentication.');
-        handleSessionExpired('Phiên làm việc OpenStack đã hết hạn. Vui lòng đăng nhập lại.');
+        handleSessionExpired(t('Your OpenStack session has expired. Please log in again.'));
       }
     }
     return Promise.reject(error);

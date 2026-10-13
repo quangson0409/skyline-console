@@ -210,6 +210,9 @@ export const novaApi = {
    * { server: {...}, 'OS-SCH-HNT:scheduler_hints': {...} } - catalog base path + 2.79 microversion.
    */
   createServerV: (body) => apiClient.post(`${novaV()}/servers`, body, novaConf()),
+
+  /** GET /servers (brief: id/name/links) - legacy globalServerStore list used by AdminOverview counts */
+  listServersBriefV: (params) => apiClient.get(`${novaV()}/servers`, novaConf({ params })),
 };
 
 export default novaApi;

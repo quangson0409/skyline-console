@@ -453,7 +453,7 @@ export const quickCreateNetworkAction = ({ projectId }) => ({
     ];
   },
   onSubmit: async (values) => {
-    if (!projectId) throw new Error('Current project ID is not available');
+    if (!projectId) throw new Error(t('Current project ID is not available'));
     const isV6 = values.ipVersion === 'ipv6';
     const netRes = await neutronApi.createNetwork({ name: values.networkName, project_id: projectId });
     const network = netRes?.network || {};

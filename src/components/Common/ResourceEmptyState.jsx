@@ -1,13 +1,18 @@
 import React from 'react';
 import { Empty, Button } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import { useTranslation } from '@/core/i18n';
 
 export default function ResourceEmptyState({
-  title = 'Không tìm thấy tài nguyên',
-  description = 'Chưa có tài nguyên nào trong dự án này hoặc không khớp với bộ lọc tìm kiếm.',
-  actionText = 'Tạo Tài Nguyên Mới',
+  title,
+  description,
+  actionText,
   onAction,
 }) {
+  const { t } = useTranslation();
+  title = title ?? t('No resources found');
+  description = description ?? t('There are no resources in this project yet, or none match the search filter.');
+  actionText = actionText ?? t('Create New Resource');
   return (
     <div style={{ padding: '40px 20px', textAlign: 'center' }}>
       <Empty

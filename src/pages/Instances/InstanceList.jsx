@@ -95,7 +95,7 @@ export default function InstanceList() {
       },
       {
         name: 'ip',
-        label: 'IP Address',
+        label: t('IP Address'),
       },
       {
         name: 'flavor',
@@ -103,7 +103,7 @@ export default function InstanceList() {
       },
       {
         name: 'host',
-        label: 'Compute Host',
+        label: t('Compute Host'),
       },
     ],
     [t]
@@ -157,7 +157,7 @@ export default function InstanceList() {
             </div>
             {record.floatingIp && (
               <Tag color="cyan" style={{ fontSize: 11, margin: 0, fontFamily: 'monospace' }}>
-                Floating: {record.floatingIp}
+                {t('Floating IP')}: {record.floatingIp}
               </Tag>
             )}
           </div>
@@ -221,13 +221,13 @@ export default function InstanceList() {
           <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
             <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Memory (RAM)')}</div>
             <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#0068ff' }}>
-              {quotaMetrics.totalRam} <span style={{ fontSize: 13, color: '#94a3b8' }}>GiB</span>
+              {quotaMetrics.totalRam} <span style={{ fontSize: 13, color: '#94a3b8' }}>/ {quotaMetrics.maxRam} GiB</span>
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Active')} Instances</div>
+            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Active Instances')}</div>
             <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#10b981' }}>
               {quotaMetrics.activeCount} <span style={{ fontSize: 13, color: '#94a3b8' }}>/ {quotaMetrics.totalCount}</span>
             </div>
@@ -235,7 +235,7 @@ export default function InstanceList() {
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Shutoff')} Instances</div>
+            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Shutoff Instances')}</div>
             <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#64748b' }}>
               {quotaMetrics.shutoffCount}
             </div>

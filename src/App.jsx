@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import MainLayout from '@/layouts/MainLayout';
 import { renderModuleRoutes } from '@/routes';
+import { useTranslation } from '@/core/i18n';
 
 // Auth Layout & Login
 const AuthLayout = lazy(() => import('@/layouts/AuthLayout'));
@@ -20,11 +21,14 @@ const InstanceDetail = lazy(() => import('@/pages/Instances/InstanceDetail'));
 // Fallback Module Placeholder
 const ModulePlaceholder = lazy(() => import('@/components/Common/ModulePlaceholder'));
 
-const PageLoader = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-    <Spin size="large" tip="Đang tải dữ liệu phân hệ OpenStack..." />
-  </div>
-);
+const PageLoader = () => {
+  const { t } = useTranslation();
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+      <Spin size="large" tip={t('Loading OpenStack module data...')} />
+    </div>
+  );
+};
 
 export default function App() {
   return (
@@ -146,7 +150,7 @@ export default function App() {
             path="load-balancers"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Load Balancers (Cân bằng tải Octavia)" service="Octavia" />
+                <ModulePlaceholder title="Load Balancers" service="Octavia" />
               </Suspense>
             }
           />
@@ -154,7 +158,7 @@ export default function App() {
             path="certificate"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Certificates (Chứng chỉ Barbican)" service="Barbican" />
+                <ModulePlaceholder title="Certificates" service="Barbican" />
               </Suspense>
             }
           />
@@ -163,7 +167,7 @@ export default function App() {
             path="dns/zones"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="DNS Zones (Quản lý tên miền)" service="Designate" />
+                <ModulePlaceholder title="DNS Zones" service="Designate" />
               </Suspense>
             }
           />
@@ -171,7 +175,7 @@ export default function App() {
             path="dns/reverse"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="DNS Reverse (Phân giải ngược PTR)" service="Designate" />
+                <ModulePlaceholder title="DNS Reverse" service="Designate" />
               </Suspense>
             }
           />
@@ -266,7 +270,7 @@ export default function App() {
         </Route>
 
         {/* 12. Global Settings (Admin) */}
-        <Route path="configuration-admin/*" element={<Suspense fallback={<PageLoader />}><ModulePlaceholder title="Global Settings (Cài đặt hệ thống OpenStack)" service="OpenStack Configuration" /></Suspense>} />
+        <Route path="configuration-admin/*" element={<Suspense fallback={<PageLoader />}><ModulePlaceholder title="Global Settings" service="OpenStack Configuration" /></Suspense>} />
 
         {/* 13. High Availability (Masakari) */}
         <Route path="ha/*" element={<Suspense fallback={<PageLoader />}><ModulePlaceholder title="Instance-HA (Masakari)" service="Masakari High Availability" /></Suspense>} />

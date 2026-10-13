@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
 
 const DEMO_FLAVORS = [
@@ -60,7 +61,7 @@ export function useFlavors() {
             'os-flavor-access:is_public': values.isPublic ?? true,
           },
         });
-        message.success(`Đã tạo cấu hình Flavor ${values.name} lên OpenStack Nova!`);
+        message.success(t('Flavor {name} created on OpenStack Nova!', { name: values.name }));
         await fetchFlavors();
       } else {
         const newFlavor = {
@@ -74,11 +75,11 @@ export function useFlavors() {
           isPublic: values.isPublic ?? true,
         };
         setFlavors((prev) => [...prev, newFlavor]);
-        message.success(`Đã tạo cấu hình Flavor ${values.name} thành công!`);
+        message.success(t('Flavor {name} created successfully!', { name: values.name }));
       }
       return true;
     } catch (err) {
-      message.error(`Lỗi tạo flavor: ${err.message}`);
+      message.error(t('Failed to create flavor: {msg}', { msg: err.message }));
       return false;
     }
   }, [isLiveApi, flavors, fetchFlavors]);
@@ -87,15 +88,15 @@ export function useFlavors() {
     try {
       if (isLiveApi) {
         await novaApi.deleteFlavor(id);
-        message.success('Đã xóa flavor khỏi OpenStack Nova!');
+        message.success(t('Flavor deleted from OpenStack Nova!'));
         await fetchFlavors();
       } else {
         setFlavors((prev) => prev.filter((f) => f.id !== id));
-        message.success('Đã xóa flavor thành công!');
+        message.success(t('Flavor deleted successfully!'));
       }
       return true;
     } catch (err) {
-      message.error(`Lỗi xóa flavor: ${err.message}`);
+      message.error(t('Failed to delete flavor: {msg}', { msg: err.message }));
       return false;
     }
   }, [isLiveApi, fetchFlavors]);

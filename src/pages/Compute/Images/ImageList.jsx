@@ -110,7 +110,7 @@ export const imageColumns = ({ isAdmin, tab, projectMap = {} }) =>
         const ram = Number(r.min_ram) || 0;
         return (
           <span style={{ fontSize: 12, color: '#64748b' }}>
-            Disk: <b>{Number(r.min_disk) || 0} GB</b> | RAM:{' '}
+            {t('Disk')}: <b>{Number(r.min_disk) || 0} GB</b> | RAM:{' '}
             <b>{ram >= 1024 ? `${(ram / 1024).toFixed(0)} GB` : `${ram} MB`}</b>
           </span>
         );

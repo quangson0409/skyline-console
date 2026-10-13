@@ -174,17 +174,17 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/share/share',
         path: '/share/share',
-        label: 'Shares',
+        label: t('Shares'),
       },
       {
         key: '/share/share-network',
         path: '/share/share-network',
-        label: 'Share Networks',
+        label: t('Share Networks'),
       },
       {
         key: '/share/share-group',
         path: '/share/share-group',
-        label: 'Share Groups',
+        label: t('Share Groups'),
       },
     ],
   },
@@ -196,7 +196,7 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/key-manager/secret',
         path: '/key-manager/secret',
-        label: 'Secrets',
+        label: t('Secrets'),
       },
     ],
   },
@@ -208,7 +208,7 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/heat/stack',
         path: '/heat/stack',
-        label: 'Stacks',
+        label: t('Stacks'),
       },
     ],
   },
@@ -220,17 +220,17 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/database/instances',
         path: '/database/instances',
-        label: 'Database Instances',
+        label: t('Database Instances'),
       },
       {
         key: '/database/backups',
         path: '/database/backups',
-        label: 'Backups',
+        label: t('Backups'),
       },
       {
         key: '/database/configurations',
         path: '/database/configurations',
-        label: 'Configurations',
+        label: t('Configurations'),
       },
     ],
   },
@@ -242,7 +242,7 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/messaging/queues',
         path: '/messaging/queues',
-        label: 'Queues',
+        label: t('Queues'),
       },
     ],
   },
@@ -254,22 +254,22 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/container-service/containers',
         path: '/container-service/containers',
-        label: 'Containers',
+        label: t('Containers'),
       },
       {
         key: '/container-service/capsules',
         path: '/container-service/capsules',
-        label: 'Capsules',
+        label: t('Capsules'),
       },
       {
         key: '/container-infra/clusters',
         path: '/container-infra/clusters',
-        label: 'Clusters',
+        label: t('Clusters'),
       },
       {
         key: '/container-infra/cluster-template',
         path: '/container-infra/cluster-template',
-        label: 'Cluster Templates',
+        label: t('Cluster Templates'),
       },
     ],
   },
@@ -410,7 +410,7 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/network/rbac-policies-admin',
         path: '/network/rbac-policies-admin',
-        label: 'RBAC Policies',
+        label: t('RBAC Policies'),
       },
       {
         key: '/network/firewall-admin',
@@ -432,37 +432,37 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/share/share-admin',
         path: '/share/share-admin',
-        label: 'Shares',
+        label: t('Shares'),
       },
       {
         key: '/share/share-type-admin',
         path: '/share/share-type-admin',
-        label: 'Share Types',
+        label: t('Share Types'),
       },
       {
         key: '/share/share-group-type-admin',
         path: '/share/share-group-type-admin',
-        label: 'Share Group Types',
+        label: t('Share Group Types'),
       },
       {
         key: '/share/share-network-admin',
         path: '/share/share-network-admin',
-        label: 'Share Networks',
+        label: t('Share Networks'),
       },
       {
         key: '/share/share-server-admin',
         path: '/share/share-server-admin',
-        label: 'Share Servers',
+        label: t('Share Servers'),
       },
       {
         key: '/share/share-instance-admin',
         path: '/share/share-instance-admin',
-        label: 'Share Instances',
+        label: t('Share Instances'),
       },
       {
         key: '/share/share-group-admin',
         path: '/share/share-group-admin',
-        label: 'Share Groups',
+        label: t('Share Groups'),
       },
       {
         key: '/share/storage-admin',
@@ -511,7 +511,7 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/database/instances-admin',
         path: '/database/instances-admin',
-        label: 'Database Instances',
+        label: t('Database Instances'),
       },
     ],
   },
@@ -545,7 +545,7 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/messaging/queues-admin',
         path: '/messaging/queues-admin',
-        label: 'Queues',
+        label: t('Queues'),
       },
     ],
   },
@@ -557,27 +557,27 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/container-service/containers-admin',
         path: '/container-service/containers-admin',
-        label: 'Containers',
+        label: t('Containers'),
       },
       {
         key: '/container-service/hosts-admin',
         path: '/container-service/hosts-admin',
-        label: 'Hosts',
+        label: t('Hosts'),
       },
       {
         key: '/container-service/services-admin',
         path: '/container-service/services-admin',
-        label: 'Services',
+        label: t('Services'),
       },
       {
         key: '/container-infra/clusters-admin',
         path: '/container-infra/clusters-admin',
-        label: 'Clusters',
+        label: t('Clusters'),
       },
       {
         key: '/container-infra/cluster-template-admin',
         path: '/container-infra/cluster-template-admin',
-        label: 'Cluster Templates',
+        label: t('Cluster Templates'),
       },
     ],
   },
@@ -589,17 +589,17 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/ha/segments-admin',
         path: '/ha/segments-admin',
-        label: 'Segments',
+        label: t('Segments'),
       },
       {
         key: '/ha/hosts-admin',
         path: '/ha/hosts-admin',
-        label: 'Hosts',
+        label: t('Hosts'),
       },
       {
         key: '/ha/notifications-admin',
         path: '/ha/notifications-admin',
-        label: 'Notifications',
+        label: t('Notifications'),
       },
     ],
   },

@@ -260,7 +260,7 @@ export default function BaseTable({
           locale={{
             emptyText: (
               <ResourceEmptyState
-                resourceName="dữ liệu"
+                resourceName={t('data')}
                 description={t('No matching data found')}
                 onAction={allPrimaryActions[0] ? allPrimaryActions[0].onClick : undefined}
                 actionText={allPrimaryActions[0] ? (allPrimaryActions[0].title || allPrimaryActions[0].label) : undefined}

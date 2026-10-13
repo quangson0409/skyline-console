@@ -133,7 +133,7 @@ const buildLayout = (data, showInstances, containerWidth) => {
   // external network bars
   let y = 80;
   const extColor = subnetsColors[0][0];
-  const extList = extNetworks.length ? extNetworks : [{ id: 'extNet', name: 'extNetwork' }];
+  const extList = extNetworks.length ? extNetworks : [{ id: 'extNet', name: t('External Network') }];
   routers.forEach((r) => {
     const nid = r?.external_gateway_info?.network_id;
     if (nid && !extList.some((n) => n.id === nid)) extList.push({ id: nid, name: nid });

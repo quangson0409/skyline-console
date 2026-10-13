@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { cinderApi } from '@/api/cinder';
 import { useAuthStore } from '@/store/authStore';
 
@@ -88,12 +89,12 @@ export function useSnapshots() {
           force: true,
         };
         const res = await cinderApi.createSnapshot(projectId, payload);
-        message.success(`Đã gửi lệnh tạo Snapshot ${values.name} thành công!`);
+        message.success(t('Create snapshot {name} request sent!', { name: values.name }));
         await fetchSnapshots();
         return { success: true, data: res?.snapshot };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi tạo Snapshot';
-        message.error(`Không thể tạo Snapshot: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to create snapshot');
+        message.error(t('Unable to create snapshot: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);
@@ -108,12 +109,12 @@ export function useSnapshots() {
       setActionLoading(true);
       try {
         await cinderApi.deleteSnapshot(projectId, snapshotId);
-        message.success(`Đã gửi lệnh xóa Snapshot ${snapshotName || snapshotId}!`);
+        message.success(t('Delete snapshot {name} request sent!', { name: snapshotName || snapshotId }));
         await fetchSnapshots();
         return { success: true };
       } catch (err) {
-        const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi khi xóa Snapshot';
-        message.error(`Không thể xóa Snapshot: ${msg}`);
+        const msg = err.response?.data?.badRequest?.message || err.message || t('Failed to delete snapshot');
+        message.error(t('Unable to delete snapshot: {msg}', { msg }));
         return { success: false, error: msg };
       } finally {
         setActionLoading(false);

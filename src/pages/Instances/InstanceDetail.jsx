@@ -102,13 +102,14 @@ import {
 // Quick-copy helper with visual feedback
 function CopyableText({ text, display, style }) {
   const [copied, setCopied] = useState(false);
+  const { t } = useTranslation();
 
   const handleCopy = (e) => {
     e.stopPropagation();
     if (!text) return;
     navigator.clipboard.writeText(String(text));
     setCopied(true);
-    message.success('Đã sao chép vào clipboard');
+    message.success(t('Copied to clipboard'));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -129,7 +130,7 @@ function CopyableText({ text, display, style }) {
       >
         {display || text}
       </code>
-      <Tooltip title={copied ? 'Đã sao chép!' : 'Sao chép'}>
+      <Tooltip title={copied ? t('Copied!') : t('Copy')}>
         <Button
           type="text"
           size="small"
@@ -254,7 +255,7 @@ export default function InstanceDetail() {
         } else if (typeof srv.image === 'string' && srv.image.length > 0) {
           enrichedImage = { id: srv.image, name: srv.image };
         } else {
-          enrichedImage = { name: 'Boot from Volume', isVolumeBacked: true };
+          enrichedImage = { name: t('Boot from Volume'), isVolumeBacked: true };
         }
       }
 
@@ -453,7 +454,7 @@ export default function InstanceDetail() {
           message.success(t('Instance deleted successfully'));
           navigate('/compute/instance');
         } catch (err) {
-          message.error(err.message || 'Lỗi xóa máy ảo');
+          message.error(err.message || t('Failed to delete instance'));
         }
       },
     });
@@ -462,10 +463,10 @@ export default function InstanceDetail() {
   // Delete a security group rule with confirmation
   const handleDeleteRule = (rule) => {
     Modal.confirm({
-      title: t('Xóa luật tường lửa (Rule)?'),
+      title: t('Delete security group rule?'),
       content: (
         <div>
-          <p>{t('Bạn có chắc chắn muốn xóa rule này không? Luật tường lửa sẽ được cập nhật ngay lập tức.')}</p>
+          <p>{t('Are you sure you want to delete this rule? The firewall rules will be updated immediately.')}</p>
           <div
             style={{
               background: '#f8fafc',
@@ -476,23 +477,23 @@ export default function InstanceDetail() {
               marginTop: 8,
             }}
           >
-            <div><b>{t('Hướng')}:</b> {rule.direction}</div>
-            <div><b>{t('Giao thức')}:</b> {rule.protocol}</div>
-            <div><b>{t('Cổng')}:</b> {rule.portRange}</div>
-            <div><b>{t('Nguồn/Đích')}:</b> {rule.remote}</div>
+            <div><b>{t('Direction')}:</b> {rule.direction}</div>
+            <div><b>{t('Protocol')}:</b> {rule.protocol}</div>
+            <div><b>{t('Port')}:</b> {rule.portRange}</div>
+            <div><b>{t('Remote')}:</b> {rule.remote}</div>
           </div>
         </div>
       ),
-      okText: t('Xóa Rule'),
+      okText: t('Delete Rule'),
       okType: 'danger',
-      cancelText: t('Hủy'),
+      cancelText: t('Cancel'),
       onOk: async () => {
         try {
           await neutronApi.deleteSecurityGroupRule(rule.id);
-          message.success(t('Đã xóa luật tường lửa thành công'));
+          message.success(t('Security group rule deleted successfully'));
           fetchServerDetail();
         } catch (err) {
-          message.error(err.response?.data?.NeutronError?.message || err.message || t('Lỗi khi xóa rule'));
+          message.error(err.response?.data?.NeutronError?.message || err.message || t('Failed to delete rule'));
         }
       },
     });
@@ -590,12 +591,12 @@ export default function InstanceDetail() {
       }
 
       await neutronApi.createSecurityGroupRule(ruleData);
-      message.success(t('Thêm luật tường lửa thành công và đã áp dụng ngay'));
+      message.success(t('Security group rule added and applied immediately'));
       setAddRuleModalVisible(false);
       addRuleForm.resetFields();
       fetchServerDetail();
     } catch (err) {
-      message.error(err.response?.data?.NeutronError?.message || err.message || t('Lỗi thêm rule'));
+      message.error(err.response?.data?.NeutronError?.message || err.message || t('Failed to add rule'));
     } finally {
       setRuleSubmitting(false);
     }
@@ -656,12 +657,12 @@ export default function InstanceDetail() {
     setAttachSgSubmitting(true);
     try {
       await novaApi.addSecurityGroup(instance.id, selectedSgToAttach);
-      message.success(t('Đã gán Security Group vào máy ảo thành công'));
+      message.success(t('Security group attached to the instance successfully'));
       setAttachSgModalVisible(false);
       setSelectedSgToAttach(null);
       fetchServerDetail();
     } catch (err) {
-      message.error(err.response?.data?.badRequest?.message || err.message || t('Lỗi gán Security Group'));
+      message.error(err.response?.data?.badRequest?.message || err.message || t('Failed to attach security group'));
     } finally {
       setAttachSgSubmitting(false);
     }
@@ -670,18 +671,18 @@ export default function InstanceDetail() {
   // Detach a security group from instance
   const handleDetachSecurityGroup = (sg) => {
     Modal.confirm({
-      title: `${t('Gỡ Security Group')}?`,
-      content: `${t('Bạn có chắc chắn muốn gỡ nhóm bảo mật')} "${sg.name}" ${t('khỏi máy ảo này không?')}`,
-      okText: t('Gỡ bỏ'),
+      title: `${t('Detach Security Group')}?`,
+      content: t('Are you sure you want to detach security group "{name}" from this instance?', { name: sg.name }),
+      okText: t('Detach'),
       okType: 'danger',
-      cancelText: t('Hủy'),
+      cancelText: t('Cancel'),
       onOk: async () => {
         try {
           await novaApi.removeSecurityGroup(instance.id, sg.name);
-          message.success(t('Đã gỡ Security Group khỏi máy ảo thành công'));
+          message.success(t('Security group detached from the instance successfully'));
           fetchServerDetail();
         } catch (err) {
-          message.error(err.response?.data?.badRequest?.message || err.message || t('Lỗi khi gỡ Security Group'));
+          message.error(err.response?.data?.badRequest?.message || err.message || t('Failed to detach security group'));
         }
       },
     });
@@ -1029,7 +1030,7 @@ export default function InstanceDetail() {
       <div style={{ textAlign: 'center', padding: '120px 0' }}>
         <Spin size="large" />
         <div style={{ marginTop: 16, color: '#64748b', fontSize: 13 }}>
-          {t('Đang nạp thông tin máy ảo OpenStack...')}
+          {t('Loading OpenStack instance details...')}
         </div>
       </div>
     );
@@ -1040,11 +1041,11 @@ export default function InstanceDetail() {
       <div style={{ padding: 24 }}>
         <Alert
           type="error"
-          message="Không tìm thấy máy ảo"
-          description="Máy ảo không tồn tại hoặc đã bị xóa khỏi cụm hạ tầng OpenStack."
+          message={t('Instance not found')}
+          description={t('The instance does not exist or has been deleted from the OpenStack cluster.')}
         />
         <Button style={{ marginTop: 16 }} onClick={() => navigate('/compute/instance')}>
-          Quay lại danh sách Máy ảo
+          {t('Back to instance list')}
         </Button>
       </div>
     );
@@ -1128,13 +1129,13 @@ export default function InstanceDetail() {
                   ID: <CopyableText text={instance.id} display={`${instance.id.substring(0, 8)}...`} />
                 </span>
                 <span>
-                  Host: <b>{instance['OS-EXT-SRV-ATTR:host'] || '-'}</b>
+                  {t('Host')}: <b>{instance['OS-EXT-SRV-ATTR:host'] || '-'}</b>
                 </span>
                 <span>
-                  Zone: <b>{instance['OS-EXT-AZ:availability_zone'] || 'nova'}</b>
+                  {t('Availability Zone')}: <b>{instance['OS-EXT-AZ:availability_zone'] || 'nova'}</b>
                 </span>
                 <span>
-                  Tạo lúc: {instance.created ? instance.created.replace('T', ' ').substring(0, 19) : '-'}
+                  {t('Created At')}: {instance.created ? instance.created.replace('T', ' ').substring(0, 19) : '-'}
                 </span>
               </Space>
             </div>
@@ -1334,7 +1335,7 @@ export default function InstanceDetail() {
                           ))}
                         </div>
                       ) : (
-                        <span style={{ color: '#94a3b8' }}>Chưa có cổng mạng</span>
+                        <span style={{ color: '#94a3b8' }}>{t('No network ports')}</span>
                       )}
                     </Card>
 
@@ -1366,14 +1367,14 @@ export default function InstanceDetail() {
                           <b>{instance.flavor?.name || instance.flavor?.original_name || instance.flavor?.id || '-'}</b>
                         </Descriptions.Item>
                         <Descriptions.Item label="vCPU">
-                          <b>{instance.flavor?.vcpus ?? '-'} Cores</b>
+                          <b>{instance.flavor?.vcpus ?? '-'} {t('Cores')}</b>
                         </Descriptions.Item>
                         <Descriptions.Item label="RAM">
                           <b>
                             {instance.flavor?.ram ? `${instance.flavor.ram / 1024} GiB` : '-'}
                           </b>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Root Disk">
+                        <Descriptions.Item label={t('Root Disk')}>
                           <b>{volumes[0]?.size ? `${volumes[0].size} GiB` : instance.flavor?.disk ? `${instance.flavor.disk} GiB` : '-'}</b>
                         </Descriptions.Item>
                       </Descriptions>
@@ -1392,18 +1393,18 @@ export default function InstanceDetail() {
                     >
                       <Descriptions column={2} size="small" bordered>
                         <Descriptions.Item label={t('Name')}>
-                          {instance.image?.name || (volumes[0]?.volume_image_metadata?.image_name) || 'Boot from Volume'}
+                          {instance.image?.name || (volumes[0]?.volume_image_metadata?.image_name) || t('Boot from Volume')}
                         </Descriptions.Item>
-                        <Descriptions.Item label="OS Distro">
+                        <Descriptions.Item label={t('OS Distro')}>
                           <Tag color="cyan">
                             {instance.image?.os_distro || volumes[0]?.volume_image_metadata?.os_distro || 'Linux'}
                           </Tag>
                         </Descriptions.Item>
-                        <Descriptions.Item label="Image ID" span={2}>
+                        <Descriptions.Item label={t('Image ID')} span={2}>
                           {instance.image?.id ? (
                             <CopyableText text={instance.image.id} />
                           ) : (
-                            <span style={{ color: '#94a3b8' }}>Volume Bootable</span>
+                            <span style={{ color: '#94a3b8' }}>{t('Booted from volume')}</span>
                           )}
                         </Descriptions.Item>
                       </Descriptions>
@@ -1434,8 +1435,8 @@ export default function InstanceDetail() {
                             <span style={{ color: '#94a3b8' }}>default</span>
                           )}
                         </Descriptions.Item>
-                        <Descriptions.Item label="SSH Keypair">
-                          {instance.key_name || <span style={{ color: '#94a3b8' }}>None</span>}
+                        <Descriptions.Item label={t('SSH Keypair')}>
+                          {instance.key_name || <span style={{ color: '#94a3b8' }}>{t('None')}</span>}
                         </Descriptions.Item>
                         <Descriptions.Item label={t('Project ID')} span={2}>
                           <CopyableText text={instance.tenant_id} />
@@ -1472,7 +1473,7 @@ export default function InstanceDetail() {
                           ))}
                         </Space>
                       ) : (
-                        <span style={{ color: '#94a3b8' }}>Không có nhãn (Tags)</span>
+                        <span style={{ color: '#94a3b8' }}>{t('No tags')}</span>
                       )}
                     </Card>
                   </Col>
@@ -1497,7 +1498,7 @@ export default function InstanceDetail() {
                         <div style={{ marginBottom: 16 }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <ApartmentOutlined style={{ color: '#10b981' }} />
-                            <span>Cổng mạng Network Ports ({networkList.length})</span>
+                            <span>{t('Network Ports')} ({networkList.length})</span>
                           </div>
                           {networkList.map((net, idx) => (
                             <div
@@ -1521,7 +1522,7 @@ export default function InstanceDetail() {
                               </div>
                               {net.portId !== '-' && (
                                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                                  Port: <CopyableText text={net.portId} display={`${net.portId.substring(0, 10)}...`} />
+                                  {t('Port')}: <CopyableText text={net.portId} display={`${net.portId.substring(0, 10)}...`} />
                                 </div>
                               )}
                             </div>
@@ -1554,7 +1555,7 @@ export default function InstanceDetail() {
                           <DesktopOutlined style={{ fontSize: 28, marginBottom: 6 }} />
                           <div style={{ fontWeight: 700, fontSize: 14 }}>{instance.name}</div>
                           <div style={{ fontSize: 11, opacity: 0.9, marginTop: 4 }}>
-                            Trạng thái: <b>{instance.status}</b> | Host: <b>{instance['OS-EXT-SRV-ATTR:host'] || 'nova'}</b>
+                            {t('Status')}: <b>{instance.status}</b> | {t('Host')}: <b>{instance['OS-EXT-SRV-ATTR:host'] || 'nova'}</b>
                           </div>
                           <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
                             {instance.flavor?.name || instance.flavor?.original_name || 'm1.small'} ({instance.flavor?.vcpus || 2} vCPU / {instance.flavor?.ram ? instance.flavor.ram / 1024 : 2} GiB)
@@ -1575,7 +1576,7 @@ export default function InstanceDetail() {
                         <div style={{ textAlign: 'left', marginTop: 8 }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <HddOutlined style={{ color: '#0068ff' }} />
-                            <span>Ổ đĩa Volumes ({volumes.length})</span>
+                            <span>{t('Volumes')} ({volumes.length})</span>
                           </div>
                           {volumes.length > 0 ? (
                             volumes.map((vol, idx) => (
@@ -1594,7 +1595,7 @@ export default function InstanceDetail() {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <Space size={6}>
                                     <Tag color={vol.isBootable ? 'geekblue' : 'default'} style={{ margin: 0, fontWeight: 600 }}>
-                                      {vol.isBootable ? 'Root Disk' : 'Data Disk'}
+                                      {vol.isBootable ? t('Root Disk') : t('Data Disk')}
                                     </Tag>
                                     <span style={{ fontWeight: 600, color: '#0f172a' }}>
                                       {vol.name || vol.volume_image_metadata?.image_name || 'volume-disk'}
@@ -1605,8 +1606,8 @@ export default function InstanceDetail() {
                                   </Tag>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: '#64748b' }}>
-                                  <span>Type: <b>{vol.volume_type || 'ssd'}</b></span>
-                                  <span>Device: <code>{vol.device || '/dev/vda'}</code></span>
+                                  <span>{t('Type')}: <b>{vol.volume_type || 'ssd'}</b></span>
+                                  <span>{t('Device')}: <code>{vol.device || '/dev/vda'}</code></span>
                                 </div>
                                 <div style={{ marginTop: 4, fontSize: 11, color: '#64748b' }}>
                                   ID: <CopyableText text={vol.id} display={`${vol.id?.substring(0, 12)}...`} />
@@ -1615,7 +1616,7 @@ export default function InstanceDetail() {
                             ))
                           ) : (
                             <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, fontSize: 12, color: '#64748b' }}>
-                              Root disk (Ephemeral Storage)
+                              {t('Root disk (Ephemeral Storage)')}
                             </div>
                           )}
                         </div>
@@ -1694,16 +1695,16 @@ export default function InstanceDetail() {
                         render: (vt) => <Tag color="blue">{vt || 'ssd'}</Tag>,
                       },
                       {
-                        title: 'Device',
+                        title: t('Device'),
                         dataIndex: 'device',
                         key: 'device',
                         render: (dev) => <code>{dev || '/dev/vda'}</code>,
                       },
                       {
-                        title: 'Bootable',
+                        title: t('Bootable'),
                         dataIndex: 'isBootable',
                         key: 'bootable',
-                        render: (b) => (b ? <Tag color="success">Yes (Root)</Tag> : <Tag>No</Tag>),
+                        render: (b) => (b ? <Tag color="success">{t('Yes (Root)')}</Tag> : <Tag>{t('No')}</Tag>),
                       },
                       {
                         title: t('Status'),
@@ -1715,7 +1716,7 @@ export default function InstanceDetail() {
                         title: t('Delete on Termination'),
                         dataIndex: 'delete_on_termination',
                         key: 'del',
-                        render: (del) => (del ? <Tag color="orange">Yes</Tag> : <Tag>No</Tag>),
+                        render: (del) => (del ? <Tag color="orange">{t('Yes')}</Tag> : <Tag>{t('No')}</Tag>),
                       },
                       {
                         title: t('Action'),
@@ -1745,7 +1746,7 @@ export default function InstanceDetail() {
                         },
                       },
                     ]}
-                    locale={{ emptyText: 'Chưa có ổ đĩa Volume nào được gắn vào máy ảo này' }}
+                    locale={{ emptyText: t('No volumes are attached to this instance') }}
                   />
                 </div>
               ),
@@ -1800,13 +1801,13 @@ export default function InstanceDetail() {
                         render: (net) => <Tag color="blue">{net}</Tag>,
                       },
                       {
-                        title: 'Port ID',
+                        title: t('Port ID'),
                         dataIndex: 'portId',
                         key: 'portId',
                         render: (pid) => (pid !== '-' ? <CopyableText text={pid} /> : '-'),
                       },
                       {
-                        title: 'IP Address',
+                        title: t('IP Address'),
                         dataIndex: 'ip',
                         key: 'ip',
                         render: (ip) => <CopyableText text={ip} />,
@@ -1818,7 +1819,7 @@ export default function InstanceDetail() {
                         render: (tp) => <Tag color={tp === 'floating' ? 'cyan' : 'geekblue'}>{tp}</Tag>,
                       },
                       {
-                        title: 'MAC Address',
+                        title: t('MAC Address'),
                         dataIndex: 'mac',
                         key: 'mac',
                         render: (mac) => <code>{mac}</code>,
@@ -1885,7 +1886,7 @@ export default function InstanceDetail() {
                         <Tag color="blue" style={{ margin: 0, fontWeight: 600 }}>{securityGroups.length}</Tag>
                       </div>
                       <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        {t('Quản lý nhóm bảo mật, thêm/sửa/xóa luật tường lửa và áp dụng trực tiếp cho máy ảo này.')}
+                        {t('Manage security groups, add/edit/delete firewall rules and apply them directly to this instance.')}
                       </div>
                     </div>
                     <Space wrap>
@@ -1899,13 +1900,13 @@ export default function InstanceDetail() {
                         }}
                         style={{ backgroundColor: '#0068ff', fontWeight: 600 }}
                       >
-                        {t('Gán Security Group')}
+                        {t('Attach Security Group')}
                       </Button>
                       <Button
                         icon={<SettingOutlined />}
                         onClick={() => navigate('/network/security-group')}
                       >
-                        {t('Quản lý Security Groups')}
+                        {t('Manage Security Groups')}
                       </Button>
                     </Space>
                   </div>
@@ -1959,7 +1960,7 @@ export default function InstanceDetail() {
                                 }}
                                 style={{ fontWeight: 600 }}
                               >
-                                {t('Thêm Rule')}
+                                {t('Add Rule')}
                               </Button>
                               <Button
                                 size="small"
@@ -1968,7 +1969,7 @@ export default function InstanceDetail() {
                                 disabled={instance.locked}
                                 onClick={() => handleDetachSecurityGroup(sg)}
                               >
-                                {t('Gỡ khỏi máy ảo')}
+                                {t('Detach from Instance')}
                               </Button>
                             </Space>
                           </div>
@@ -2000,7 +2001,7 @@ export default function InstanceDetail() {
                                     icon={d === 'INGRESS' ? <ArrowDownOutlined /> : <ArrowUpOutlined />}
                                     style={{ fontWeight: 600 }}
                                   >
-                                    {d === 'INGRESS' ? 'Ingress (Vào)' : 'Egress (Ra)'}
+                                    {d === 'INGRESS' ? t('Ingress') : t('Egress')}
                                   </Tag>
                                 ),
                               },
@@ -2085,7 +2086,7 @@ export default function InstanceDetail() {
                                       onClick={() => handlePrefillRule(sg, rule)}
                                       style={{ padding: '0 4px', fontSize: 12 }}
                                     >
-                                      {t('Sửa')}
+                                      {t('Edit')}
                                     </Button>
                                     <Button
                                       type="link"
@@ -2105,7 +2106,7 @@ export default function InstanceDetail() {
                           />
                         ) : (
                           <Alert
-                            message={t('Không có luật tường lửa (rules) nào trong nhóm này')}
+                            message={t('There are no rules in this security group')}
                             type="info"
                             showIcon
                           />
@@ -2114,8 +2115,8 @@ export default function InstanceDetail() {
                     ))
                   ) : (
                     <Alert
-                      message={t('Chưa có Security Group nào được cấu hình')}
-                      description={t('Nhấn "Gán Security Group" ở trên để bảo vệ máy ảo với nhóm tường lửa phù hợp.')}
+                      message={t('No security groups configured')}
+                      description={t('Click "Attach Security Group" above to protect the instance with a suitable security group.')}
                       type="info"
                       showIcon
                     />
@@ -2171,7 +2172,7 @@ export default function InstanceDetail() {
                             <Tag color="error">{msg}</Tag>
                           ) : (
                             <Tag color="success" icon={<CheckCircleOutlined />}>
-                              Success
+                              {t('Success')}
                             </Tag>
                           ),
                       },
@@ -2187,7 +2188,7 @@ export default function InstanceDetail() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                     <Space>
-                      <span>Số dòng log cuối:</span>
+                      <span>{t('Last log lines')}:</span>
                       <Select
                         value={consoleTail}
                         onChange={(val) => {
@@ -2234,7 +2235,7 @@ export default function InstanceDetail() {
         title={
           <Space>
             <SafetyOutlined style={{ color: '#0068ff' }} />
-            <span>{t('Gán Security Group vào máy ảo')}</span>
+            <span>{t('Attach Security Group to Instance')}</span>
           </Space>
         }
         open={attachSgModalVisible}
@@ -2244,20 +2245,20 @@ export default function InstanceDetail() {
         }}
         onOk={handleAttachSecurityGroup}
         confirmLoading={attachSgSubmitting}
-        okText={t('Gán vào máy ảo')}
+        okText={t('Attach to Instance')}
         cancelText={t('Cancel')}
         okButtonProps={{ disabled: !selectedSgToAttach, style: { backgroundColor: '#0068ff' } }}
         destroyOnClose
       >
         <div style={{ marginTop: 12 }}>
           <p style={{ color: '#475569', fontSize: 13, marginBottom: 16 }}>
-            {t('Chọn nhóm bảo mật trong dự án để gán thêm cho máy ảo ')} <b>{instance?.name}</b>:
+            {t('Select a security group in the project to attach to instance')} <b>{instance?.name}</b>:
           </p>
 
           <Form layout="vertical">
             <Form.Item label={t('Security Group')} required>
               <Select
-                placeholder={t('Chọn nhóm bảo mật')}
+                placeholder={t('Select security group')}
                 value={selectedSgToAttach}
                 onChange={setSelectedSgToAttach}
                 style={{ width: '100%' }}
@@ -2268,7 +2269,7 @@ export default function InstanceDetail() {
                     label: (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span><b>{sg.name}</b> {sg.description ? `— ${sg.description}` : ''}</span>
-                        <Tag color="blue" style={{ fontSize: 10 }}>{sg.security_group_rules?.length || 0} rules</Tag>
+                        <Tag color="blue" style={{ fontSize: 10 }}>{t('{count} rules', { count: sg.security_group_rules?.length || 0 })}</Tag>
                       </div>
                     ),
                   }))}
@@ -2280,7 +2281,7 @@ export default function InstanceDetail() {
             <Alert
               type="info"
               showIcon
-              message={t('Tất cả các Security Groups trong dự án hiện đã được gán vào máy ảo này.')}
+              message={t('All security groups in the project are already attached to this instance.')}
             />
           )}
         </div>
@@ -2292,7 +2293,7 @@ export default function InstanceDetail() {
           <Space>
             <SafetyOutlined style={{ color: '#0068ff' }} />
             <span>
-              {t('Thêm Luật Tường Lửa')} {selectedSgForRule?.name ? `— ${selectedSgForRule.name}` : ''}
+              {t('Add Security Group Rule')} {selectedSgForRule?.name ? `— ${selectedSgForRule.name}` : ''}
             </span>
           </Space>
         }
@@ -2303,7 +2304,7 @@ export default function InstanceDetail() {
         }}
         onOk={() => addRuleForm.submit()}
         confirmLoading={ruleSubmitting}
-        okText={t('Áp dụng Rule')}
+        okText={t('Apply Rule')}
         cancelText={t('Cancel')}
         okButtonProps={{ style: { backgroundColor: '#0068ff' } }}
         width={600}
@@ -2326,21 +2327,21 @@ export default function InstanceDetail() {
         >
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="direction" label={t('Chiều lưu lượng (Direction)')} rules={[{ required: true }]}>
+              <Form.Item name="direction" label={t('Direction')} rules={[{ required: true }]}>
                 <Radio.Group buttonStyle="solid" style={{ width: '100%', display: 'flex' }}>
                   <Radio.Button value="ingress" style={{ flex: 1, textAlign: 'center', padding: '0 8px' }}>
                     <ArrowDownOutlined style={{ color: '#10b981', marginRight: 4 }} />
-                    {t('Ingress (Vào)')}
+                    {t('Ingress')}
                   </Radio.Button>
                   <Radio.Button value="egress" style={{ flex: 1, textAlign: 'center', padding: '0 8px' }}>
                     <ArrowUpOutlined style={{ color: '#f59e0b', marginRight: 4 }} />
-                    {t('Egress (Ra)')}
+                    {t('Egress')}
                   </Radio.Button>
                 </Radio.Group>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="ethertype" label={t('Loại mạng (Ethertype)')} rules={[{ required: true }]}>
+              <Form.Item name="ethertype" label={t('Ether Type')} rules={[{ required: true }]}>
                 <Radio.Group buttonStyle="solid" style={{ width: '100%', display: 'flex' }}>
                   <Radio.Button value="IPv4" style={{ flex: 1, textAlign: 'center' }}>IPv4</Radio.Button>
                   <Radio.Button value="IPv6" style={{ flex: 1, textAlign: 'center' }}>IPv6</Radio.Button>
@@ -2349,21 +2350,21 @@ export default function InstanceDetail() {
             </Col>
           </Row>
 
-          <Form.Item name="ruleType" label={t('Loại giao thức / Mẫu cổng')} rules={[{ required: true }]}>
+          <Form.Item name="ruleType" label={t('Protocol / Port Template')} rules={[{ required: true }]}>
             <Select
               options={[
-                { label: 'TCP tùy chỉnh (Custom TCP)', value: 'custom_tcp' },
-                { label: 'UDP tùy chỉnh (Custom UDP)', value: 'custom_udp' },
-                { label: 'Tất cả ICMP (Ping / Echo)', value: 'custom_icmp' },
-                { label: 'Tất cả cổng TCP (1 - 65535)', value: 'all_tcp' },
-                { label: 'Tất cả cổng UDP (1 - 65535)', value: 'all_udp' },
-                { label: 'Tất cả lưu lượng (ANY Protocol)', value: 'all_traffic' },
-                { label: 'SSH (Cổng TCP 22)', value: 'ssh' },
-                { label: 'HTTP (Cổng TCP 80)', value: 'http' },
-                { label: 'HTTPS (Cổng TCP 443)', value: 'https' },
-                { label: 'MySQL (Cổng TCP 3306)', value: 'mysql' },
-                { label: 'PostgreSQL (Cổng TCP 5432)', value: 'postgres' },
-                { label: 'RDP (Cổng TCP 3389)', value: 'rdp' },
+                { label: t('Custom TCP'), value: 'custom_tcp' },
+                { label: t('Custom UDP'), value: 'custom_udp' },
+                { label: t('All ICMP (Ping / Echo)'), value: 'custom_icmp' },
+                { label: t('All TCP ports (1 - 65535)'), value: 'all_tcp' },
+                { label: t('All UDP ports (1 - 65535)'), value: 'all_udp' },
+                { label: t('All traffic (ANY protocol)'), value: 'all_traffic' },
+                { label: t('{name} (TCP port {port})', { name: 'SSH', port: 22 }), value: 'ssh' },
+                { label: t('{name} (TCP port {port})', { name: 'HTTP', port: 80 }), value: 'http' },
+                { label: t('{name} (TCP port {port})', { name: 'HTTPS', port: 443 }), value: 'https' },
+                { label: t('{name} (TCP port {port})', { name: 'MySQL', port: 3306 }), value: 'mysql' },
+                { label: t('{name} (TCP port {port})', { name: 'PostgreSQL', port: 5432 }), value: 'postgres' },
+                { label: t('{name} (TCP port {port})', { name: 'RDP', port: 3389 }), value: 'rdp' },
               ]}
             />
           </Form.Item>
@@ -2381,8 +2382,8 @@ export default function InstanceDetail() {
                     <Col span={12}>
                       <Form.Item
                         name="port_min"
-                        label={t('Cổng từ (Port Min)')}
-                        rules={[{ required: true, message: 'Nhập số cổng (1 - 65535)' }]}
+                        label={t('Port Min')}
+                        rules={[{ required: true, message: t('Enter a port number (1 - 65535)') }]}
                       >
                         <InputNumber min={1} max={65535} style={{ width: '100%' }} placeholder="80" />
                       </Form.Item>
@@ -2390,9 +2391,9 @@ export default function InstanceDetail() {
                     <Col span={12}>
                       <Form.Item
                         name="port_max"
-                        label={t('Cổng đến (Port Max)')}
+                        label={t('Port Max')}
                       >
-                        <InputNumber min={1} max={65535} style={{ width: '100%' }} placeholder="80 (nếu cổng đơn)" />
+                        <InputNumber min={1} max={65535} style={{ width: '100%' }} placeholder={t('80 (if single port)')} />
                       </Form.Item>
                     </Col>
                   </Row>
@@ -2404,10 +2405,10 @@ export default function InstanceDetail() {
 
           <Row gutter={16}>
             <Col span={10}>
-              <Form.Item name="remoteType" label={t('Loại nguồn / đích')}>
+              <Form.Item name="remoteType" label={t('Remote Type')}>
                 <Radio.Group>
                   <Radio value="cidr">CIDR</Radio>
-                  <Radio value="sg">Security Group</Radio>
+                  <Radio value="sg">{t('Security Group')}</Radio>
                 </Radio.Group>
               </Form.Item>
             </Col>
@@ -2423,11 +2424,11 @@ export default function InstanceDetail() {
                     return (
                       <Form.Item
                         name="remote_group_id"
-                        label={t('Nhóm nguồn / đích (Security Group)')}
-                        rules={[{ required: true, message: 'Chọn nhóm bảo mật' }]}
+                        label={t('Remote Security Group')}
+                        rules={[{ required: true, message: t('Select security group') }]}
                       >
                         <Select
-                          placeholder={t('Chọn nhóm')}
+                          placeholder={t('Select group')}
                           options={allProjectSgs.map((sg) => ({
                             value: sg.id,
                             label: sg.name,
@@ -2439,8 +2440,8 @@ export default function InstanceDetail() {
                   return (
                     <Form.Item
                       name="remote_ip_prefix"
-                      label={t('Địa chỉ CIDR nguồn / đích')}
-                      rules={[{ required: true, message: 'Nhập dải mạng CIDR' }]}
+                      label={t('Remote CIDR')}
+                      rules={[{ required: true, message: t('Enter a CIDR range') }]}
                     >
                       <Input placeholder={eth === 'IPv6' ? '::/0' : '0.0.0.0/0'} />
                     </Form.Item>
@@ -2450,8 +2451,8 @@ export default function InstanceDetail() {
             </Col>
           </Row>
 
-          <Form.Item name="description" label={t('Mô tả luật (Description)')}>
-            <Input placeholder={t('Ví dụ: Cho phép truy cập Web HTTP hoặc SSH nội bộ')} />
+          <Form.Item name="description" label={t('Rule Description')}>
+            <Input placeholder={t('e.g. Allow web HTTP or internal SSH access')} />
           </Form.Item>
         </Form>
       </Modal>

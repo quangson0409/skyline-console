@@ -2,12 +2,14 @@ import React from 'react';
 import { Card, Tag, Typography, Button, Space, Breadcrumb } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CloudSyncOutlined, ArrowLeftOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons';
+import { useTranslation } from '@/core/i18n';
 
 const { Title, Paragraph, Text } = Typography;
 
 export default function ModulePlaceholder({ title, service, description }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div>
@@ -15,8 +17,8 @@ export default function ModulePlaceholder({ title, service, description }) {
         style={{ marginBottom: 16 }}
         items={[
           { title: <a onClick={() => navigate('/base/overview')}>Skyline</a> },
-          { title: service || 'OpenStack Service' },
-          { title: title || location.pathname },
+          { title: service || t('OpenStack Service') },
+          { title: title ? t(title) : location.pathname },
         ]}
       />
 
@@ -47,18 +49,18 @@ export default function ModulePlaceholder({ title, service, description }) {
         </div>
 
         <Title level={4} style={{ marginBottom: 8, fontWeight: 700 }}>
-          {title || `Phân Hệ: ${location.pathname}`}
+          {title ? t(title) : t('Module: {path}', { path: location.pathname })}
         </Title>
 
         <Paragraph style={{ color: '#64748b', maxWidth: 560, margin: '0 auto 16px' }}>
           {description ||
-            `Module này đang được liên kết trong hệ thống điều hướng Skyline Console. Đường dẫn API endpoint của dịch vụ OpenStack: ${location.pathname}`}
+            t('This module is linked in the Skyline Console navigation. OpenStack service API endpoint path: {path}', { path: location.pathname })}
         </Paragraph>
 
         <Space style={{ marginBottom: 24 }}>
-          <Tag color="blue">OpenStack {service || 'Core Service'}</Tag>
-          <Tag color="processing">Route: {location.pathname}</Tag>
-          <Tag color="success">Menu Status: Mapped & Active</Tag>
+          <Tag color="blue">OpenStack {service || t('Core Service')}</Tag>
+          <Tag color="processing">{t('Route')}: {location.pathname}</Tag>
+          <Tag color="success">{t('Menu Status: Mapped & Active')}</Tag>
         </Space>
 
         <div>
@@ -67,7 +69,7 @@ export default function ModulePlaceholder({ title, service, description }) {
             onClick={() => navigate(-1)}
             style={{ borderRadius: 6 }}
           >
-            Quay lại trang trước
+            {t('Back to previous page')}
           </Button>
         </div>
       </Card>

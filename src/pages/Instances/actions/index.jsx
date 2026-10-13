@@ -591,7 +591,7 @@ export const DetachInterfaceAction = {
       const res = await novaApi.listInterfaces(item.id);
       const ifaces = res?.interfaceAttachments || [];
       portOptions = ifaces.map((iface) => ({
-        label: `Port ${(iface.port_id || iface.id)?.substring(0, 10)}... (IP: ${iface.fixed_ips?.map((f) => f.ip_address).join(', ') || '-'})`,
+        label: `${t('Port')} ${(iface.port_id || iface.id)?.substring(0, 10)}... (IP: ${iface.fixed_ips?.map((f) => f.ip_address).join(', ') || '-'})`,
         value: iface.port_id || iface.id,
       }));
     } catch {

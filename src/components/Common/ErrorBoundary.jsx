@@ -1,6 +1,7 @@
 import React from 'react';
 import { Result, Button } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
+import { t } from '@/core/i18n';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -27,8 +28,8 @@ export default class ErrorBoundary extends React.Component {
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh', padding: 24 }}>
           <Result
             status="error"
-            title="Đã xảy ra sự cố hiển thị phân hệ OpenStack"
-            subTitle={this.state.error?.message || 'Có lỗi xảy ra trong quá trình kết xuất giao diện.'}
+            title={t('Something went wrong while rendering this OpenStack module')}
+            subTitle={this.state.error?.message || t('An error occurred while rendering the interface.')}
             extra={[
               <Button
                 type="primary"
@@ -37,7 +38,7 @@ export default class ErrorBoundary extends React.Component {
                 onClick={this.handleReload}
                 style={{ backgroundColor: '#0068ff', borderRadius: 20 }}
               >
-                Tải lại trang (Reload)
+                {t('Reload page')}
               </Button>,
               <Button
                 key="home"
@@ -46,7 +47,7 @@ export default class ErrorBoundary extends React.Component {
                   window.location.href = '/network/vpc';
                 }}
               >
-                Về trang mặc định
+                {t('Go to default page')}
               </Button>,
             ]}
           />

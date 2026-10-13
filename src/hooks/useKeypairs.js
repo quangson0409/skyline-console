@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
 
 const DEMO_KEYPAIRS = [
@@ -72,7 +73,7 @@ export function useKeypairs() {
             key_type: values.keyType || 'ssh',
           },
         });
-        message.success(`Đã tạo Keypair ${values.name} lên OpenStack Nova!`);
+        message.success(t('Key pair {name} created on OpenStack Nova!', { name: values.name }));
         await fetchKeypairs();
       } else {
         const newKey = {
@@ -83,11 +84,11 @@ export function useKeypairs() {
           createdAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
         };
         setKeypairs((prev) => [newKey, ...prev]);
-        message.success(`Đã tạo khóa SSH ${values.name} thành công!`);
+        message.success(t('Key pair {name} created successfully!', { name: values.name }));
       }
       return true;
     } catch (err) {
-      message.error(`Lỗi tạo keypair: ${err.message}`);
+      message.error(t('Failed to create key pair: {msg}', { msg: err.message }));
       return false;
     }
   }, [isLiveApi, fetchKeypairs]);
@@ -96,15 +97,15 @@ export function useKeypairs() {
     try {
       if (isLiveApi) {
         await novaApi.deleteKeypair(name);
-        message.success(`Đã xóa keypair ${name} khỏi OpenStack Nova!`);
+        message.success(t('Key pair {name} deleted from OpenStack Nova!', { name }));
         await fetchKeypairs();
       } else {
         setKeypairs((prev) => prev.filter((k) => k.name !== name));
-        message.success(`Đã xóa khóa SSH ${name}!`);
+        message.success(t('Key pair {name} deleted!', { name }));
       }
       return true;
     } catch (err) {
-      message.error(`Lỗi xóa keypair: ${err.message}`);
+      message.error(t('Failed to delete key pair: {msg}', { msg: err.message }));
       return false;
     }
   }, [isLiveApi, fetchKeypairs]);

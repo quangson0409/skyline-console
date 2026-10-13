@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { message } from 'antd';
+import { t } from '@/core/i18n';
 import { glanceApi } from '@/api/glance';
 
 const DEMO_IMAGES = [
@@ -113,15 +114,15 @@ export function useImages() {
     try {
       if (isLiveApi) {
         await glanceApi.deleteImage(id);
-        message.success('Đã xóa Image khỏi OpenStack Glance!');
+        message.success(t('Image deleted from OpenStack Glance!'));
         await fetchImages();
       } else {
         setImages((prev) => prev.filter((i) => i.id !== id));
-        message.success('Đã xóa Image thành công!');
+        message.success(t('Image deleted successfully!'));
       }
       return true;
     } catch (err) {
-      message.error(`Lỗi xóa image: ${err.message}`);
+      message.error(t('Failed to delete image: {msg}', { msg: err.message }));
       return false;
     }
   }, [isLiveApi, fetchImages]);
