@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { skylineApi } from '@/api/skyline';
 import apiClient from '@/api/client';
 import { message } from 'antd';
-import { saveEndpoints } from '@/api/endpoints';
+import { saveEndpoints, serviceBase } from '@/api/endpoints';
 
 export const formatErrorMessage = (err) => {
   if (!err) return 'Lỗi không xác định';
@@ -20,31 +20,16 @@ export const formatErrorMessage = (err) => {
   return 'Lỗi kết nối máy chủ';
 };
 
-const DEFAULT_PROJECT = {
-  id: '99b1fbbf5b3a4b6486288d842a33781e',
-  name: 'admin',
-  domainName: 'Default',
-  displayName: 'Default > admin',
-  description: 'Bootstrap project for initializing the cloud.',
+const readJSON = (key, fallback = null) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
 };
 
-const savedProjects = (() => {
-  try {
-    const raw = localStorage.getItem('keystone_projects');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-})();
-
-const savedCurrentProject = (() => {
-  try {
-    const raw = localStorage.getItem('keystone_current_project');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-})();
+const EMPTY_PROJECT = { id: '', name: '', domainId: '', domainName: '', displayName: '', description: '' };
 
 // Token expiration verification on store load
 const savedToken = localStorage.getItem('keystone_token') || '';
@@ -63,13 +48,69 @@ if (savedToken && isInitialExpired) {
 const initialToken = isInitialExpired ? '' : savedToken;
 const initialIsAuth = !isInitialExpired && !!savedToken;
 
+const savedUser = readJSON('skyline_user');
+
+/**
+ * Normalizes a skyline Profile (login / profile / switch_project / switch_region response).
+ * projects is a map { id: { name, domain_id, enabled, description } } in skyline-apiserver.
+ */
+const parseProfile = (res = {}) => {
+  const domainNames = {};
+  if (res.project?.domain) domainNames[res.project.domain.id] = res.project.domain.name;
+  if (res.user?.domain) domainNames[res.user.domain.id] = res.user.domain.name;
+
+  const toProject = (id, p = {}) => {
+    const domainId = p.domain_id || p.domain?.id || '';
+    const domainName = p.domain?.name || domainNames[domainId] || '';
+    return {
+      id,
+      name: p.name || id,
+      domainId,
+      domainName,
+      displayName: domainName ? `${domainName} > ${p.name || id}` : p.name || id,
+      description: p.description || '',
+      enabled: p.enabled !== false,
+    };
+  };
+
+  let projects = [];
+  if (Array.isArray(res.projects)) projects = res.projects.map((p) => toProject(p.id, p));
+  else if (res.projects && typeof res.projects === 'object') {
+    projects = Object.entries(res.projects).map(([id, p]) => toProject(id, p));
+  }
+
+  const currentProject = res.project ? toProject(res.project.id, res.project) : projects[0] || EMPTY_PROJECT;
+  const roles = Array.isArray(res.roles) ? res.roles.map((r) => (typeof r === 'string' ? r : r.name)) : [];
+  const expiresAt =
+    res.keystone_token_exp ||
+    (res.exp ? new Date(res.exp * 1000).toISOString() : null) ||
+    new Date(Date.now() + 3600 * 1000).toISOString();
+
+  return {
+    token: res.keystone_token || res.token || '',
+    expiresAt,
+    region: res.region || 'RegionOne',
+    regions: Array.isArray(res.regions) && res.regions.length ? res.regions : null,
+    projects,
+    currentProject,
+    roles,
+    user: {
+      id: res.user?.id || '',
+      username: res.user?.name || '',
+      domain: res.user?.domain?.name || '',
+      domainId: res.user?.domain?.id || '',
+      roles,
+      email: res.user?.email || '',
+      defaultProjectId: res.default_project_id || '',
+    },
+    baseDomains: res.base_domains || [],
+    endpoints: res.endpoints,
+    version: res.version || '',
+  };
+};
+
 export const useAuthStore = create((set, get) => ({
-  user: {
-    username: localStorage.getItem('keystone_username') || 'admin',
-    domain: localStorage.getItem('keystone_domain') || 'Default',
-    roles: ['admin', 'member', 'manager'],
-    email: 'admin@skyline.openstack.org',
-  },
+  user: savedUser || { id: '', username: '', domain: '', roles: [], email: '' },
   token: initialToken,
   expiresAt: isInitialExpired ? null : savedExpiresAt,
   isAuthenticated: initialIsAuth,
@@ -77,12 +118,66 @@ export const useAuthStore = create((set, get) => ({
   backendConnected: false,
   lastPingMs: null,
 
-  currentProject: savedCurrentProject || DEFAULT_PROJECT,
-  projects: savedProjects && savedProjects.length > 0 ? savedProjects : [DEFAULT_PROJECT],
+  currentProject: readJSON('keystone_current_project', EMPTY_PROJECT),
+  projects: readJSON('keystone_projects', []),
   currentRegion: localStorage.getItem('keystone_region') || 'RegionOne',
-  regions: ['RegionOne'],
-  hasAdminRole: true,
+  regions: readJSON('skyline_regions', ['RegionOne']),
+  baseDomains: readJSON('skyline_base_domains', []),
+  // Legacy rootStore semantics: hasAdminPageRole = system-scope admin/reader role,
+  // hasAdminRole mirrors it, hasAdminOnlyRole = project role "admin".
+  hasAdminPageRole: localStorage.getItem('skyline_admin_page_role') === '1',
+  hasAdminRole: localStorage.getItem('skyline_admin_page_role') === '1',
+  hasAdminOnlyRole: Boolean(savedUser?.roles?.includes('admin')),
 
+  /** Applies a skyline Profile and persists it (single place for login / profile / switch). */
+  applyProfile: async (res) => {
+    const p = parseProfile(res);
+    if (p.token) {
+      localStorage.setItem('keystone_token', p.token);
+      localStorage.setItem('keystone_token_expires_at', p.expiresAt);
+    }
+    saveEndpoints(p.endpoints);
+    localStorage.setItem('keystone_username', p.user.username);
+    localStorage.setItem('keystone_domain', p.user.domain);
+    localStorage.setItem('keystone_region', p.region);
+    localStorage.setItem('keystone_current_project', JSON.stringify(p.currentProject));
+    localStorage.setItem('keystone_projects', JSON.stringify(p.projects));
+    localStorage.setItem('skyline_user', JSON.stringify(p.user));
+    localStorage.setItem('skyline_base_domains', JSON.stringify(p.baseDomains));
+    if (p.regions) localStorage.setItem('skyline_regions', JSON.stringify(p.regions));
+
+    set({
+      ...(p.token ? { token: p.token, expiresAt: p.expiresAt } : {}),
+      isAuthenticated: true,
+      backendConnected: true,
+      currentRegion: p.region,
+      ...(p.regions ? { regions: p.regions } : {}),
+      user: p.user,
+      projects: p.projects,
+      currentProject: p.currentProject,
+      baseDomains: p.baseDomains,
+      hasAdminOnlyRole: p.roles.includes('admin'),
+    });
+    await get().refreshSystemRoles(p.user.id);
+  },
+
+  /** Legacy getUserSystemRoles: only system-scope admin/reader may open administrator pages */
+  refreshSystemRoles: async (userId = get().user?.id) => {
+    let allowed = false;
+    if (userId) {
+      try {
+        const res = await apiClient.get(`${serviceBase('keystone')}/system/users/${userId}/roles`);
+        allowed = (res?.roles || []).some((r) => r.name === 'admin' || r.name === 'reader');
+      } catch {
+        allowed = false;
+      }
+    }
+    localStorage.setItem('skyline_admin_page_role', allowed ? '1' : '0');
+    set({ hasAdminPageRole: allowed, hasAdminRole: allowed });
+    return allowed;
+  },
+
+  // Kept for compatibility: local selection only. Use switchProject to re-scope the token.
   setProject: (project) => {
     localStorage.setItem('keystone_current_project', JSON.stringify(project));
     set({ currentProject: project });
@@ -90,6 +185,21 @@ export const useAuthStore = create((set, get) => ({
   setRegion: (region) => {
     localStorage.setItem('keystone_region', region);
     set({ currentRegion: region });
+  },
+
+  /** Re-scopes the keystone token to another project (legacy rootStore.switchProject) */
+  switchProject: async (projectId, domainId) => {
+    const project = get().projects.find((p) => p.id === projectId);
+    const res = await skylineApi.switchProject(projectId, domainId || project?.domainId);
+    await get().applyProfile(res);
+    return res;
+  },
+
+  /** Legacy rootStore.switchRegion */
+  switchRegion: async (region) => {
+    const res = await skylineApi.switchRegion(region);
+    await get().applyProfile(res);
+    return res;
   },
 
   // Set keystone token manually
@@ -108,7 +218,7 @@ export const useAuthStore = create((set, get) => ({
   checkBackendStatus: async () => {
     const start = performance.now();
     try {
-      const res = await apiClient.get('/openstack/skyline/api/v1/profile').catch((err) => {
+      await apiClient.get('/openstack/skyline/api/v1/profile').catch((err) => {
         // 401 still means backend is reachable and alive
         if (err.response && (err.response.status === 401 || err.response.status === 200)) {
           return { ok: true, status: err.response.status };
@@ -125,87 +235,32 @@ export const useAuthStore = create((set, get) => ({
   },
 
   // Login via Skyline API
-  login: async ({ domain = 'Default', username = 'admin', password }) => {
+  login: async ({ domain = 'Default', username, password, region }) => {
     try {
-      const res = await skylineApi.login({ domain, username, password });
-      const token = res?.keystone_token || res?.token || res?.access_token || res?.id;
-
-      if (!token) {
+      const res = await skylineApi.login({ domain, username, password, ...(region ? { region } : {}) });
+      if (!res?.keystone_token) {
         throw new Error('Không nhận được Keystone Token từ phản hồi của máy chủ');
       }
-
-      const currentRegion = res?.region || 'RegionOne';
-      const expiresAt =
-        res?.expires_at ||
-        res?.token?.expires_at ||
-        res?.keystone_token_expires_at ||
-        new Date(Date.now() + 3600 * 1000).toISOString();
-
-      localStorage.setItem('keystone_token', token);
-      localStorage.setItem('keystone_token_expires_at', expiresAt);
-      saveEndpoints(res?.endpoints);
-      localStorage.setItem('keystone_username', username);
-      localStorage.setItem('keystone_domain', domain);
-      localStorage.setItem('keystone_region', currentRegion);
-
-      // Parse projects
-      let projectsList = [];
-      if (res.projects) {
-        if (Array.isArray(res.projects)) {
-          projectsList = res.projects.map((p) => ({
-            id: p.id,
-            name: p.name,
-            domainName: p.domain?.name || 'Default',
-            displayName: `Default > ${p.name}`,
-            description: p.description || 'OpenStack Project',
-          }));
-        } else if (typeof res.projects === 'object') {
-          projectsList = Object.entries(res.projects).map(([id, p]) => ({
-            id,
-            name: p.name || id,
-            domainName: 'Default',
-            displayName: `Default > ${p.name || id}`,
-            description: p.description || 'OpenStack Project',
-          }));
-        }
+      await get().applyProfile(res);
+      message.success(`Đăng nhập Keystone thành công với tài khoản ${username}!`);
+      return { success: true };
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      // Two-factor users: keystone answers with a receipt, the passcode step follows (legacy setTotpRequired)
+      if (detail && typeof detail === 'object' && detail.totp_required) {
+        return { success: false, totpRequired: true, receipt: detail.receipt };
       }
+      const errorMsg = formatErrorMessage(err);
+      message.error(`Đăng nhập thất bại: ${errorMsg}`);
+      return { success: false, error: errorMsg };
+    }
+  },
 
-      const activeProject = res.project
-        ? {
-            id: res.project.id,
-            name: res.project.name,
-            domainName: res.project.domain?.name || 'Default',
-            displayName: `${res.project.domain?.name || 'Default'} > ${res.project.name}`,
-            description: 'Current Project',
-          }
-        : projectsList[0] || DEFAULT_PROJECT;
-
-      if (projectsList.length > 0) {
-        localStorage.setItem('keystone_projects', JSON.stringify(projectsList));
-      }
-      localStorage.setItem('keystone_current_project', JSON.stringify(activeProject));
-
-      const roles = Array.isArray(res.roles)
-        ? res.roles.map((r) => (typeof r === 'string' ? r : r.name || String(r)))
-        : ['admin'];
-
-      set({
-        token,
-        expiresAt,
-        isAuthenticated: true,
-        backendConnected: true,
-        currentRegion,
-        hasAdminRole: roles.some((r) => ['admin', 'administrator'].includes(String(r).toLowerCase())),
-        user: {
-          username: res.user?.name || username,
-          domain: res.user?.domain?.name || domain,
-          roles,
-          email: `${res.user?.name || username}@openstack.local`,
-        },
-        projects: projectsList.length > 0 ? projectsList : [activeProject],
-        currentProject: activeProject,
-      });
-
+  /** Second login step for users with TOTP enabled (legacy rootStore.loginTotp) */
+  loginTotp: async ({ domain, username, passcode, receipt }) => {
+    try {
+      const res = await skylineApi.loginTotp({ domain, username, passcode, receipt });
+      await get().applyProfile(res);
       message.success(`Đăng nhập Keystone thành công với tài khoản ${username}!`);
       return { success: true };
     } catch (err) {
@@ -219,43 +274,7 @@ export const useAuthStore = create((set, get) => ({
   fetchProfile: async () => {
     try {
       const profile = await skylineApi.getProfile();
-      if (profile) {
-        saveEndpoints(profile.endpoints);
-        const keystoneUser = profile.user || {};
-        let projectsList = [];
-        if (profile.projects) {
-          if (Array.isArray(profile.projects)) {
-            projectsList = profile.projects.map((p) => ({
-              id: p.id,
-              name: p.name,
-              domainName: p.domain?.name || 'Default',
-              displayName: `${p.domain?.name || 'Default'} > ${p.name}`,
-              description: p.description || 'OpenStack Project',
-            }));
-          } else if (typeof profile.projects === 'object') {
-            projectsList = Object.entries(profile.projects).map(([id, p]) => ({
-              id,
-              name: p.name || id,
-              domainName: 'Default',
-              displayName: `Default > ${p.name || id}`,
-              description: p.description || 'OpenStack Project',
-            }));
-          }
-        }
-
-        set({
-          user: {
-            username: keystoneUser.name || get().user.username,
-            domain: keystoneUser.domain?.name || get().user.domain,
-            roles: profile.roles?.map((r) => r.name || r) || get().user.roles,
-            email: keystoneUser.email || get().user.email,
-          },
-          projects: projectsList.length > 0 ? projectsList : get().projects,
-          currentProject: projectsList.length > 0 ? projectsList[0] : get().currentProject,
-          isAuthenticated: true,
-          backendConnected: true,
-        });
-      }
+      if (profile) await get().applyProfile(profile);
     } catch (err) {
       console.warn('Could not load profile from live Keystone, using cached state.', err.message);
     }
@@ -266,19 +285,23 @@ export const useAuthStore = create((set, get) => ({
     try {
       await skylineApi.logout().catch(() => {});
     } finally {
-      localStorage.removeItem('keystone_token');
-      localStorage.removeItem('keystone_token_expires_at');
-      localStorage.removeItem('keystone_username');
+      [
+        'keystone_token',
+        'keystone_token_expires_at',
+        'keystone_username',
+        'skyline_user',
+        'skyline_admin_page_role',
+        'keystone_current_project',
+        'keystone_projects',
+      ].forEach((k) => localStorage.removeItem(k));
       set({
         token: '',
         expiresAt: null,
         isAuthenticated: false,
-        user: {
-          username: 'admin',
-          domain: 'Default',
-          roles: ['admin', 'member'],
-          email: 'admin@skyline.openstack.org',
-        },
+        hasAdminPageRole: false,
+        hasAdminRole: false,
+        hasAdminOnlyRole: false,
+        user: { id: '', username: '', domain: '', roles: [], email: '' },
       });
       if (!silent) {
         message.info('Đã đăng xuất phiên làm việc OpenStack.');

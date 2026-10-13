@@ -1,13 +1,8 @@
-import React, { lazy } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { lazy } from 'react';
 
-// Legacy /compute/instance/create?volume=... -> instance list with the create modal opened
-const InstanceCreateRedirect = () => {
-  const { search } = useLocation();
-  const params = new URLSearchParams(search);
-  params.set('create', '1');
-  return <Navigate to={`/compute/instance?${params.toString()}`} replace />;
-};
+// Legacy StepCreate / CreateIronic wizards (?image= / ?volume= / ?snapshot= / ?servergroup= presets)
+const InstanceCreate = lazy(() => import('@/pages/Instances/Create/InstanceCreate'));
+const IronicCreate = lazy(() => import('@/pages/Instances/Create/IronicCreate'));
 
 // Compute group (port of legacy pages/compute/routes/index.js) - instances live in App.jsx
 const SnapshotList = lazy(() => import('@/pages/Compute/InstanceSnapshots/SnapshotList'));
@@ -66,5 +61,6 @@ export default [
   { path: 'compute/baremetal-node-admin/edit/:id', component: NodeCreate },
   { path: 'compute/baremetal-node-admin/detail/:id', component: NodeDetail },
 
-  { path: 'compute/instance/create', element: <InstanceCreateRedirect /> },
+  { path: 'compute/instance/create', component: InstanceCreate },
+  { path: 'compute/ironic-instance/create', component: IronicCreate },
 ];

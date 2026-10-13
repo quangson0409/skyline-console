@@ -14,7 +14,6 @@ import {
   MenuOutlined,
   DownOutlined,
   GlobalOutlined,
-  BankOutlined,
   ClockCircleOutlined,
   CodeOutlined,
   ThunderboltOutlined,
@@ -35,6 +34,7 @@ import { useTranslation } from '@/core/i18n';
 import SelectLang from '@/components/SelectLang';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { openRcAction, cloudsYamlAction, tokenAction } from './accountActions';
+import ProjectSwitcher from './ProjectSwitcher';
 
 export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
   const navigate = useNavigate();
@@ -43,12 +43,10 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
   const { t } = useTranslation();
 
   const {
-    currentProject,
-    projects,
-    setProject,
     currentRegion,
     regions,
-    setRegion,
+    switchRegion,
+    hasAdminPageRole,
     user,
     logout,
   } = useAuthStore();
@@ -56,29 +54,6 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
   const { currentTheme, setTheme } = useThemeStore();
   const isDark = currentTheme === THEMES.DARK_OPS;
   const isAdmin = isAdminPath(location.pathname);
-
-  // Projects list
-  const projectList = Array.isArray(projects) ? projects : Object.values(projects || {});
-  const projectItems = projectList.map((p) => {
-    const pId = p.id || p.key || 'admin';
-    const pName = p.displayName || p.name || 'Default > admin';
-    const pDesc = p.description || '';
-    const isCurrent = currentProject && (pId === currentProject.id || pName === currentProject.displayName);
-    return {
-      key: pId,
-      label: (
-        <Space size={8}>
-          {isCurrent && <CheckCircleFilled style={{ color: '#0068ff' }} />}
-          <span style={{ fontWeight: isCurrent ? 700 : 500 }}>{pName}</span>
-          {pDesc && <span style={{ fontSize: 11, color: '#8c8c8c' }}>({pDesc})</span>}
-        </Space>
-      ),
-      onClick: () => {
-        setProject(p);
-        message.success(`${t('Project')}: ${pName}`);
-      },
-    };
-  });
 
   // Regions list
   const regionList = Array.isArray(regions) ? regions : ['RegionOne'];
@@ -92,9 +67,15 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
           <span>{rName}</span>
         </Space>
       ),
-      onClick: () => {
-        setRegion(rName);
-        message.success(`Region: ${rName}`);
+      onClick: async () => {
+        if (rName === currentRegion) return;
+        try {
+          await switchRegion(rName);
+          message.success(`Region: ${rName}`);
+          window.location.reload();
+        } catch (err) {
+          message.error(err?.response?.data?.detail || err.message);
+        }
       },
     };
   });
@@ -272,31 +253,8 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
           <>
             <div style={{ width: 1, height: 16, background: isDark ? '#334155' : '#e2e8f0', margin: '0 2px' }} />
 
-            {/* Project Dropdown (Clean text style matching legacy Skyline) */}
-            <Dropdown menu={{ items: projectItems }} trigger={['click']}>
-              <div
-                style={{
-                  cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 13,
-                  color: isDark ? '#cbd5e1' : '#334155',
-                  transition: 'background 0.15s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = isDark ? '#1e293b' : '#f8fafc')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <BankOutlined style={{ color: '#0068ff', fontSize: 13 }} />
-                <span>
-                  <span style={{ color: '#94a3b8', fontSize: 12 }}>Default &gt; </span>
-                  <span style={{ fontWeight: 600 }}>{currentProject ? (currentProject.name || currentProject.displayName) : 'admin'}</span>
-                </span>
-                <DownOutlined style={{ fontSize: 9, color: '#94a3b8' }} />
-              </div>
-            </Dropdown>
+            {/* Project switcher (legacy ProjectDropdown: hidden on administrator pages) */}
+            {!isAdmin && <ProjectSwitcher />}
 
             {/* Region Dropdown */}
             <Dropdown menu={{ items: regionItems }} trigger={['click']}>
@@ -326,8 +284,8 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
 
       {/* Right Side: Scope Toggle, SelectLang, Theme Switcher, Avatar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
-        {/* Project / Administrator Scope Switcher */}
-        {isAdmin ? (
+        {/* Project / Administrator Scope Switcher (legacy: only users with system admin/reader role) */}
+        {!hasAdminPageRole && !isAdmin ? null : isAdmin ? (
           <Button
             type="text"
             size="small"

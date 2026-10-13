@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Breadcrumb, Alert } from 'antd';
 import { Link } from 'react-router-dom';
 import BaseTable from '@/components/Tables/BaseTable';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
+import { useAutoRefresh, defaultIsTransition } from '@/hooks/useAutoRefresh';
 import { useAuthStore } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
 import { useIsAdminPage } from './helpers';
@@ -40,6 +41,8 @@ export default function ResourcePage({
   embedded = false,
   initialFilters,
   getCheckboxProps,
+  isTransition,
+  autoRefreshEnabled = true,
 }) {
   const { t } = useTranslation();
   const isAdmin = useIsAdminPage();
@@ -52,24 +55,31 @@ export default function ResourcePage({
     [isAdmin, projectId, hasAdminRole, t]
   );
 
-  // interval may be a number or (list) => ms, e.g. poll only while something is PENDING_*
-  const [dynamicInterval, setDynamicInterval] = useState(typeof interval === 'number' ? interval : 0);
-  const { data, loading, refetch, setData } = useResource(
-    () => fetch(ctx),
-    [ctx, ...deps],
-    { interval: dynamicInterval }
-  );
+  const { data, loading, refetch, setData } = useResource(() => fetch(ctx), [ctx, ...deps]);
   const list = Array.isArray(data) ? data : [];
-  useEffect(() => {
-    setDynamicInterval(typeof interval === 'function' ? interval(list) || 0 : interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, interval]);
+
+  // Legacy list watcher: 10s while something is in transition, else 30s auto refresh (10 min budget).
+  // `isTransition(item)` overrides the default status check; a function `interval(list) => ms`
+  // (older pages) is treated the same way.
+  const transitionCheck = useMemo(() => {
+    if (typeof isTransition === 'function') return isTransition;
+    if (typeof interval === 'function') return (item) => Boolean(interval([item]));
+    return defaultIsTransition;
+  }, [isTransition, interval]);
+  const { autoRefresh, setAutoRefresh, resetAutoRefresh } = useAutoRefresh({
+    data,
+    refetch,
+    isTransition: transitionCheck,
+    enabled: autoRefreshEnabled,
+  });
+
   const fullCtx = useMemo(() => ({ ...ctx, data: list, refetch, setData }), [ctx, list, refetch, setData]);
 
   const onRefresh = useCallback(() => {
     setSelectedRowKeys([]);
+    resetAutoRefresh();
     refetch();
-  }, [refetch]);
+  }, [refetch, resetAutoRefresh]);
 
   const { handleAction, actionModal } = useActionRunner({ onRefresh });
 
@@ -139,7 +149,16 @@ export default function ResourcePage({
         isAdmin={hasAdminRole}
         onActionClick={(action, item) => handleAction(action, item)}
         selectedRowKeys={selectedRowKeys}
-        onSelectChange={batch.length ? setSelectedRowKeys : undefined}
+        onSelectChange={
+          batch.length
+            ? (keys) => {
+                resetAutoRefresh();
+                setSelectedRowKeys(keys);
+              }
+            : undefined
+        }
+        autoRefresh={autoRefreshEnabled ? autoRefresh : undefined}
+        onAutoRefreshChange={autoRefreshEnabled ? setAutoRefresh : undefined}
         pagination={{ pageSize }}
       />
       {typeof footer === 'function' ? footer(fullCtx) : footer}

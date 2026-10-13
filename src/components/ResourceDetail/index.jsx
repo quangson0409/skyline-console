@@ -7,6 +7,7 @@ import Status from '@/components/Status';
 import ItemActionButtons from '@/components/Action/ItemActionButtons';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useAuthStore } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
 import { useIsAdminPage } from '@/components/ResourcePage/helpers';
@@ -54,6 +55,9 @@ export default function ResourceDetail({
     initial: null,
     interval,
   });
+
+  // detail pages poll only while the resource is in a transition status (legacy TabDetail)
+  useAutoRefresh({ data: detail, refetch, initialAuto: false });
 
   const afterAction = (action) => {
     if (action?.id === 'delete' && backPath) {

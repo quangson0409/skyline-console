@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Input, Button, Space, Card, Dropdown, Tooltip, Typography } from 'antd';
+import { Table, Input, Button, Space, Card, Dropdown, Tooltip, Typography, Switch } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -38,6 +38,8 @@ export default function BaseTable({
   isAdmin = false,
   onActionClick,
   getCheckboxProps,
+  autoRefresh,
+  onAutoRefreshChange,
 }) {
   const [searchText, setSearchText] = useState('');
   const [internalFilters, setInternalFilters] = useState(filters);
@@ -108,7 +110,8 @@ export default function BaseTable({
     const actionColumn = {
       title: t('Action'),
       key: 'action',
-      width: 150,
+      fixed: 'right',
+      align: 'left',
       render: (_, record) => (
         <ItemActionButtons
           firstAction={rowActions.firstAction}
@@ -177,6 +180,15 @@ export default function BaseTable({
           {onRefresh && (
             <Tooltip title={t('Refresh')}>
               <Button icon={<ReloadOutlined />} onClick={onRefresh} style={{ borderRadius: 6 }} />
+            </Tooltip>
+          )}
+
+          {onAutoRefreshChange && (
+            <Tooltip title={autoRefresh ? t('Stop auto refreshing data') : t('Start auto refreshing data')}>
+              <Space size={6} style={{ fontSize: 12, color: '#64748b' }}>
+                <Switch size="small" checked={Boolean(autoRefresh)} onChange={onAutoRefreshChange} />
+                <span>{t('Auto Refresh')}</span>
+              </Space>
             </Tooltip>
           )}
 
@@ -256,6 +268,9 @@ export default function BaseTable({
             ),
           }}
           size="middle"
+          // wide tables scroll horizontally instead of squeezing/wrapping columns (legacy behaviour)
+          scroll={{ x: 'max-content' }}
+          tableLayout="auto"
         />
       </Card>
     </div>

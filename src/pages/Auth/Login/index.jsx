@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Form, Input, Button, Alert } from 'antd';
+import { Form, Input, Button, Alert, Select } from 'antd';
+import { skylineApi } from '@/api/skyline';
 import { UserOutlined, LockOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useAuthStore, formatErrorMessage } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
@@ -17,7 +18,31 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const { login } = useAuthStore();
+  const { login, loginTotp } = useAuthStore();
+  // legacy login: region select when several regions exist; TOTP passcode step for 2FA users
+  const [regions, setRegions] = useState([]);
+  const [totp, setTotp] = useState(null); // { receipt, domain, username }
+  const [passcode, setPasscode] = useState('');
+
+  useEffect(() => {
+    skylineApi
+      .getRegions()
+      .then((res) => setRegions(Array.isArray(res) ? res : []))
+      .catch(() => setRegions([]));
+  }, []);
+
+  const handleTotpLogin = async () => {
+    if (!/^\d{6}$/.test(passcode)) {
+      setErrorMsg(t('Please enter the 6-digit passcode'));
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    const res = await loginTotp({ ...totp, passcode });
+    setLoading(false);
+    if (res.success) navigate(redirectUrl, { replace: true });
+    else setErrorMsg(res.error || t('Login Failed'));
+  };
   const redirectUrl = searchParams.get('redirect') || '/base/overview';
 
   const handlePasswordLogin = async (values) => {
@@ -28,8 +53,14 @@ export default function Login() {
         domain: values.domain || 'Default',
         username: values.username,
         password: values.password,
+        region: values.region,
       });
 
+      if (res.totpRequired) {
+        setTotp({ receipt: res.receipt, domain: values.domain || 'Default', username: values.username });
+        setPasscode('');
+        return;
+      }
       if (res.success) {
         navigate(redirectUrl, { replace: true });
       } else {
@@ -110,7 +141,34 @@ export default function Login() {
         />
       )}
 
-      {/* Login Form */}
+      {totp ? (
+        <div>
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16, borderRadius: 8 }}
+            message={t('Two-Factor Authentication')}
+            description={t('Enter the passcode from your authenticator app for user {name}.', { name: totp.username })}
+          />
+          <Input
+            autoFocus
+            size="large"
+            maxLength={6}
+            value={passcode}
+            placeholder="123456"
+            prefix={<LockOutlined style={{ color: '#94a3b8' }} />}
+            onChange={(e) => setPasscode(e.target.value.replace(/\D/g, ''))}
+            onPressEnter={handleTotpLogin}
+            style={{ borderRadius: 8, letterSpacing: 4 }}
+          />
+          <Button type="primary" size="large" block loading={loading} onClick={handleTotpLogin} style={{ marginTop: 16, height: 44, borderRadius: 8, fontWeight: 600 }}>
+            {t('Verify')}
+          </Button>
+          <Button type="link" block onClick={() => setTotp(null)} style={{ marginTop: 8 }}>
+            {t('Back to login')}
+          </Button>
+        </div>
+      ) : (
       <Form
         form={form}
         layout="vertical"
@@ -122,6 +180,12 @@ export default function Login() {
         }}
         requiredMark={false}
       >
+        {regions.length > 1 && (
+          <Form.Item label={t('Region')} name="region" initialValue={regions[0]}>
+            <Select size="large" options={regions.map((r) => ({ value: r, label: r }))} />
+          </Form.Item>
+        )}
+
         <Form.Item
           label={t('Domain')}
           name="domain"
@@ -179,6 +243,7 @@ export default function Login() {
           {loading ? t('Connecting...') : t('Log In')}
         </Button>
       </Form>
+      )}
     </div>
   );
 }

@@ -204,6 +204,12 @@ export const novaApi = {
   /** Skyline apiserver extension used by legacy ComputeHost list */
   listComputeServicesExt: (params) =>
     apiClient.get('/openstack/skyline/api/v1/extension/compute-services', { params }),
+
+  /**
+   * Create server with the full legacy request body (legacy client.nova.servers.create(body)):
+   * { server: {...}, 'OS-SCH-HNT:scheduler_hints': {...} } - catalog base path + 2.79 microversion.
+   */
+  createServerV: (body) => apiClient.post(`${novaV()}/servers`, body, novaConf()),
 };
 
 export default novaApi;

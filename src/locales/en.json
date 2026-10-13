@@ -3599,5 +3599,16 @@
   "{name} {id} could not be found.": "{name} {id} could not be found.",
   "{number} {resource}": "{number} {resource}",
   "{pageSize} items/page": "{pageSize} items/page",
-  "{seconds} seconds": "{seconds} seconds"
+  "{seconds} seconds": "{seconds} seconds",
+  "Service unavailable": "Service unavailable",
+  "The {service} service is not deployed in the current region.": "The {service} service is not deployed in the current region.",
+  "Auto Refresh": "Auto Refresh",
+  "Current": "Current",
+  "Update Password": "Update Password",
+  "Please enter the 6-digit passcode": "Please enter the 6-digit passcode",
+  "Enter the passcode from your authenticator app for user {name}.": "Enter the passcode from your authenticator app for user {name}.",
+  "Verify": "Verify",
+  "Back to login": "Back to login",
+  "Token remaining validity": "Token remaining validity",
+  "Token has expired, please log in again.": "Token has expired, please log in again."
 }

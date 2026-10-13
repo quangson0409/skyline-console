@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { message } from 'antd';
 import { novaApi } from '@/api/nova';
+import { useAuthStore } from '@/store/authStore';
 
 // Normalize OpenStack Nova Server representation
 const normalizeServer = (srv) => {
-  let privateIp = '10.0.0.1';
+  let privateIp = null;
   let floatingIp = null;
 
   if (srv.addresses && typeof srv.addresses === 'object') {
@@ -37,9 +38,10 @@ const normalizeServer = (srv) => {
     ip: privateIp,
     floatingIp,
     flavor: flavorName,
-    vcpus: srv.flavor?.vcpus || 2,
-    ram: srv.flavor?.ram ? (srv.flavor.ram >= 1024 ? srv.flavor.ram / 1024 : srv.flavor.ram) : 4,
-    disk: srv.flavor?.disk || 40,
+    vcpus: srv.flavor?.vcpus ?? null,
+    // GiB, rounded like legacy (flavor.ram is MiB)
+    ram: typeof srv.flavor?.ram === 'number' ? Math.round((srv.flavor.ram / 1024) * 100) / 100 : null,
+    disk: srv.flavor?.disk ?? null,
     powerState: srv['OS-EXT-STS:power_state'] === 1 ? 'Running' : 'Shutoff',
     status: typeof srv.status === 'string' ? srv.status : 'ACTIVE',
     created: srv.created ? srv.created.replace('T', ' ').substring(0, 19) : '',
@@ -59,7 +61,7 @@ const normalizeServer = (srv) => {
   };
 };
 
-export function useInstances() {
+export function useInstances({ allProjects = false } = {}) {
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -68,10 +70,10 @@ export function useInstances() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Fetch servers from Live OpenStack Nova API
-  const fetchServers = useCallback(async () => {
-    setLoading(true);
+  const fetchServers = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
     try {
-      const res = await novaApi.listServers();
+      const res = await novaApi.listServers(allProjects ? { all_tenants: 1 } : undefined);
       if (res && res.servers && Array.isArray(res.servers)) {
         const normalized = res.servers.map(normalizeServer);
         setInstances(normalized);
@@ -82,16 +84,16 @@ export function useInstances() {
     } catch {
       setIsLiveApi(false);
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
-  }, []);
+  }, [allProjects]);
 
   useEffect(() => {
     fetchServers();
   }, [fetchServers]);
 
-  const refetch = useCallback(() => {
-    fetchServers();
+  const refetch = useCallback((opts) => {
+    fetchServers(opts && typeof opts === 'object' && 'quiet' in opts ? opts : undefined);
   }, [fetchServers]);
 
   // Filtered & Memoized instances
@@ -112,27 +114,44 @@ export function useInstances() {
     });
   }, [instances, searchText, statusFilter]);
 
+  // Real compute quota of the current project (nova os-quota-sets/{project}/detail)
+  const projectId = useAuthStore((st) => st.currentProject?.id);
+  const [quota, setQuota] = useState(null);
+  useEffect(() => {
+    if (!projectId) return;
+    novaApi
+      .getQuotaSet(projectId)
+      .then((res) => setQuota(res?.quota_set || null))
+      .catch(() => setQuota(null));
+  }, [projectId, instances.length]);
+
   // Quota Metrics
   const quotaMetrics = useMemo(() => {
-    const totalVcpus = instances.reduce((acc, curr) => acc + (curr.vcpus || 2), 0);
-    const totalRam = instances.reduce((acc, curr) => acc + (curr.ram || 4), 0);
+    const sumVcpus = instances.reduce((acc, curr) => acc + (curr.vcpus || 0), 0);
+    const sumRam = instances.reduce((acc, curr) => acc + (curr.ram || 0), 0);
+    const totalVcpus = quota?.cores?.in_use ?? sumVcpus;
+    const totalRam = quota?.ram ? Math.round((quota.ram.in_use / 1024) * 100) / 100 : sumRam;
+    const limitVcpus = quota?.cores?.limit;
+    const limitRam = quota?.ram?.limit;
+    const maxVcpus = limitVcpus === undefined ? '-' : limitVcpus === -1 ? '∞' : limitVcpus;
+    const maxRam = limitRam === undefined ? '-' : limitRam === -1 ? '∞' : Math.round(limitRam / 1024);
     const activeCount = instances.filter((i) => i.status === 'ACTIVE').length;
-    const buildingCount = instances.filter((i) => i.status === 'BUILDING').length;
+    const buildingCount = instances.filter((i) => i.status === 'BUILD').length;
     const shutoffCount = instances.filter((i) => i.status === 'SHUTOFF').length;
 
     return {
       totalVcpus,
-      maxVcpus: 64,
-      vcpuPercent: Math.round((totalVcpus / 64) * 100),
+      maxVcpus,
+      vcpuPercent: limitVcpus > 0 ? Math.round((totalVcpus / limitVcpus) * 100) : 0,
       totalRam,
-      maxRam: 256,
-      ramPercent: Math.round((totalRam / 256) * 100),
+      maxRam,
+      ramPercent: limitRam > 0 ? Math.round(((quota.ram.in_use || 0) / limitRam) * 100) : 0,
       activeCount,
       buildingCount,
       shutoffCount,
       totalCount: instances.length,
     };
-  }, [instances]);
+  }, [instances, quota]);
 
   // Actions
   const startInstance = useCallback(

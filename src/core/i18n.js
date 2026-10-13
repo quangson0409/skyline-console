@@ -68,7 +68,7 @@ export const t = (key, variables = {}) => {
 
   if (variables && typeof variables === 'object') {
     Object.keys(variables).forEach((varKey) => {
-      message = message.replace(new RegExp(`\\{${varKey}\\}`, 'g'), variables[varKey]);
+      message = message.replace(new RegExp(`\\{\\s*${varKey}\\s*\\}`, 'g'), variables[varKey]);
     });
   }
 
@@ -89,7 +89,7 @@ export const useTranslation = () => {
 
       if (variables && typeof variables === 'object') {
         Object.keys(variables).forEach((varKey) => {
-          message = message.replace(new RegExp(`\\{${varKey}\\}`, 'g'), variables[varKey]);
+          message = message.replace(new RegExp(`\\{\\s*${varKey}\\s*\\}`, 'g'), variables[varKey]);
         });
       }
 

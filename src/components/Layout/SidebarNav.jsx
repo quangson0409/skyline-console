@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import { Layout, Menu, Tag, Typography } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useThemeStore, THEMES } from '@/store/themeStore';
-import { getTenantMenu, getAdminMenu, isAdminPath } from '@/layouts/menuConfig';
+import { getTenantMenu, getAdminMenu, isAdminPath, filterMenuByEndpoints } from '@/layouts/menuConfig';
+import { hasEndpoint } from '@/api/endpoints';
 import { SafetyCertificateOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useTranslation } from '@/core/i18n';
 
@@ -19,7 +20,7 @@ export default function SidebarNav({ collapsed }) {
   const isAdmin = isAdminPath(location.pathname);
 
   const rawMenu = useMemo(() => {
-    return isAdmin ? getAdminMenu(t) : getTenantMenu(t);
+    return filterMenuByEndpoints(isAdmin ? getAdminMenu(t) : getTenantMenu(t), hasEndpoint);
   }, [isAdmin, t, locale]);
 
   // Transform menu items for Ant Design Menu component

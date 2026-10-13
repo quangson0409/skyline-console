@@ -90,9 +90,29 @@ code, pre, .font-mono {
   letter-spacing: 0.5px !important;
   color: #64748b !important;
   text-transform: uppercase !important;
+  white-space: nowrap;
+}
+
+/* Consistent table geometry across every list page */
+.ant-table-tbody > tr > td {
+  vertical-align: middle;
+}
+.ant-table-wrapper .ant-table-cell-fix-right {
+  white-space: nowrap;
+}
+.ant-table-wrapper .ant-table-thead > tr > th::before {
+  height: 1em !important;
 }
 
 /* Buttons cursor pointer */
 button, [role="button"] {
   cursor: pointer !important;
+}
+
+/* Long menu labels: ellipsis instead of clipping */
+.ant-menu-item .ant-menu-title-content,
+.ant-menu-submenu-title .ant-menu-title-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

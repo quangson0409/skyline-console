@@ -7,6 +7,12 @@ let pending = null;
 
 const loadProjects = () => {
   if (cache) return Promise.resolve(cache);
+  const sessionMap = () => {
+    const { projects = [] } = useAuthStore.getState();
+    return Object.fromEntries(projects.map((p) => [p.id, p.name]));
+  };
+  // listing every project needs an administrator role (legacy only does it on admin pages)
+  if (!useAuthStore.getState().hasAdminPageRole) return Promise.resolve(sessionMap());
   if (!pending) {
     pending = keystoneApi
       .listProjects()

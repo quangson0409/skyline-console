@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Segmented, Tag } from 'antd';
+import { Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { glanceApi } from '@/api/glance';
 import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize } from '@/components/ResourcePage';
@@ -150,9 +150,11 @@ export default function ImageList() {
       deps={[tab]}
       header={({ isAdmin }) =>
         isAdmin ? null : (
-          <div style={{ marginBottom: 16, overflowX: 'auto' }}>
-            <Segmented value={tab} onChange={setTab} options={tabOptions} />
-          </div>
+          <Tabs
+            activeKey={tab}
+            onChange={setTab}
+            items={tabOptions.map((o) => ({ key: o.value, label: o.label }))}
+          />
         )
       }
       columns={({ isAdmin }) => imageColumns({ isAdmin, tab: isAdmin ? null : tab, projectMap })}

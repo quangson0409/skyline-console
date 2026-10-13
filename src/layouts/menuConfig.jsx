@@ -604,3 +604,61 @@ export const getAdminMenu = (t = (s) => s) => [
     ],
   },
 ];
+
+/**
+ * Service availability per menu path (legacy menu.jsx / admin-menu.jsx `endpoints`).
+ * Keys are matched exactly or as a "/"-prefix; the value is a key of the skyline profile endpoints.
+ */
+export const MENU_ENDPOINTS = {
+  '/storage/volume': 'cinder',
+  '/storage/backup': 'cinder',
+  '/storage/snapshot': 'cinder',
+  '/storage/container': 'swift',
+  '/network/qos-policy': 'neutron_qos',
+  '/network/load-balancers': 'octavia',
+  '/network/certificate': 'barbican',
+  '/network/vpn': 'neutron_vpn',
+  '/network/firewall': 'neutron_firewall',
+  '/network/dns': 'designate',
+  '/share': 'manilav2',
+  '/key-manager': 'barbican',
+  '/heat': 'heat',
+  '/database': 'trove',
+  '/messaging': 'zaqar',
+  '/container-service': 'zun',
+  '/container-infra': 'magnum',
+  '/compute/baremetal-node-admin': 'ironic',
+  '/storage/volume-admin': 'cinder',
+  '/storage/backup-admin': 'cinder',
+  '/storage/snapshot-admin': 'cinder',
+  '/storage/volume-type-admin': 'cinder',
+  '/storage/storage-admin': 'cinder',
+  '/network/qos-policy-admin': 'neutron_qos',
+  '/network/load-balancers-admin': 'octavia',
+  '/network/vpn-admin': 'neutron_vpn',
+  '/network/firewall-admin': 'neutron_firewall',
+  '/network/dns-admin': 'designate',
+  '/ha': 'masakari',
+};
+
+/** Endpoint a path depends on, or null (longest matching key wins) */
+export const getRequiredEndpoint = (pathname = '') => {
+  let best = null;
+  Object.keys(MENU_ENDPOINTS).forEach((key) => {
+    if ((pathname === key || pathname.startsWith(`${key}/`)) && (!best || key.length > best.length)) best = key;
+  });
+  return best ? MENU_ENDPOINTS[best] : null;
+};
+
+/** Drops menu entries whose service is not in the catalog; empty groups disappear (legacy checkEndpoint) */
+export const filterMenuByEndpoints = (menu, hasEndpoint) =>
+  menu
+    .map((item) => {
+      if (item.children) {
+        const children = filterMenuByEndpoints(item.children, hasEndpoint);
+        return children.length ? { ...item, children } : null;
+      }
+      const endpoint = getRequiredEndpoint(item.path || item.key);
+      return !endpoint || hasEndpoint(endpoint) ? item : null;
+    })
+    .filter(Boolean);

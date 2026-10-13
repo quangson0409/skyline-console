@@ -29,13 +29,15 @@ import BaseTable from '@/components/Tables/BaseTable';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { rowActions, batchActions } from './actions';
 import { useTranslation } from '@/core/i18n';
-import CreateInstanceModal from './CreateInstanceModal';
+import { useAutoRefresh, defaultIsTransition } from '@/hooks/useAutoRefresh';
+import { useIsAdminPage } from '@/components/ResourcePage/helpers';
 
 export default function InstanceList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { hasAdminRole, user } = useAuthStore();
   const isAdmin = Boolean(hasAdminRole || (user?.roles || []).includes('admin'));
+  const isAdminPage = useIsAdminPage();
 
   const {
     instances,
@@ -44,17 +46,31 @@ export default function InstanceList() {
     quotaMetrics,
     refetch,
     createInstance,
-  } = useInstances();
+  } = useInstances({ allProjects: isAdminPage });
+
+  // Legacy list watcher (10s while a server is in transition, else 30s auto refresh)
+  const { autoRefresh, setAutoRefresh, resetAutoRefresh } = useAutoRefresh({
+    data: instances,
+    refetch,
+    isTransition: (it) =>
+      (it.taskState && it.taskState !== 'None') || defaultIsTransition({ status: it.status }),
+  });
 
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  // Entry from other modules (image / volume / snapshot / server group "Create Instance")
-  const createPreset = useMemo(() => {
+  const [searchParams] = useSearchParams();
+  // Entry from other modules (image / volume / snapshot / server group "Create Instance"):
+  // /compute/instance?image=... lands on the legacy create wizard with the same presets
+  useEffect(() => {
     const keys = ['image', 'volume', 'snapshot', 'servergroup'];
-    const preset = Object.fromEntries(keys.filter((k) => searchParams.get(k)).map((k) => [k, searchParams.get(k)]));
-    return Object.keys(preset).length || searchParams.get('create') ? preset : null;
-  }, [searchParams]);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(Boolean(createPreset));
+    if (!keys.some((k) => searchParams.get(k)) && !searchParams.get('create')) return;
+    const params = new URLSearchParams(searchParams);
+    const ironic = params.get('type') === 'ironic';
+    params.delete('create');
+    params.delete('type');
+    const query = params.toString();
+    const base = ironic ? '/compute/ironic-instance/create' : '/compute/instance/create';
+    navigate(query ? `${base}?${query}` : base, { replace: true });
+  }, [searchParams, navigate]);
   const [magicFilters, setMagicFilters] = useState({});
 
   // Unified Skyline Action Runner (handles confirm, modal forms, etc.)
@@ -73,7 +89,7 @@ export default function InstanceList() {
         options: [
           { key: 'ACTIVE', label: t('Active') },
           { key: 'SHUTOFF', label: t('Shutoff') },
-          { key: 'BUILDING', label: t('Building') },
+          { key: 'BUILD', label: t('Building') },
           { key: 'ERROR', label: t('Error') },
         ],
       },
@@ -137,7 +153,7 @@ export default function InstanceList() {
         render: (ip, record) => (
           <div>
             <div style={{ fontSize: 13, fontFamily: 'monospace' }}>
-              {ip}
+              {ip || '-'}
             </div>
             {record.floatingIp && (
               <Tag color="cyan" style={{ fontSize: 11, margin: 0, fontFamily: 'monospace' }}>
@@ -181,7 +197,7 @@ export default function InstanceList() {
         />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>
+            <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
               {t('Instances')}
             </h1>
             <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
@@ -236,13 +252,23 @@ export default function InstanceList() {
         filterParams={filterParams}
         filters={magicFilters}
         onFilterChange={setMagicFilters}
-        onRefresh={refetch}
-        primaryAction={{
-          id: 'create',
-          label: `${t('Create')} ${t('Instances')}`,
-          icon: <PlusOutlined />,
-          onClick: () => setIsCreateModalOpen(true),
+        onRefresh={() => {
+          resetAutoRefresh();
+          refetch();
         }}
+        autoRefresh={autoRefresh}
+        onAutoRefreshChange={setAutoRefresh}
+        primaryAction={
+          // legacy StepCreate.allowed: not available on the administrator list
+          isAdminPage
+            ? undefined
+            : {
+                id: 'create',
+                label: `${t('Create')} ${t('Instances')}`,
+                icon: <PlusOutlined />,
+                onClick: () => navigate('/compute/instance/create'),
+              }
+        }
         rowActions={rowActions}
         batchActions={batchActions}
         selectedRowKeys={selectedRowKeys}
@@ -254,20 +280,6 @@ export default function InstanceList() {
       {/* Dynamic Action Modal (Mounts AttachVolume, Resize, Snapshot, Password, etc.) */}
       {actionModal}
 
-      {/* Comprehensive Launch / Create Instance Modal */}
-      <CreateInstanceModal
-        open={isCreateModalOpen}
-        preset={createPreset}
-        onCancel={() => {
-          setIsCreateModalOpen(false);
-          if (createPreset) setSearchParams({}, { replace: true });
-        }}
-        onSuccess={() => {
-          setIsCreateModalOpen(false);
-          if (createPreset) setSearchParams({}, { replace: true });
-          refetch();
-        }}
-      />
     </div>
   );
 }

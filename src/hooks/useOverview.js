@@ -26,10 +26,7 @@ export function useOverview() {
     const start = performance.now();
     try {
       // Check Nova hypervisors or servers
-      const [serversRes, hypervisorsRes] = await Promise.allSettled([
-        novaApi.listServers({ limit: 50 }),
-        novaApi.listHypervisors(),
-      ]);
+      const [serversRes] = await Promise.allSettled([novaApi.listServers({ limit: 50 })]);
 
       const roundLatency = Math.round(performance.now() - start);
 
