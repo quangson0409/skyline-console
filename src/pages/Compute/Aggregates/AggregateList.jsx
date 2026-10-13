@@ -1,303 +1,473 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Col,
-  Row,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Select,
-  message,
-} from 'antd';
-import {
-  PlusOutlined,
-  ReloadOutlined,
-  DeleteOutlined,
-  BlockOutlined,
-  UsergroupAddOutlined,
-} from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Breadcrumb, Input, Space, Table, Tabs, Tag, Tooltip, message } from 'antd';
+import { BlockOutlined } from '@ant-design/icons';
 import { novaApi } from '@/api/nova';
-import BaseTable from '@/components/Tables/BaseTable';
-import { useTranslation } from '@/core/i18n';
+import ResourcePage, { deleteAction, yesNo } from '@/components/ResourcePage';
+import { getErrorMessage } from '@/hooks/useResource';
+import { t } from '@/core/i18n';
+import { KpiCards, sinceTime } from '../_shared';
+import MetadataEditor, { fetchMetadefs, metadataWithRemovals } from '../_shared/MetadataEditor';
+import { fetchComputeHosts, serviceState, serviceStatus } from '../Hypervisors/HypervisorList';
 
-export default function AggregateList() {
-  const { t } = useTranslation();
-  const [aggregates, setAggregates] = useState([]);
-  const [hypervisors, setHypervisors] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [magicFilters, setMagicFilters] = useState({});
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [hostModal, setHostModal] = useState({ open: false, aggregate: null });
+/* ------------------------------------------------------------------ */
+/* data                                                               */
+/* ------------------------------------------------------------------ */
+export const fetchAggregates = async () => {
+  const res = await novaApi.listAggregatesV();
+  return (res?.aggregates || []).map((a) => ({
+    ...a,
+    id: String(a.id),
+    hosts: a.hosts || [],
+    metadata: a.metadata || {},
+    hosts_count: (a.hosts || []).length,
+  }));
+};
 
-  const [createForm] = Form.useForm();
-  const [hostForm] = Form.useForm();
+/** legacy stores/nova/zone.js fetchListWithoutDetail (create/edit AZ options) */
+const fetchZoneNames = async () => {
+  try {
+    const res = await novaApi.listAvailabilityZonesV();
+    return (res?.availabilityZoneInfo || []).map((z) => z.zoneName);
+  } catch {
+    return [];
+  }
+};
 
-  const fetchAggregates = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [aggRes, hypRes] = await Promise.allSettled([
-        novaApi.listAggregates(),
-        novaApi.listHypervisors(),
-      ]);
-
-      if (aggRes.status === 'fulfilled') {
-        const list = aggRes.value?.aggregates || aggRes.value?.data?.aggregates || [];
-        setAggregates(list);
-      }
-      if (hypRes.status === 'fulfilled') {
-        const hyps = hypRes.value?.hypervisors || hypRes.value?.data?.hypervisors || [];
-        setHypervisors(hyps);
-      }
-    } catch (err) {
-      message.error(err.message || t('Failed to fetch host aggregates'));
-    } finally {
-      setLoading(false);
+/** legacy stores/nova/zone.js listDidFetch (AZ tab): keep zones that have nova-compute hosts */
+export const fetchAvailabilityZones = async () => {
+  const res = await novaApi.listAvailabilityZonesDetailV();
+  const data = [];
+  (res?.availabilityZoneInfo || []).forEach((item) => {
+    const base = { ...item, id: item.zoneName, name: item.zoneName, available: item.zoneState?.available };
+    if (item.hosts === null || item.hosts === undefined) {
+      data.push(base);
+      return;
     }
-  }, [t]);
+    const computeHosts = {};
+    Object.keys(item.hosts).forEach((key) => {
+      if (item.hosts[key]?.['nova-compute']) computeHosts[key] = item.hosts[key];
+    });
+    if (Object.keys(computeHosts).length) data.push({ ...base, host: computeHosts });
+  });
+  return data;
+};
 
-  useEffect(() => {
-    fetchAggregates();
-  }, [fetchAggregates]);
+const yesNoOptions = () => [
+  { value: true, label: t('Yes') },
+  { value: false, label: t('No') },
+];
 
-  const filterParams = useMemo(
-    () => [
-      { name: 'name', label: t('Name') },
-      { name: 'availability_zone', label: t('Availability Zone') },
-    ],
-    [t]
+const azTip = () =>
+  t(
+    'It is suggested to use the marked AZ directly, too much AZ will lead to the fragmentation of available resources'
+  );
+const azNewTip = () =>
+  t(
+    'A host aggregate can be associated with at most one AZ. Once the association is established, the AZ cannot be disassociated.'
   );
 
-  const handleCreate = async (values) => {
-    try {
-      await novaApi.createAggregate({
-        name: values.name,
-        availability_zone: values.availability_zone || 'nova',
-      });
-      message.success(t('Aggregate created successfully'));
-      setIsCreateOpen(false);
-      createForm.resetFields();
-      fetchAggregates();
-    } catch (err) {
-      message.error(err.message || t('Failed to create aggregate'));
-    }
-  };
-
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: `${t('Delete Aggregate')}: ${record.name}?`,
-      content: t('Are you sure you want to delete this host aggregate?'),
-      okText: t('Delete'),
-      okType: 'danger',
-      cancelText: t('Cancel'),
-      onOk: async () => {
-        try {
-          await novaApi.deleteAggregate(record.id);
-          message.success(t('Aggregate deleted'));
-          fetchAggregates();
-        } catch (err) {
-          message.error(err.message || t('Failed to delete aggregate'));
-        }
-      },
-    });
-  };
-
-  const handleAddHost = async (values) => {
-    try {
-      await novaApi.addHostToAggregate(hostModal.aggregate.id, values.host);
-      message.success(t('Host added to aggregate'));
-      setHostModal({ open: false, aggregate: null });
-      hostForm.resetFields();
-      fetchAggregates();
-    } catch (err) {
-      message.error(err.message || t('Failed to add host'));
-    }
-  };
-
-  const handleRemoveHost = async (aggregate, host) => {
-    try {
-      await novaApi.removeHostFromAggregate(aggregate.id, host);
-      message.success(t('Host removed from aggregate'));
-      fetchAggregates();
-    } catch (err) {
-      message.error(err.message || t('Failed to remove host'));
-    }
-  };
-
-  const rowActions = {
-    firstAction: {
-      id: 'add-host',
-      title: t('Manage Hosts'),
-      onClick: (record) => setHostModal({ open: true, aggregate: record }),
-    },
-    moreActions: [
+/* ------------------------------------------------------------------ */
+/* actions                                                            */
+/* ------------------------------------------------------------------ */
+export const createAggregateAction = () => ({
+  id: 'create',
+  type: 'modal',
+  title: t('Create Host Aggregate'),
+  getDefaultValues: async () => {
+    const zones = await fetchZoneNames();
+    return { isCreate: false, availabilityZone: zones[0] || 'noSelect' };
+  },
+  getFormItems: async () => {
+    const zones = await fetchZoneNames();
+    return [
+      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      { name: 'isCreate', label: t('Create new AZ'), tip: azTip(), type: 'radio', options: yesNoOptions() },
       {
-        action: {
-          id: 'delete',
-          title: t('Delete'),
-          isDanger: true,
-          onClick: handleDelete,
-        },
+        name: 'availabilityZone',
+        label: t('Availability Zone'),
+        type: 'select',
+        required: true,
+        tip: azNewTip(),
+        options: [...zones.map((z) => ({ value: z, label: z })), { value: 'noSelect', label: t('Not select') }],
+        visible: (v) => !v.isCreate,
       },
-    ],
-  };
-
-  const columns = [
-    {
-      title: t('Name'),
-      dataIndex: 'name',
-      key: 'name',
-      sorter: (a, b) => (a.name || '').localeCompare(b.name || ''),
-      render: (text) => (
-        <Space>
-          <BlockOutlined style={{ color: '#0068ff' }} />
-          <span style={{ fontWeight: 600, color: '#0068ff' }}>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: t('Availability Zone'),
-      dataIndex: 'availability_zone',
-      key: 'availability_zone',
-      render: (az) => (
-        <Tag color="geekblue" style={{ borderRadius: 10 }}>
-          {az || 'nova'}
-        </Tag>
-      ),
-    },
-    {
-      title: t('Hosts'),
-      dataIndex: 'hosts',
-      key: 'hosts',
-      render: (hosts, record) => {
-        if (!hosts || hosts.length === 0) return <span style={{ color: '#94a3b8' }}>-</span>;
-        return (
-          <Space wrap size={4}>
-            {hosts.map((h) => (
-              <Tag
-                key={h}
-                closable
-                onClose={(e) => {
-                  e.preventDefault();
-                  handleRemoveHost(record, h);
-                }}
-                style={{ borderRadius: 6, fontSize: 11 }}
-              >
-                {h}
-              </Tag>
-            ))}
-          </Space>
-        );
+      {
+        name: 'newAz',
+        label: t('New Availability Zone'),
+        type: 'input',
+        required: true,
+        tip: azTip(),
+        visible: (v) => Boolean(v.isCreate),
       },
-    },
-    {
-      title: t('Hosts Count'),
-      key: 'hosts_count',
-      render: (_, r) => <span><b>{r.hosts ? r.hosts.length : 0}</b> hosts</span>,
-    },
-  ];
+    ];
+  },
+  onSubmit: (values) => {
+    const { isCreate, availabilityZone, newAz, ...rest } = values;
+    const curAZ = availabilityZone !== 'noSelect' ? availabilityZone : null;
+    return novaApi.createAggregateV({ ...rest, availability_zone: isCreate ? newAz : curAZ });
+  },
+});
 
+export const editAggregateAction = () => ({
+  id: 'edit',
+  type: 'modal',
+  title: t('Edit Host Aggregate'),
+  buttonText: t('Edit'),
+  getDefaultValues: (item) => ({
+    isCreate: false,
+    name: item.name,
+    availabilityZone: item.availability_zone === null ? 'noSelect' : item.availability_zone,
+  }),
+  getFormItems: async (item) => {
+    const hasHost = (item.hosts || []).length > 0;
+    const zones = await fetchZoneNames();
+    const options = zones.map((z) => ({ value: z, label: z }));
+    if (item.availability_zone === null || item.availability_zone === undefined) {
+      options.push({ value: 'noSelect', label: t('Not select') });
+    } else if (!zones.includes(item.availability_zone)) {
+      options.push({ value: item.availability_zone, label: item.availability_zone });
+    }
+    return [
+      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      !hasHost && { name: 'isCreate', label: t('Create new AZ'), tip: azTip(), type: 'radio', options: yesNoOptions() },
+      !hasHost && {
+        name: 'availabilityZone',
+        label: t('Availability Zone'),
+        type: 'select',
+        required: true,
+        tip: azNewTip(),
+        options,
+        visible: (v) => !v.isCreate,
+      },
+      !hasHost && {
+        name: 'newAz',
+        label: t('New Availability Zone'),
+        type: 'input',
+        required: true,
+        tip: azTip(),
+        visible: (v) => Boolean(v.isCreate),
+      },
+      hasHost && {
+        type: 'alert',
+        name: 'az-locked',
+        message: `${t('Availability Zone')}: ${item.availability_zone || '-'} - ${azNewTip()}`,
+      },
+    ].filter(Boolean);
+  },
+  onSubmit: (values, item) => {
+    const { isCreate, availabilityZone, newAz, ...rest } = values;
+    const curAZ = availabilityZone !== 'noSelect' ? availabilityZone : null;
+    const data = { ...rest };
+    if ((item.hosts || []).length === 0) {
+      if (isCreate) data.availability_zone = newAz;
+      else if (curAZ) data.availability_zone = curAZ;
+    }
+    return novaApi.updateAggregateV(item.id, data);
+  },
+});
+
+/** legacy select-table (multi) of compute hosts */
+const HostSelectTable = ({ value = [], onChange, hosts = [] }) => {
+  const [keyword, setKeyword] = useState('');
+  const data = hosts.filter((h) => !keyword || String(h.host).toLowerCase().includes(keyword.toLowerCase()));
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 16 }}>
-        <Breadcrumb items={[{ title: t('Compute') }, { title: t('Host Aggregates') }]} style={{ marginBottom: 6 }} />
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>{t('Host Aggregates')}</h1>
+    <div>
+      <Input.Search
+        allowClear
+        placeholder={t('Host')}
+        style={{ marginBottom: 8, maxWidth: 280 }}
+        onSearch={setKeyword}
+        onChange={(e) => setKeyword(e.target.value)}
+      />
+      <Table
+        size="small"
+        rowKey="host"
+        dataSource={data}
+        pagination={{ pageSize: 8, size: 'small' }}
+        rowSelection={{ selectedRowKeys: value, onChange: (keys) => onChange?.(keys), preserveSelectedRowKeys: true }}
+        columns={[
+          { title: t('Host'), dataIndex: 'host' },
+          { title: t('Availability Zone'), dataIndex: 'zone', render: (v) => v || '-' },
+          {
+            title: t('Admin Status'),
+            dataIndex: 'status',
+            render: (v, r) => (
+              <Tooltip title={r.disabled_reason ? `${t('Reason: ')} ${r.disabled_reason}` : ''}>
+                <span>{serviceStatus()[v] || v || '-'}</span>
+              </Tooltip>
+            ),
+          },
+          { title: t('State'), dataIndex: 'state', render: (v) => serviceState()[v] || v || '-' },
+          { title: t('Last Updated'), dataIndex: 'updated_at', render: (v) => sinceTime(v) },
+        ]}
+      />
+      <div style={{ fontSize: 12, color: '#64748b' }}>
+        {t('Selected')}: {value.length ? value.join(', ') : '-'}
+      </div>
+    </div>
+  );
+};
+
+export const manageHostAction = () => ({
+  id: 'ManageHost',
+  type: 'modal',
+  title: t('Manage Host'),
+  width: 900,
+  description: t('Add hosts to the aggregate or remove hosts from it. Hosts can be in multiple aggregates.'),
+  getDefaultValues: (item) => ({ name: item.name, hosts: item.hosts || [] }),
+  getFormItems: async () => {
+    const hosts = await fetchComputeHosts().catch(() => []);
+    return [
+      { name: 'name', label: t('Name'), type: 'label' },
+      { name: 'hosts', label: t('Hosts'), render: () => <HostSelectTable hosts={hosts} /> },
+    ];
+  },
+  onSubmit: async (values, item) => {
+    const newHosts = values.hosts || [];
+    const oldHosts = item.hosts || [];
+    const adds = newHosts.filter((it) => !oldHosts.includes(it));
+    const dels = oldHosts.filter((it) => !newHosts.includes(it));
+    // same order as legacy AggregateStore.manageHost (adds then removes, in parallel)
+    await Promise.all([
+      ...adds.map((host) => novaApi.aggregateActionV(item.id, { add_host: { host } })),
+      ...dels.map((host) => novaApi.aggregateActionV(item.id, { remove_host: { host } })),
+    ]);
+  },
+});
+
+export const manageMetadataAction = () => ({
+  id: 'ManageMetadata',
+  type: 'modal',
+  title: t('Manage Metadata'),
+  width: 900,
+  getDefaultValues: (item) => ({ name: item.name, metadata: { ...(item.metadata || {}) } }),
+  getFormItems: async () => {
+    const metadefs = await fetchMetadefs('OS::Nova::Aggregate');
+    return [
+      { name: 'name', label: t('Name'), type: 'label' },
+      {
+        name: 'metadata',
+        label: t('Metadata'),
+        rules: [
+          {
+            validator: (_, value) =>
+              Object.values(value || {}).some((v) => v === undefined || v === '')
+                ? Promise.reject(new Error(t('Please input value')))
+                : Promise.resolve(),
+          },
+        ],
+        render: () => <MetadataEditor metadefs={metadefs} />,
+      },
+    ];
+  },
+  onSubmit: (values, item) =>
+    novaApi.setAggregateMetadataV(item.id, metadataWithRemovals(values.metadata || {}, item.metadata || {})),
+});
+
+export const deleteAggregateAction = () =>
+  deleteAction({
+    name: t('Host Aggregate'),
+    title: t('Delete Host Aggregate'),
+    allowed: (item) => Boolean(item) && (item.hosts || []).length === 0,
+    onDelete: (it) => novaApi.deleteAggregateV(it.id),
+  });
+
+/* ------------------------------------------------------------------ */
+/* Host aggregate tab                                                 */
+/* ------------------------------------------------------------------ */
+export function AggregateTab() {
+  return (
+    <ResourcePage
+      embedded
+      fetch={fetchAggregates}
+      header={({ data }) => (
+        <KpiCards
+          items={[
+            { title: t('Total Aggregates'), value: data.length },
+            {
+              title: 'Total Associated Hosts',
+              value: data.reduce((acc, a) => acc + (a.hosts?.length || 0), 0),
+              color: '#10b981',
+            },
+          ]}
+        />
+      )}
+      columns={({ refetch }) => [
+        {
+          title: t('Name'),
+          dataIndex: 'name',
+          key: 'name',
+          sorter: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
+          render: (text, r) => (
+            <div>
+              <Space>
+                <BlockOutlined style={{ color: '#0068ff' }} />
+                <span style={{ fontWeight: 600 }}>{text}</span>
+              </Space>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
+            </div>
+          ),
+        },
+        {
+          title: t('Availability Zone'),
+          dataIndex: 'availability_zone',
+          key: 'availability_zone',
+          render: (az) =>
+            az ? (
+              <Tag color="geekblue" style={{ borderRadius: 10 }}>
+                {az}
+              </Tag>
+            ) : (
+              '-'
+            ),
+        },
+        {
+          title: t('Hosts'),
+          dataIndex: 'hosts',
+          key: 'hosts',
+          render: (hosts, record) => {
+            if (!hosts || hosts.length === 0) return <span style={{ color: '#94a3b8' }}>-</span>;
+            return (
+              <Space direction="vertical" size={2}>
+                {hosts.map((h) => (
+                  <Tag
+                    key={h}
+                    closable
+                    onClose={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await novaApi.aggregateActionV(record.id, { remove_host: { host: h } });
+                        message.success(t('Host removed from aggregate'));
+                        refetch();
+                      } catch (err) {
+                        message.error(getErrorMessage(err, t('Failed to remove host')));
+                      }
+                    }}
+                    style={{ borderRadius: 6, fontSize: 11 }}
+                  >
+                    {h}
+                  </Tag>
+                ))}
+              </Space>
+            );
+          },
+        },
+        {
+          title: t('Hosts Count'),
+          dataIndex: 'hosts_count',
+          key: 'hosts_count',
+          sorter: (a, b) => a.hosts_count - b.hosts_count,
+          render: (v) => (
+            <span>
+              <b>{v}</b> hosts
+            </span>
+          ),
+        },
+        {
+          title: t('Metadata'),
+          dataIndex: 'metadata',
+          key: 'metadata',
+          render: (value) => {
+            const keys = Object.keys(value || {});
+            if (!keys.length) return '-';
+            return keys.map((key) => (
+              <div key={key} style={{ fontSize: 12 }}>
+                {key}={String(value[key])}
+              </div>
+            ));
+          },
+        },
+        {
+          title: t('Created At'),
+          dataIndex: 'created_at',
+          key: 'created_at',
+          sorter: (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0),
+          render: (v) => <span style={{ color: '#64748b', fontSize: 12 }}>{sinceTime(v)}</span>,
+        },
+      ]}
+      filterParams={[
+        { name: 'name', label: t('Name') },
+        { name: 'availability_zone', label: t('Availability Zone') },
+      ]}
+      primaryActions={[createAggregateAction()]}
+      batchActions={[deleteAggregateAction()]}
+      rowActions={{
+        firstAction: editAggregateAction(),
+        moreActions: [
+          { action: manageHostAction() },
+          { action: manageMetadataAction() },
+          { action: deleteAggregateAction() },
+        ],
+      }}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Availability zones tab                                             */
+/* ------------------------------------------------------------------ */
+export function AvailabilityZoneTab() {
+  return (
+    <ResourcePage
+      embedded
+      rowKey="zoneName"
+      fetch={fetchAvailabilityZones}
+      columns={() => [
+        {
+          title: t('Availability Zone Name'),
+          dataIndex: 'zoneName',
+          key: 'zoneName',
+          sorter: (a, b) => String(a.zoneName).localeCompare(String(b.zoneName)),
+          render: (v) => <span style={{ fontWeight: 600 }}>{v}</span>,
+        },
+        {
+          title: t('Hosts'),
+          dataIndex: 'hosts',
+          key: 'hosts',
+          render: (value) => {
+            const keys = Object.keys(value || {});
+            if (!keys.length) return '-';
+            return keys.map((key) => <div key={key}>{key}</div>);
+          },
+        },
+        { title: t('Available'), dataIndex: 'available', key: 'available', render: (v) => yesNo(v) },
+      ]}
+      filterParams={[{ name: 'zoneName', label: t('Availability Zone Name') }]}
+      searchFields={['zoneName']}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Page (legacy TabList: Host Aggregate / Availability Zones)         */
+/* ------------------------------------------------------------------ */
+export default function AggregateList() {
+  const [tab, setTab] = useState('hostAggregate');
+  return (
+    <div style={{ maxWidth: 1600, margin: '0 auto' }}>
+      <Breadcrumb
+        items={[{ title: t('Compute') }, { title: t('Host Aggregates') }]}
+        style={{ marginBottom: 16, fontSize: 13 }}
+      />
+      <div style={{ marginBottom: 20 }}>
+        <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
+          {t('Host Aggregates')}
+        </h1>
         <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
-          {t('Group physical compute hosts into logical aggregates and availability zones with specific metadata tags.')}
+          {t(
+            'Group physical compute hosts into logical aggregates and availability zones with specific metadata tags.'
+          )}
         </p>
       </div>
-
-      {/* KPI Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={12}>
-          <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Total Aggregates')}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#0068ff' }}>{aggregates.length}</div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>Total Associated Hosts</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#10b981' }}>
-              {aggregates.reduce((acc, a) => acc + (a.hosts?.length || 0), 0)}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* BaseTable */}
-      <BaseTable
-        columns={columns}
-        dataSource={aggregates}
-        loading={loading}
-        rowKey="id"
-        filterParams={filterParams}
-        filters={magicFilters}
-        onFilterChange={setMagicFilters}
-        onRefresh={fetchAggregates}
-        primaryAction={{
-          id: 'create-aggregate',
-          label: `${t('Create')} ${t('Host Aggregate')}`,
-          icon: <PlusOutlined />,
-          onClick: () => setIsCreateOpen(true),
-        }}
-        rowActions={rowActions}
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
+        destroyOnHidden
+        items={[
+          { key: 'hostAggregate', label: t('Host Aggregate'), children: <AggregateTab /> },
+          { key: 'availabilityZone', label: t('Availability Zones'), children: <AvailabilityZoneTab /> },
+        ]}
       />
-
-      {/* Create Modal */}
-      <Modal
-        title={`${t('Create')} ${t('Host Aggregate')}`}
-        open={isCreateOpen}
-        onCancel={() => setIsCreateOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={createForm} layout="vertical" onFinish={handleCreate} initialValues={{ availability_zone: 'nova' }}>
-          <Form.Item name="name" label={t('Name')} rules={[{ required: true, message: t('Please input name') }]}>
-            <Input placeholder="compute-aggregate-01" />
-          </Form.Item>
-          <Form.Item name="availability_zone" label={t('Availability Zone')} rules={[{ required: true }]}>
-            <Input placeholder="nova" />
-          </Form.Item>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
-            <Button onClick={() => setIsCreateOpen(false)}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ background: '#0068ff' }}>
-              {t('Create')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
-
-      {/* Add Host Modal */}
-      <Modal
-        title={`${t('Add Host to')}: ${hostModal.aggregate?.name}`}
-        open={hostModal.open}
-        onCancel={() => setHostModal({ open: false, aggregate: null })}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={hostForm} layout="vertical" onFinish={handleAddHost}>
-          <Form.Item name="host" label={t('Compute Host')} rules={[{ required: true, message: 'Please select host' }]}>
-            <Select
-              placeholder="Select compute host..."
-              options={hypervisors.map((h) => ({
-                label: `${h.hypervisor_hostname} (${h.state}/${h.status})`,
-                value: h.service?.host || h.hypervisor_hostname,
-              }))}
-            />
-          </Form.Item>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <Button onClick={() => setHostModal({ open: false, aggregate: null })}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ background: '#0068ff' }}>
-              {t('Add Host')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
     </div>
   );
 }

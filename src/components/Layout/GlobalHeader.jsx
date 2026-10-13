@@ -25,15 +25,20 @@ import {
   LogoutOutlined,
   SafetyCertificateOutlined,
   AppstoreOutlined,
+  UserOutlined,
+  SafetyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 import { useThemeStore, THEMES } from '@/store/themeStore';
 import { isAdminPath } from '@/layouts/menuConfig';
 import { useTranslation } from '@/core/i18n';
 import SelectLang from '@/components/SelectLang';
+import useActionRunner from '@/components/Action/useActionRunner';
+import { openRcAction, cloudsYamlAction, tokenAction } from './accountActions';
 
 export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
   const navigate = useNavigate();
+  const { handleAction, actionModal } = useActionRunner();
   const location = useLocation();
   const { t } = useTranslation();
 
@@ -118,22 +123,47 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
     },
     { type: 'divider' },
     {
+      key: 'user-center',
+      icon: <UserOutlined />,
+      label: t('User Center'),
+      onClick: () => navigate('/user/center'),
+    },
+    {
+      key: 'credentials',
+      icon: <KeyOutlined />,
+      label: t('Application Credentials'),
+      onClick: () => navigate('/user/application-credentials'),
+    },
+    {
+      key: 'totp',
+      icon: <SafetyOutlined />,
+      label: t('Two-Factor Authentication'),
+      onClick: () => navigate('/user/totp'),
+    },
+    { type: 'divider' },
+    {
+      key: 'change-pass',
+      icon: <KeyOutlined />,
+      label: t('Update Password'),
+      onClick: () => navigate('/user/change-password'),
+    },
+    {
+      key: 'token',
+      icon: <SafetyOutlined />,
+      label: t('Get Token'),
+      onClick: () => handleAction(tokenAction()),
+    },
+    {
       key: 'openrc',
       icon: <DownloadOutlined />,
-      label: t('Download OpenRC'),
-      onClick: () => message.success('admin-openrc.sh (v3)'),
+      label: t('Get OpenRC file'),
+      onClick: () => handleAction(openRcAction()),
     },
     {
       key: 'clouds-yaml',
       icon: <DownloadOutlined />,
-      label: t('Download clouds.yaml'),
-      onClick: () => message.success('clouds.yaml'),
-    },
-    {
-      key: 'change-pass',
-      icon: <KeyOutlined />,
-      label: t('Change Password'),
-      onClick: () => message.info(t('Change Password')),
+      label: t('Get clouds.yaml file'),
+      onClick: () => handleAction(cloudsYamlAction()),
     },
     { type: 'divider' },
     {
@@ -381,6 +411,7 @@ export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
           </div>
         </Dropdown>
       </div>
+      {actionModal}
     </header>
   );
 }

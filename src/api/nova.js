@@ -1,10 +1,16 @@
 import apiClient from './client';
+import { serviceBase, versionHeaders } from './endpoints';
 
 /**
  * OpenStack Nova Compute API (v2.1)
  * Path: /api/openstack/regionone/nova/v2.1
  */
 const BASE_PATH = '/openstack/regionone/nova/v2.1';
+const novaV = () => serviceBase('nova');
+const novaConf = (extra = {}) => ({
+  ...extra,
+  headers: { ...versionHeaders('nova').headers, ...(extra.headers || {}) },
+});
 
 export const novaApi = {
   // Servers / Instances
@@ -133,6 +139,71 @@ export const novaApi = {
   disableService: (host, binary = 'nova-compute') =>
     apiClient.put(`${BASE_PATH}/os-services/disable`, { host, binary }),
   getQuotaSet: (projectId) => apiClient.get(`${BASE_PATH}/os-quota-sets/${projectId}/detail`),
+  // ---------------------------------------------------------------------
+  // Microversioned calls used by the Compute pages (port of legacy client/nova).
+  // Base path resolved per call from the catalog; legacy 2.79 microversion header.
+  // ---------------------------------------------------------------------
+
+  // Servers (read-only helpers for compute pages)
+  listServersV: (params) => apiClient.get(`${novaV()}/servers/detail`, novaConf({ params })),
+  getServerV: (id) => apiClient.get(`${novaV()}/servers/${id}`, novaConf()),
+
+  // Flavors
+  listFlavorsV: (params) => apiClient.get(`${novaV()}/flavors/detail`, novaConf({ params })),
+  getFlavorV: (id) => apiClient.get(`${novaV()}/flavors/${id}`, novaConf()),
+  createFlavorV: (flavor) => apiClient.post(`${novaV()}/flavors`, { flavor }, novaConf()),
+  updateFlavorV: (id, flavor) => apiClient.put(`${novaV()}/flavors/${id}`, { flavor }, novaConf()),
+  deleteFlavorV: (id) => apiClient.delete(`${novaV()}/flavors/${id}`, novaConf()),
+  flavorActionV: (id, body) => apiClient.post(`${novaV()}/flavors/${id}/action`, body, novaConf()),
+  getFlavorAccessV: (id) => apiClient.get(`${novaV()}/flavors/${id}/os-flavor-access`, novaConf()),
+  getFlavorExtraSpecsV: (id) => apiClient.get(`${novaV()}/flavors/${id}/os-extra_specs`, novaConf()),
+  createFlavorExtraSpecsV: (id, extra_specs) =>
+    apiClient.post(`${novaV()}/flavors/${id}/os-extra_specs`, { extra_specs }, novaConf()),
+  updateFlavorExtraSpecV: (id, key, value) =>
+    apiClient.put(`${novaV()}/flavors/${id}/os-extra_specs/${encodeURIComponent(key)}`, { [key]: value }, novaConf()),
+  deleteFlavorExtraSpecV: (id, key) =>
+    apiClient.delete(`${novaV()}/flavors/${id}/os-extra_specs/${encodeURIComponent(key)}`, novaConf()),
+
+  // Keypairs
+  listKeypairsV: (params) => apiClient.get(`${novaV()}/os-keypairs`, novaConf({ params })),
+  getKeypairV: (name, params) =>
+    apiClient.get(`${novaV()}/os-keypairs/${encodeURIComponent(name)}`, novaConf({ params })),
+  createKeypairV: (keypair) => apiClient.post(`${novaV()}/os-keypairs`, { keypair }, novaConf()),
+  deleteKeypairV: (name, params) =>
+    apiClient.delete(`${novaV()}/os-keypairs/${encodeURIComponent(name)}`, novaConf({ params })),
+
+  // Server groups
+  listServerGroupsV: (params) => apiClient.get(`${novaV()}/os-server-groups`, novaConf({ params })),
+  getServerGroupV: (id) => apiClient.get(`${novaV()}/os-server-groups/${id}`, novaConf()),
+  createServerGroupV: (server_group) =>
+    apiClient.post(`${novaV()}/os-server-groups`, { server_group }, novaConf()),
+  deleteServerGroupV: (id) => apiClient.delete(`${novaV()}/os-server-groups/${id}`, novaConf()),
+
+  // Host aggregates
+  listAggregatesV: () => apiClient.get(`${novaV()}/os-aggregates`, novaConf()),
+  getAggregateV: (id) => apiClient.get(`${novaV()}/os-aggregates/${id}`, novaConf()),
+  createAggregateV: (aggregate) => apiClient.post(`${novaV()}/os-aggregates`, { aggregate }, novaConf()),
+  updateAggregateV: (id, aggregate) => apiClient.put(`${novaV()}/os-aggregates/${id}`, { aggregate }, novaConf()),
+  deleteAggregateV: (id) => apiClient.delete(`${novaV()}/os-aggregates/${id}`, novaConf()),
+  aggregateActionV: (id, body) => apiClient.post(`${novaV()}/os-aggregates/${id}/action`, body, novaConf()),
+  setAggregateMetadataV: (id, metadata) =>
+    apiClient.post(`${novaV()}/os-aggregates/${id}/action`, { set_metadata: { metadata } }, novaConf()),
+
+  // Availability zones
+  listAvailabilityZonesDetailV: () => apiClient.get(`${novaV()}/os-availability-zone/detail`, novaConf()),
+  listAvailabilityZonesV: () => apiClient.get(`${novaV()}/os-availability-zone`, novaConf()),
+
+  // Hypervisors
+  listHypervisorsV: (params) => apiClient.get(`${novaV()}/os-hypervisors/detail`, novaConf({ params })),
+  getHypervisorV: (id, params) => apiClient.get(`${novaV()}/os-hypervisors/${id}`, novaConf({ params })),
+
+  // Compute services (2.53+: update by id)
+  listServicesV: (params) => apiClient.get(`${novaV()}/os-services`, novaConf({ params })),
+  updateServiceV: (id, body) => apiClient.put(`${novaV()}/os-services/${id}`, body, novaConf()),
+  deleteServiceV: (id) => apiClient.delete(`${novaV()}/os-services/${id}`, novaConf()),
+  /** Skyline apiserver extension used by legacy ComputeHost list */
+  listComputeServicesExt: (params) =>
+    apiClient.get('/openstack/skyline/api/v1/extension/compute-services', { params }),
 };
 
 export default novaApi;

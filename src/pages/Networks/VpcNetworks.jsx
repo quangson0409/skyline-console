@@ -1,360 +1,235 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Col,
-  Row,
-  Select,
-  Table,
-  Space,
-  Modal,
-  Form,
-  Input,
-  message,
-  Tooltip,
-  Tag,
-} from 'antd';
-import {
-  ApartmentOutlined,
-  ReloadOutlined,
-  PlusOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-  GlobalOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-} from '@ant-design/icons';
+/**
+ * Networks list - port of legacy pages/network/containers/Network/index.jsx (project TabList:
+ * Current Project / Shared / External / All networks) and Network.jsx (admin list).
+ */
+import React from 'react';
+import { Breadcrumb, Popover, Tabs, Tag } from 'antd';
+import { GlobalOutlined } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
-import { useTranslation } from '@/core/i18n';
+import ResourcePage, {
+  nameColumn,
+  statusColumn,
+  timeColumn,
+  projectColumn,
+  yesNo,
+  useIsAdminPage,
+} from '@/components/ResourcePage';
+import { useProjectMap } from '@/hooks/useProjectMap';
+import { useAuthStore } from '@/store/authStore';
+import { detailPath, networkStatus } from '@/pages/Network/common';
+import { t } from '@/core/i18n';
+import {
+  createNetworkAction,
+  quickCreateNetworkAction,
+  editNetworkAction,
+  createSubnetAction,
+  deleteNetworkAction,
+} from './NetworkParts/actions';
 
-export default function VpcNetworks() {
-  const { t } = useTranslation();
-  const [networks, setNetworks] = useState([]);
-  const [subnetsMap, setSubnetsMap] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [typeFilter, setTypeFilter] = useState('ALL');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form] = Form.useForm();
+const yesNoOptions = () => [
+  { key: 'true', label: t('Yes') },
+  { key: 'false', label: t('No') },
+];
 
-  const fetchNetworks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [netsRes, subsRes] = await Promise.allSettled([
-        neutronApi.listNetworks(),
-        neutronApi.listSubnets(),
-      ]);
+const tabParams = (tab, { isAdmin, projectId }) => {
+  if (isAdmin || tab === 'allNetwork') return { all_projects: true };
+  if (tab === 'projectNetwork') return { project_id: projectId };
+  if (tab === 'sharedNetwork') return { shared: true };
+  if (tab === 'externalNetwork') return { 'router:external': true };
+  return {};
+};
 
-      const subMap = {};
-      if (subsRes.status === 'fulfilled' && subsRes.value?.subnets) {
-        subsRes.value.subnets.forEach((s) => {
-          subMap[s.id] = s;
-        });
-        setSubnetsMap(subMap);
-      }
-
-      if (netsRes.status === 'fulfilled' && netsRes.value?.networks) {
-        const normalized = netsRes.value.networks.map((n) => {
-          const cidrs = (n.subnets || []).map((sId) => subMap[sId]?.cidr).filter(Boolean);
-          return {
-            key: n.id,
-            id: n.id,
-            shortId: n.id.substring(0, 8) + '...',
-            name: n.name || n.id,
-            cidr: cidrs.length > 0 ? cidrs.join(', ') : '-',
-            isExternal: Boolean(n['router:external']),
-            shared: Boolean(n.shared),
-            status: n.status || 'ACTIVE',
-            subnetsCount: (n.subnets || []).length,
-          };
-        });
-        setNetworks(normalized);
-      }
-    } catch (err) {
-      message.error(t('Failed to load Networks: ') + err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    fetchNetworks();
-  }, [fetchNetworks]);
-
-  const handleCreate = async (values) => {
-    try {
-      await neutronApi.createNetwork({
-        name: values.name,
-        admin_state_up: true,
-      });
-      message.success(t('Network created successfully!'));
-      setIsModalOpen(false);
-      form.resetFields();
-      fetchNetworks();
-    } catch (err) {
-      message.error(t('Failed to create network: ') + err.message);
-    }
-  };
-
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: `${t('Delete Network')} ${record.name}?`,
-      content: t('Are you sure you want to delete this network? All attached ports and subnets will be removed.'),
-      okText: t('Delete'),
-      okType: 'danger',
-      cancelText: t('Cancel'),
-      onOk: async () => {
-        try {
-          await neutronApi.deleteNetwork(record.id);
-          message.success(t('Network deleted successfully'));
-          fetchNetworks();
-        } catch (err) {
-          message.error(t('Failed to delete network: ') + err.message);
-        }
-      },
-    });
-  };
-
-  const filteredNetworks = networks.filter((n) => {
-    const q = searchText.toLowerCase().trim();
-    const matchSearch =
-      !q ||
-      n.name.toLowerCase().includes(q) ||
-      n.id.toLowerCase().includes(q) ||
-      n.cidr.toLowerCase().includes(q);
-
-    const matchType =
-      typeFilter === 'ALL' ||
-      (typeFilter === 'EXTERNAL' && n.isExternal) ||
-      (typeFilter === 'INTERNAL' && !n.isExternal);
-
-    return matchSearch && matchType;
+export const fetchNetworks = async (tab, ctx) => {
+  const params = tabParams(tab, ctx);
+  const [netsRes, subsRes] = await Promise.all([
+    neutronApi.listNetworks(params),
+    neutronApi.listSubnets().catch(() => ({})),
+  ]);
+  const subMap = Object.fromEntries((subsRes?.subnets || []).map((s) => [s.id, s]));
+  return (netsRes?.networks || []).map((n) => {
+    const subnetDetails = (n.subnets || []).map((id) => subMap[id]).filter(Boolean);
+    const external = Boolean(n['router:external']);
+    const pid = n.project_id || n.tenant_id;
+    return {
+      ...n,
+      shared: Boolean(n.shared),
+      'router:external': external,
+      subnetDetails,
+      cidr: subnetDetails
+        .map((s) => s.cidr)
+        .filter(Boolean)
+        .join(', '),
+      network_type_label: external ? 'external' : 'internal',
+      // "Project Range" filter helper: every row matches "all", own rows also match "current"
+      project_range: pid === ctx.projectId ? 'all current' : 'all',
+    };
   });
+};
 
-  const columns = [
-    {
-      title: 'ID',
-      dataIndex: 'shortId',
-      key: 'id',
-      render: (shortId, record) => (
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: 6,
-            padding: '2px 8px',
-            fontFamily: 'monospace',
-            fontSize: 12,
-          }}
-        >
-          <span>{shortId}</span>
-          <Tooltip title={t('Copy')}>
-            <CopyOutlined
-              style={{ cursor: 'pointer', color: '#94a3b8' }}
-              onClick={() => {
-                navigator.clipboard.writeText(record.id);
-                message.success(t('Copied'));
-              }}
-            />
-          </Tooltip>
-        </div>
-      ),
-    },
-    {
-      title: t('Name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (text) => (
-        <Space size={8}>
-          <div
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 6,
-              background: '#e0f2fe',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ApartmentOutlined style={{ color: '#0068ff', fontSize: 13 }} />
+const SubnetCount = ({ record }) => {
+  const ids = record.subnets || [];
+  if (!Array.isArray(ids) || !ids.length) return 0;
+  const content = (
+    <div style={{ maxWidth: 360 }}>
+      {ids.map((id) => {
+        const s = (record.subnetDetails || []).find((it) => it.id === id);
+        return (
+          <div key={id} style={{ fontSize: 12, padding: '2px 0' }}>
+            <span style={{ fontWeight: 600 }}>{s?.name || id}</span>
+            {s?.cidr ? <span style={{ color: '#64748b', fontFamily: 'monospace' }}> {s.cidr}</span> : null}
           </div>
-          <span style={{ color: '#0068ff', fontWeight: 600 }}>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: 'Subnet CIDR',
-      dataIndex: 'cidr',
-      key: 'cidr',
-      render: (text) => (
-        <span style={{ color: '#0f172a', fontWeight: 600, fontFamily: 'monospace', fontSize: 12 }}>
-          {text}
-        </span>
-      ),
-    },
-    {
-      title: t('Type'),
-      dataIndex: 'isExternal',
-      key: 'isExternal',
-      render: (ext) =>
-        ext ? (
+        );
+      })}
+    </div>
+  );
+  return (
+    <Popover title={t('Subnets')} content={content}>
+      <a>{ids.length}</a>
+    </Popover>
+  );
+};
+
+export const networkColumns = ({ isAdmin, projectId, tab, projectMap }) => {
+  const showProject = isAdmin || tab === 'allNetwork';
+  return [
+    nameColumn({ linkTo: (r) => detailPath('networks', r.id, isAdmin) }),
+    showProject && { ...projectColumn(projectMap), title: t('Project ID/Name') },
+    !isAdmin &&
+      tab !== 'projectNetwork' && {
+        title: t('Is Current Project'),
+        dataIndex: 'tenant_id',
+        key: 'tenant_id',
+        render: (value, r) => ((value || r.project_id) === projectId ? t('Yes') : t('No')),
+      },
+    tab !== 'externalNetwork' && {
+      title: t('External'),
+      dataIndex: 'router:external',
+      key: 'router:external',
+      render: (v) =>
+        v ? (
           <Tag color="cyan" icon={<GlobalOutlined />}>
-            External (Gateway)
+            {t('Yes')}
           </Tag>
         ) : (
-          <Tag color="blue">Internal (Private)</Tag>
+          yesNo(false)
         ),
     },
-    {
-      title: t('Shared'),
+    tab !== 'sharedNetwork' && {
+      title: t('Shared Network'),
       dataIndex: 'shared',
       key: 'shared',
-      render: (shared) => (shared ? <Tag color="purple">{t('Yes')}</Tag> : <Tag>{t('No')}</Tag>),
+      render: (v) => yesNo(v),
+    },
+    statusColumn({ textMap: networkStatus() }),
+    {
+      title: t('Subnet Count'),
+      dataIndex: 'subnets',
+      key: 'subnets',
+      render: (_, r) => <SubnetCount record={r} />,
     },
     {
-      title: t('Status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) =>
-        status === 'ACTIVE' ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            {t('Active')}
-          </Tag>
-        ) : (
-          <Tag color="error" icon={<StopOutlined />}>
-            {status}
-          </Tag>
-        ),
+      title: t('Subnet CIDR'),
+      dataIndex: 'cidr',
+      key: 'cidr',
+      render: (v) => (v ? <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 600 }}>{v}</span> : '-'),
     },
-    {
-      title: t('Actions'),
-      key: 'actions',
-      align: 'right',
-      render: (_, record) => (
-        <Button
-          type="text"
-          danger
-          size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleDelete(record)}
-        >
-          {t('Delete')}
-        </Button>
-      ),
-    },
-  ];
+    timeColumn(),
+  ].filter(Boolean);
+};
+
+const networkFilters = (tab) => {
+  const name = { name: 'name', label: t('Network Name') };
+  const shared = { name: 'shared', label: t('Shared Network'), options: yesNoOptions() };
+  const external = { name: 'router:external', label: t('External'), options: yesNoOptions() };
+  const type = {
+    name: 'network_type_label',
+    label: t('Type'),
+    options: [
+      { key: 'internal', label: t('Internal (Private)') },
+      { key: 'external', label: t('External (Gateway)') },
+    ],
+  };
+  const projectRange = {
+    name: 'project_range',
+    label: t('Project Range'),
+    options: [
+      { key: 'current', label: t('Current Project') },
+      { key: 'all', label: t('All') },
+    ],
+  };
+  const keyword = { name: 'keyword', label: t('Search by Name, ID, or CIDR...') };
+  if (!tab) return [name, shared, external, type, { name: 'project_id', label: t('Project ID') }, keyword];
+  if (tab === 'sharedNetwork') return [name, external, type, projectRange, keyword];
+  if (tab === 'externalNetwork') return [name, shared, projectRange, keyword];
+  return [name, shared, external, type, keyword];
+};
+
+function NetworkTable({ tab, embedded, projectMap }) {
+  return (
+    <ResourcePage
+      embedded={embedded}
+      title={t('Networks')}
+      breadcrumb={[t('Network'), t('Networks')]}
+      description={t('Software-defined networks (SDN) powered by OpenStack Neutron.')}
+      fetch={(ctx) => fetchNetworks(tab, ctx)}
+      deps={[tab]}
+      columns={(ctx) => networkColumns({ ...ctx, tab, projectMap })}
+      filterParams={networkFilters(tab)}
+      searchFields={['name', 'id', 'cidr']}
+      primaryActions={(ctx) => [createNetworkAction(ctx), !ctx.isAdmin && quickCreateNetworkAction(ctx)]}
+      batchActions={(ctx) => [deleteNetworkAction(ctx)]}
+      rowActions={(ctx) => ({
+        firstAction: editNetworkAction(ctx),
+        moreActions: [{ action: createSubnetAction(ctx) }, { action: deleteNetworkAction(ctx) }],
+      })}
+    />
+  );
+}
+
+export default function VpcNetworks() {
+  const isAdmin = useIsAdminPage();
+  const { hasAdminRole } = useAuthStore();
+  const projectMap = useProjectMap();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  if (isAdmin) {
+    return <NetworkTable projectMap={projectMap} />;
+  }
+
+  const tabs = [
+    { key: 'projectNetwork', label: t('Current Project Networks') },
+    { key: 'sharedNetwork', label: t('Shared Networks') },
+    { key: 'externalNetwork', label: t('External Networks') },
+    hasAdminRole && { key: 'allNetwork', label: t('All Networks') },
+  ].filter(Boolean);
+  const requested = searchParams.get('tab');
+  const active = tabs.some((it) => it.key === requested) ? requested : 'projectNetwork';
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      <Breadcrumb
-        items={[
-          { title: t('Network') },
-          { title: t('Networks') },
-        ]}
-        style={{ marginBottom: 16, fontSize: 13 }}
-      />
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-            {t('Networks')}
-          </h1>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
-            {t('Software-defined networks (SDN) powered by OpenStack Neutron.')}
-          </p>
-        </div>
-
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchNetworks} loading={loading}>
-            {t('Refresh')}
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-            style={{ backgroundColor: '#0068ff', borderRadius: 8, fontWeight: 600 }}
-          >
-            {t('Create Network')}
-          </Button>
-        </Space>
+    <div style={{ maxWidth: 1600, margin: '0 auto' }}>
+      <Breadcrumb items={[{ title: t('Network') }, { title: t('Networks') }]} style={{ marginBottom: 16, fontSize: 13 }} />
+      <div style={{ marginBottom: 12 }}>
+        <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
+          {t('Networks')}
+        </h1>
+        <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
+          {t('Software-defined networks (SDN) powered by OpenStack Neutron.')}
+        </p>
       </div>
-
-      <Card
-        variant="borderless"
-        style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+      <Tabs
+        activeKey={active}
+        onChange={(key) => {
+          const next = new URLSearchParams(searchParams);
+          next.set('tab', key);
+          setSearchParams(next, { replace: true });
         }}
-      >
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          <Input
-            placeholder={t('Search by Name, ID, or CIDR...')}
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 300, borderRadius: 8 }}
-            allowClear
-          />
-
-          <Select
-            value={typeFilter}
-            onChange={setTypeFilter}
-            style={{ width: 180 }}
-            options={[
-              { value: 'ALL', label: t('All Types') },
-              { value: 'INTERNAL', label: 'Internal (Private)' },
-              { value: 'EXTERNAL', label: 'External (Gateway)' },
-            ]}
-          />
-        </div>
-
-        <Table
-          columns={columns}
-          dataSource={filteredNetworks}
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          rowKey="id"
-        />
-      </Card>
-
-      <Modal
-        title={t('Create Network')}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreate}>
-          <Form.Item
-            name="name"
-            label={t('Name')}
-            rules={[{ required: true, message: t('Please input network name!') }]}
-          >
-            <Input placeholder="my-private-net" />
-          </Form.Item>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-            <Button onClick={() => setIsModalOpen(false)}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ backgroundColor: '#0068ff' }}>
-              {t('Create')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
+        items={tabs.map((it) => ({
+          key: it.key,
+          label: it.label,
+          children: it.key === active ? <NetworkTable tab={it.key} embedded projectMap={projectMap} /> : null,
+        }))}
+      />
     </div>
   );
 }

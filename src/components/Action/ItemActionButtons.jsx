@@ -51,7 +51,7 @@ export default function ItemActionButtons({
         .filter(checkAllowed)
         .map((act) => {
           const actTitle = resolveText(act.titleKey, act.title || act.name);
-          const actDesc = resolveText(act.descKey, act.description);
+          const actDesc = resolveText(act.descKey, act.menuDescription);
           return {
             key: act.id || act.key || actTitle,
             label: (
@@ -83,7 +83,7 @@ export default function ItemActionButtons({
       const act = group.action;
       if (checkAllowed(act)) {
         const actTitle = resolveText(act.titleKey, act.title || act.name);
-        const actDesc = resolveText(act.descKey, act.description);
+        const actDesc = resolveText(act.descKey, act.menuDescription);
         menuItems.push({
           key: act.id || act.key || actTitle,
           label: (
@@ -105,7 +105,7 @@ export default function ItemActionButtons({
       // Direct action object
       if (checkAllowed(group)) {
         const gTitle = resolveText(group.titleKey, group.title || group.label);
-        const gDesc = resolveText(group.descKey, group.description);
+        const gDesc = resolveText(group.descKey, group.menuDescription);
         menuItems.push({
           key: group.id || group.key || gTitle,
           label: gTitle,

@@ -1,296 +1,199 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Popover, List, Tag } from 'antd';
+import { FileTextOutlined, GlobalOutlined } from '@ant-design/icons';
+import { neutronApi, neutronResources } from '@/api/neutron';
+import { novaApi } from '@/api/nova';
+import ResourcePage, {
+  statusColumn,
+  timeColumn,
+  projectColumn,
+  CopyText,
+  useIsAdminPage,
+} from '@/components/ResourcePage';
+import { useProjectMap } from '@/hooks/useProjectMap';
+import { t } from '@/core/i18n';
+import { detailPath, listAll } from '@/pages/Network/common';
+import { floatingIpStatus, getLoadBalancer, getPortForwardingName, qosEnabled, fetchPfwEnabled } from './helpers';
 import {
-  Breadcrumb,
-  Button,
-  Card,
-  Table,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  Select,
-  message,
-  Tooltip,
-  Input,
-} from 'antd';
-import {
-  PlusOutlined,
-  ReloadOutlined,
-  GlobalOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  StopOutlined,
-} from '@ant-design/icons';
-import { neutronApi } from '@/api/neutron';
-import { useTranslation } from '@/core/i18n';
+  allocateAction,
+  associateAction,
+  createPortForwardingAction,
+  disassociateAction,
+  editFloatingIpAction,
+  releaseAction,
+} from './actions';
 
-export default function FloatingIpList() {
-  const { t } = useTranslation();
-  const [fips, setFips] = useState([]);
-  const [externalNetworks, setExternalNetworks] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [form] = Form.useForm();
-
-  const fetchFips = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [fipRes, netRes] = await Promise.allSettled([
-        neutronApi.listFloatingIps(),
-        neutronApi.listNetworks({ 'router:external': true }),
-      ]);
-
-      if (fipRes.status === 'fulfilled' && fipRes.value?.floatingips) {
-        const normalized = fipRes.value.floatingips.map((f) => ({
-          key: f.id,
-          id: f.id,
-          ip: f.floating_ip_address,
-          pool: f.floating_network_id,
-          fixedIp: f.fixed_ip_address,
-          portId: f.port_id,
-          status: f.status || 'DOWN',
-          description: f.description || '',
-        }));
-        setFips(normalized);
-      }
-
-      if (netRes.status === 'fulfilled' && netRes.value?.networks) {
-        setExternalNetworks(netRes.value.networks);
-      }
-    } catch (err) {
-      message.error(t('Failed to load Floating IPs: ') + err.message);
-    } finally {
-      setLoading(false);
+/* ---------------- fetch (legacy FloatingIpStore.fetchListWithResourceName) ---------------- */
+const resolveResourceName = async (fip) => {
+  const pd = fip.port_details;
+  if (!pd) return '-';
+  try {
+    let name;
+    if (pd.device_owner === 'network:router_gateway') {
+      name = (await neutronApi.getRouter(pd.device_id))?.router?.name;
+    } else if (pd.device_owner === 'compute:nova') {
+      name = (await novaApi.getServer(pd.device_id))?.server?.name;
+    } else if (pd.device_owner === 'Octavia') {
+      name = (await getLoadBalancer(String(pd.device_id || '').replace('lb-', '')))?.name;
+    } else if (pd.device_owner === '') {
+      name = pd.name;
+    } else {
+      return '-';
     }
-  }, [t]);
+    return `${name}: ${fip.fixed_ip_address}`;
+  } catch {
+    // resources from other projects
+    return `${t('Resource ID')}: ${pd.device_id} `;
+  }
+};
 
-  useEffect(() => {
-    fetchFips();
-  }, [fetchFips]);
+export const fetchFloatingIps = async ({ isAdmin, projectId, params = {} } = {}) => {
+  const query = { ...params };
+  if (!isAdmin && projectId) query.project_id = projectId;
+  const res = await neutronResources.floatingips.list(query);
+  let items = (res?.floatingips || []).filter(
+    (it) => isAdmin || !projectId || !it.project_id || it.project_id === projectId
+  );
+  if (qosEnabled() && items.some((it) => it.qos_policy_id)) {
+    const policies = await listAll.qosPolicies();
+    const map = Object.fromEntries(policies.map((p) => [p.id, p.name]));
+    items = items.map((it) => (it.qos_policy_id ? { ...it, qos_policy_name: map[it.qos_policy_id] } : it));
+  }
+  const names = await Promise.all(items.map(resolveResourceName));
+  return items.map((it, idx) => ({
+    ...it,
+    name: it.floating_ip_address,
+    project_id: it.project_id || it.tenant_id,
+    resource_name: names[idx],
+  }));
+};
 
-  const handleAllocate = async (values) => {
-    try {
-      await neutronApi.createFloatingIp({
-        floating_network_id: values.network_id,
-        description: values.description || '',
-      });
-      message.success(t('Allocated Floating IP successfully!'));
-      setIsModalOpen(false);
-      form.resetFields();
-      fetchFips();
-    } catch (err) {
-      message.error(t('Failed to allocate Floating IP: ') + err.message);
-    }
-  };
+/* ---------------- columns ---------------- */
+const sortedPfs = (record) =>
+  [...(record?.port_forwardings || [])].sort((a, b) => (a.external_port || 0) - (b.external_port || 0));
 
-  const handleRelease = (record) => {
-    Modal.confirm({
-      title: `${t('Release Floating IP')} ${record.ip}?`,
-      content: t('Are you sure you want to release this Floating IP back to the public pool?'),
-      okText: t('Release'),
-      okType: 'danger',
-      cancelText: t('Cancel'),
-      onOk: async () => {
-        try {
-          await neutronApi.deleteFloatingIp(record.id);
-          message.success(t('Released Floating IP successfully'));
-          fetchFips();
-        } catch (err) {
-          message.error(t('Failed to release Floating IP: ') + err.message);
-        }
-      },
-    });
-  };
+export const PortForwardingPopover = ({ record }) => {
+  const data = sortedPfs(record);
+  if (!data.length) return '-';
+  const content = (
+    <List
+      size="small"
+      pagination={data.length > 10 ? { pageSize: 10, size: 'small', showSizeChanger: false } : false}
+      dataSource={data}
+      renderItem={(item) => (
+        <div style={{ height: 30, lineHeight: '30px' }}>{getPortForwardingName(item, record.floating_ip_address)}</div>
+      )}
+    />
+  );
+  return (
+    <Popover content={content} title={t('Port Forwardings')} destroyTooltipOnHide placement="right">
+      <span style={{ cursor: 'pointer' }}>
+        {t('{number} {resource}', { number: data.length, resource: t('Port Forwardings') })}&nbsp;
+        <FileTextOutlined />
+      </span>
+    </Popover>
+  );
+};
 
-  const filteredFips = fips.filter((f) => {
-    const q = searchText.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      f.ip.toLowerCase().includes(q) ||
-      f.id.toLowerCase().includes(q) ||
-      (f.fixedIp && f.fixedIp.includes(q))
-    );
-  });
-
-  const columns = [
+export const floatingIpColumns = ({ isAdmin, projectMap, hideQos } = {}) =>
+  [
     {
-      title: t('IP Address'),
-      dataIndex: 'ip',
-      key: 'ip',
-      render: (ip, record) => (
+      title: t('ID/Floating IP'),
+      dataIndex: 'floating_ip_address',
+      key: 'floating_ip_address',
+      sorter: (a, b) => String(a.floating_ip_address || '').localeCompare(String(b.floating_ip_address || '')),
+      render: (ip, r) => (
         <div>
-          <Space size={6}>
-            <GlobalOutlined style={{ color: '#0068ff' }} />
-            <span style={{ fontWeight: 600, color: '#0068ff' }}>{ip}</span>
-          </Space>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>ID: {record.id}</span>
-            <Tooltip title={t('Copy')}>
-              <CopyOutlined
-                style={{ cursor: 'pointer', color: '#64748b' }}
-                onClick={() => {
-                  navigator.clipboard.writeText(ip);
-                  message.success(t('Copied'));
-                }}
-              />
-            </Tooltip>
+          <Link to={detailPath('floatingip', r.id, isAdmin)} style={{ fontWeight: 600 }}>
+            <GlobalOutlined style={{ marginRight: 6 }} />
+            {ip || r.id}
+          </Link>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+            <CopyText value={r.id} />
           </div>
         </div>
       ),
     },
+    qosEnabled() &&
+      !hideQos && {
+        title: t('QoS Policy ID/Name'),
+        dataIndex: 'qos_policy_name',
+        key: 'qos_policy_name',
+        render: (v, r) =>
+          r.qos_policy_id ? (
+            <div>
+              <Link to={detailPath('qos-policy', r.qos_policy_id, isAdmin)}>{v || r.qos_policy_id}</Link>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.qos_policy_id}</div>
+            </div>
+          ) : (
+            '-'
+          ),
+      },
+    isAdmin && projectColumn(projectMap),
+    { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
     {
       title: t('Fixed IP (Mapped)'),
-      dataIndex: 'fixedIp',
-      key: 'fixedIp',
-      render: (fixed) =>
-        fixed ? (
-          <Tag color="cyan">{fixed}</Tag>
-        ) : (
-          <span style={{ color: '#94a3b8', fontSize: 12 }}>{t('Unassociated')}</span>
-        ),
+      dataIndex: 'fixed_ip_address',
+      key: 'fixed_ip_address',
+      render: (v) =>
+        v ? <Tag color="cyan">{v}</Tag> : <span style={{ color: '#94a3b8', fontSize: 12 }}>{t('Unassociated')}</span>,
     },
     {
-      title: t('Status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) =>
-        status === 'ACTIVE' ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            {t('Active')}
-          </Tag>
-        ) : (
-          <Tag color="default" icon={<StopOutlined />}>
-            {status}
-          </Tag>
-        ),
+      title: t('Associated Resource'),
+      dataIndex: 'resource_name',
+      key: 'resource_name',
+      render: (v, r) => (v && v !== '-' ? v : <PortForwardingPopover record={r} />),
     },
+    statusColumn({ textMap: floatingIpStatus() }),
+    timeColumn(),
+  ].filter(Boolean);
+
+export const floatingIpFilters = ({ isAdmin } = {}) =>
+  [
+    { name: 'floating_ip_address', label: t('Floating IP') },
+    { name: 'fixed_ip_address', label: t('Fixed IP') },
     {
-      title: t('Actions'),
-      key: 'actions',
-      align: 'right',
-      render: (_, record) => (
-        <Button
-          type="text"
-          danger
-          size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleRelease(record)}
-        >
-          {t('Release')}
-        </Button>
-      ),
+      name: 'status',
+      label: t('Status'),
+      options: Object.entries(floatingIpStatus()).map(([key, label]) => ({ key, label })),
     },
-  ];
+    isAdmin && { name: 'project_id', label: t('Project ID') },
+  ].filter(Boolean);
+
+export const floatingIpRowActions = ({ isAdmin, pfwEnabled }) =>
+  isAdmin
+    ? { firstAction: releaseAction(), moreActions: [] }
+    : {
+        firstAction: editFloatingIpAction(),
+        moreActions: [
+          { action: associateAction() },
+          { action: disassociateAction() },
+          { action: createPortForwardingAction({ enabled: pfwEnabled }) },
+          { action: releaseAction() },
+        ],
+      };
+
+export default function FloatingIpList() {
+  const projectMap = useProjectMap();
+  const isAdminPage = useIsAdminPage();
+  const [pfwEnabled, setPfwEnabled] = useState(false);
+  useEffect(() => {
+    fetchPfwEnabled().then(setPfwEnabled);
+  }, []);
 
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      <Breadcrumb
-        items={[
-          { title: t('Network') },
-          { title: t('Floating IPs') },
-        ]}
-        style={{ marginBottom: 16, fontSize: 13 }}
-      />
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-            {t('Floating IPs')}
-          </h1>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
-            {t('Public IP addresses routed from external networks to cloud compute instances.')}
-          </p>
-        </div>
-
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchFips} loading={loading}>
-            {t('Refresh')}
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-            style={{ backgroundColor: '#0068ff', borderRadius: 8, fontWeight: 600 }}
-          >
-            {t('Allocate IP')}
-          </Button>
-        </Space>
-      </div>
-
-      <Card
-        variant="borderless"
-        style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-        }}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Input
-            placeholder={t('Search by IP or ID...')}
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 280, borderRadius: 8 }}
-            allowClear
-          />
-        </div>
-
-        <Table
-          columns={columns}
-          dataSource={filteredFips}
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          rowKey="id"
-        />
-      </Card>
-
-      <Modal
-        title={t('Allocate Floating IP')}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={handleAllocate}>
-          <Form.Item
-            name="network_id"
-            label={t('External Network Pool')}
-            rules={[{ required: true, message: t('Please select external network!') }]}
-          >
-            <Select
-              placeholder={t('Select External Network')}
-              options={
-                externalNetworks.length > 0
-                  ? externalNetworks.map((n) => ({ label: `${n.name} (${n.id.substring(0, 8)})`, value: n.id }))
-                  : [{ label: 'public1 (External Pool)', value: '00482dd0-82c2-479d-9ec9-9c623e1b5c02' }]
-              }
-            />
-          </Form.Item>
-
-          <Form.Item name="description" label={t('Description')}>
-            <Input placeholder={t('Description')} />
-          </Form.Item>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-            <Button onClick={() => setIsModalOpen(false)}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ backgroundColor: '#0068ff' }}>
-              {t('Allocate')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
-    </div>
+    <ResourcePage
+      title={t('Floating IPs')}
+      breadcrumb={[t('Network'), t('Floating IPs')]}
+      description={t('Public IP addresses routed from external networks to cloud compute instances.')}
+      fetch={fetchFloatingIps}
+      columns={({ isAdmin }) => floatingIpColumns({ isAdmin, projectMap })}
+      filterParams={floatingIpFilters({ isAdmin: isAdminPage })}
+      primaryActions={[allocateAction()]}
+      batchActions={[releaseAction()]}
+      rowActions={({ isAdmin }) => floatingIpRowActions({ isAdmin, pfwEnabled })}
+      interval={15000}
+    />
   );
 }

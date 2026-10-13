@@ -1,292 +1,347 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Table,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Switch,
-  message,
-  Tooltip,
-} from 'antd';
-import {
-  PlusOutlined,
-  ReloadOutlined,
-  UserOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-} from '@ant-design/icons';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
-import { useTranslation } from '@/core/i18n';
+import ResourcePage, { nameColumn, textColumn, deleteAction } from '@/components/ResourcePage';
+import { t } from '@/core/i18n';
+import {
+  detailPath,
+  enabledColumn,
+  domainColumn,
+  yesNoFilterOptions,
+  IdNameLink,
+  listDomains,
+  listRoles,
+  listAllProjects,
+  safeList,
+  passwordRule,
+  confirmPasswordRule,
+  emailRule,
+  phoneRule,
+} from '../common';
 
-export default function UserList() {
-  const { t } = useTranslation();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [form] = Form.useForm();
+/* ------------------------------ Data ------------------------------ */
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await keystoneApi.listUsers();
-      if (res && res.users) {
-        const normalized = res.users.map((u) => ({
-          key: u.id,
-          id: u.id,
-          name: u.name,
-          email: u.email || `${u.name}@openstack.local`,
-          domain: u.domain_id || 'Default',
-          enabled: u.enabled ?? true,
-        }));
-        setUsers(normalized);
+/** legacy UserStore.updateUser */
+export const updateUser = (user, projectAssigns, systemAssigns, roles, projects, domains) => {
+  const defaultProject = user.default_project_id
+    ? projects.find((p) => p.id === user.default_project_id)?.name
+    : undefined;
+  const projectMap = {};
+  projectAssigns.forEach((ra) => {
+    const projectId = ra?.scope?.project?.id;
+    const roleId = ra?.role?.id;
+    if (ra?.user?.id === user.id && roleId && projectId) {
+      const roleItem = roles.find((it) => it.id === roleId);
+      if (!projectMap[projectId]) {
+        projectMap[projectId] = { project: projects.find((it) => it.id === projectId) || { id: projectId }, roles: [roleItem] };
+      } else {
+        projectMap[projectId].roles = [...projectMap[projectId].roles, roleItem];
       }
-    } catch (err) {
-      message.error(t('Failed to load users: ') + err.message);
-    } finally {
-      setLoading(false);
     }
-  }, [t]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  const handleCreate = async (values) => {
-    try {
-      await keystoneApi.createUser({
-        name: values.name,
-        password: values.password,
-        email: values.email,
-        enabled: values.enabled ?? true,
-      });
-      message.success(t('User created successfully!'));
-      setIsModalOpen(false);
-      form.resetFields();
-      fetchUsers();
-    } catch (err) {
-      message.error(t('Failed to create user: ') + err.message);
-    }
-  };
-
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: `${t('Delete User')} ${record.name}?`,
-      content: t('Are you sure you want to delete this user? This cannot be undone.'),
-      okText: t('Delete'),
-      okType: 'danger',
-      cancelText: t('Cancel'),
-      onOk: async () => {
-        try {
-          await keystoneApi.deleteUser(record.id);
-          message.success(t('User deleted successfully'));
-          fetchUsers();
-        } catch (err) {
-          message.error(t('Failed to delete user: ') + err.message);
-        }
-      },
-    });
-  };
-
-  const filteredUsers = users.filter((u) => {
-    const q = searchText.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      u.name.toLowerCase().includes(q) ||
-      u.id.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q)
-    );
   });
+  const systemRoles = [];
+  systemAssigns.forEach((ra) => {
+    if (ra?.user?.id === user.id && ra?.role?.id) {
+      const roleItem = roles.find((it) => it.id === ra.role.id);
+      if (roleItem) systemRoles.push(roleItem);
+    }
+  });
+  const domain = domains.find((it) => it.id === user.domain_id);
+  return {
+    ...user,
+    defaultProject,
+    projects: projectMap,
+    projectCount: Object.keys(projectMap).length,
+    domain,
+    domainName: domain?.name || user.domain_id,
+    systemRoles,
+  };
+};
 
-  const columns = [
+/** legacy UserStore list + listDidFetch */
+export const fetchUsers = async ({
+  groupId,
+  domainId,
+  projectId,
+  roleId,
+  withProjectRole = false,
+  withSystemRole = true,
+  withDefaultProject = true,
+} = {}) => {
+  const items = groupId
+    ? (await keystoneApi.listGroupUsers(groupId))?.users || []
+    : (await keystoneApi.listUsers(domainId ? { domain_id: domainId } : undefined))?.users || [];
+  if (!items.length) return items;
+  const withRole = withProjectRole || withSystemRole;
+  const params = {};
+  if (roleId) params['role.id'] = roleId;
+  if (projectId) params['scope.project.id'] = projectId;
+  const [assigns, systemAssigns, roles, projects, domains] = await Promise.all([
+    withProjectRole ? safeList(keystoneApi.listRoleAssignments(params), 'role_assignments') : [],
+    withSystemRole ? safeList(keystoneApi.listRoleAssignments({ 'scope.system': 'all' }), 'role_assignments') : [],
+    withRole ? listRoles() : [],
+    withProjectRole || withDefaultProject ? listAllProjects() : [],
+    listDomains(),
+  ]);
+  const newItems = items.map((u) => updateUser(u, assigns, systemAssigns, roles, projects, domains));
+  if (projectId) return newItems.filter((it) => !!it.projectCount);
+  if (roleId) {
+    return newItems.filter((it) => it.projectCount || it.systemRoles.find((r) => r.id === roleId));
+  }
+  return newItems;
+};
+
+/** legacy detailDidFetch */
+export const fetchUserDetail = async (id) => {
+  const res = await keystoneApi.getUser(id);
+  const user = { id, ...(res?.user || {}) };
+  const [systemAssigns, roles, domains, defaultProject] = await Promise.all([
+    safeList(keystoneApi.listRoleAssignments({ 'user.id': id, 'scope.system': 'all' }), 'role_assignments'),
+    listRoles(),
+    listDomains(),
+    user.default_project_id
+      ? keystoneApi
+          .getProject(user.default_project_id)
+          .then((r) => r?.project)
+          .catch(() => null)
+      : null,
+  ]);
+  return updateUser(user, [], systemAssigns, roles, defaultProject ? [defaultProject] : [], domains);
+};
+
+/* ------------------------------ Columns ------------------------------ */
+
+/** mode: 'list' | 'group' | 'domain' | 'project' | 'role' (legacy getColumns variants) */
+export const userColumns = ({ mode = 'list' } = {}) => {
+  const hide = {
+    list: ['projectRoles', 'projects'],
+    group: ['projectRoles', 'projects'],
+    domain: ['domainName', 'projects', 'projectRoles'],
+    role: ['projectRoles'],
+    project: ['projects'],
+  }[mode] || [];
+  return [
+    nameColumn({ title: t('User ID/Name'), linkTo: (r) => detailPath.user(r.id) }),
+    textColumn(t('Real Name'), 'real_name'),
     {
-      title: t('ID/Name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => (
-        <div>
-          <Space size={6}>
-            <UserOutlined style={{ color: '#0068ff' }} />
-            <span style={{ fontWeight: 600, color: '#0068ff' }}>{text}</span>
-          </Space>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>ID: {record.id}</span>
-            <Tooltip title={t('Copy')}>
-              <CopyOutlined
-                style={{ cursor: 'pointer', color: '#64748b' }}
-                onClick={() => {
-                  navigator.clipboard.writeText(record.id);
-                  message.success(t('Copied'));
-                }}
-              />
-            </Tooltip>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: t('Email'),
-      dataIndex: 'email',
-      key: 'email',
-      render: (email) => <span style={{ color: '#64748b' }}>{email}</span>,
-    },
-    {
-      title: t('Domain'),
-      dataIndex: 'domain',
-      key: 'domain',
-      render: (domain) => <Tag color="blue">{domain}</Tag>,
-    },
-    {
-      title: t('Status'),
-      dataIndex: 'enabled',
-      key: 'enabled',
-      render: (enabled) =>
-        enabled ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            {t('Enabled')}
-          </Tag>
+      title: t('Default Project ID/Name'),
+      dataIndex: 'defaultProject',
+      key: 'defaultProject',
+      render: (v, r) =>
+        r.default_project_id ? (
+          <IdNameLink id={r.default_project_id} name={v} to={detailPath.project(r.default_project_id)} />
         ) : (
-          <Tag color="error" icon={<StopOutlined />}>
-            {t('Disabled')}
-          </Tag>
+          '-'
         ),
     },
     {
-      title: t('Actions'),
-      key: 'actions',
-      align: 'right',
-      render: (_, record) => (
-        <Button
-          type="text"
-          danger
-          size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleDelete(record)}
-        >
-          {t('Delete')}
-        </Button>
-      ),
+      title: t('Roles'),
+      dataIndex: 'projectRoles',
+      key: 'projectRoles',
+      render: (_, r) => {
+        const roles = Object.values(r.projects || {}).flatMap((it) => (it?.roles || []).filter(Boolean));
+        return roles.length ? roles.map((role, i) => <div key={`${role.id}-${i}`}>{role.name}</div>) : '-';
+      },
     },
-  ];
-
-  return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      <Breadcrumb
-        items={[
-          { title: t('Identity') },
-          { title: t('Users') },
-        ]}
-        style={{ marginBottom: 16, fontSize: 13 }}
-      />
-
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-            {t('Users')}
-          </h1>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
-            {t('Manage user credentials and access authorization in OpenStack Keystone.')}
-          </p>
-        </div>
-
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchUsers} loading={loading}>
-            {t('Refresh')}
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-            style={{ backgroundColor: '#0068ff', borderRadius: 8, fontWeight: 600 }}
-          >
-            {t('Create User')}
-          </Button>
-        </Space>
-      </div>
-
-      <Card
-        variant="borderless"
-        style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-        }}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Input
-            placeholder={t('Search by Name, Email, or ID...')}
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 320, borderRadius: 8 }}
-            allowClear
-          />
-        </div>
-
-        <Table
-          columns={columns}
-          dataSource={filteredUsers}
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          rowKey="id"
-        />
-      </Card>
-
-      <Modal
-        title={t('Create User')}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ enabled: true }}>
-          <Form.Item
-            name="name"
-            label={t('Username')}
-            rules={[{ required: true, message: t('Please input username!') }]}
-          >
-            <Input placeholder="johndoe" />
-          </Form.Item>
-
-          <Form.Item
-            name="password"
-            label={t('Password')}
-            rules={[{ required: true, message: t('Please input password!') }]}
-          >
-            <Input.Password placeholder={t('Password')} />
-          </Form.Item>
-
-          <Form.Item name="email" label={t('Email')}>
-            <Input placeholder="user@company.com" />
-          </Form.Item>
-
-          <Form.Item name="enabled" label={t('Status')} valuePropName="checked">
-            <Switch defaultChecked />
-          </Form.Item>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-            <Button onClick={() => setIsModalOpen(false)}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ backgroundColor: '#0068ff' }}>
-              {t('Create')}
-            </Button>
+    {
+      title: t('Project Scope'),
+      dataIndex: 'projects',
+      key: 'projects',
+      render: (value) => {
+        const list = Object.values(value || {});
+        if (!list.length) return '-';
+        return list.map(({ project }) => (
+          <div key={project.id}>
+            <Link to={detailPath.project(project.id)}>{project.name || project.id}</Link>
           </div>
-        </Form>
-      </Modal>
-    </div>
+        ));
+      },
+    },
+    domainColumn(),
+    {
+      title: t('System Roles'),
+      dataIndex: 'systemRoles',
+      key: 'systemRoles',
+      render: (value) => ((value || []).length ? value.map((it) => <div key={it.id}>{it.name}</div>) : '-'),
+    },
+    textColumn(t('Email'), 'email'),
+    textColumn(t('Phone'), 'phone'),
+    enabledColumn(),
+  ].filter((c) => !hide.includes(c.dataIndex));
+};
+
+export const userFilters = ({ inDomain } = {}) => [
+  { name: 'name', label: t('User Name') },
+  { name: 'real_name', label: t('Real Name') },
+  { name: 'enabled', label: t('Enabled'), options: yesNoFilterOptions() },
+  ...(inDomain ? [] : [{ name: 'domainName', label: t('Domain Name') }]),
+];
+
+/* ------------------------------ Actions ------------------------------ */
+
+export const userNameRule = (getDomainId, selfId) => ({
+  validator: async (_, value) => {
+    if (!value) return;
+    const domainId = getDomainId();
+    if (!domainId) return;
+    const users = await safeList(keystoneApi.listUsers(), 'users');
+    if (users.find((u) => u.name === value && u.domain_id === domainId && u.id !== selfId)) {
+      throw new Error(t('Invalid: User names in the domain can not be repeated'));
+    }
+  },
+});
+
+export const editUserAction = () => ({
+  id: 'user-edit',
+  type: 'modal',
+  title: t('Edit User'),
+  buttonText: t('Edit'),
+  getDefaultValues: (item) => ({
+    name: item.name,
+    domainName: item.domain?.name || item.domainName || item.domain_id,
+    email: item.email,
+    phone: item.phone,
+    real_name: item.real_name,
+    description: item.description,
+  }),
+  getFormItems: (item) => [
+    {
+      name: 'name',
+      label: t('User Name'),
+      type: 'input',
+      required: true,
+      placeholder: t('Please input user name'),
+      tip: t('User name can not be duplicated'),
+      rules: [userNameRule(() => item.domain_id, item.id)],
+    },
+    { name: 'email', label: t('Email'), type: 'input', required: true, rules: [emailRule()] },
+    { name: 'phone', label: t('Phone'), type: 'input', required: true, rules: [phoneRule()], placeholder: '+86 13800000000' },
+    { name: 'real_name', label: t('Real Name'), type: 'input', required: true },
+    { name: 'domainName', label: t('Domain'), type: 'input', disabled: true },
+    { name: 'description', label: t('Description'), type: 'textarea' },
+  ],
+  onSubmit: ({ email, phone, real_name, description, name }, item) =>
+    keystoneApi.updateUser(item.id, { email, phone, real_name, description, name }),
+});
+
+/** legacy SystemRole: only "admin" / "reader" are system roles */
+export const systemRoleAction = () => ({
+  id: 'edit-system-permission',
+  type: 'modal',
+  title: t('Edit System Permission'),
+  getDefaultValues: (item) => {
+    const role = (item.systemRoles || [])[0]?.id;
+    return role ? { name: item.name, role } : { name: item.name };
+  },
+  getFormItems: async () => {
+    const roles = (await listRoles()).filter((r) => r.name === 'admin' || r.name === 'reader');
+    return [
+      { name: 'name', label: t('User'), type: 'label' },
+      { name: 'role', label: t('Role'), type: 'select', options: roles.map((r) => ({ label: r.name, value: r.id })) },
+    ];
+  },
+  onSubmit: async ({ role }, item) => {
+    const oldRoles = item.systemRoles || [];
+    const newRoles = role ? [role] : [];
+    const oldIds = oldRoles.map((r) => r.id);
+    const reqs = [];
+    oldIds.forEach((roleId) => {
+      if (!newRoles.includes(roleId)) reqs.push(keystoneApi.removeSystemUserRole(item.id, roleId));
+    });
+    newRoles.forEach((roleId) => {
+      if (!oldIds.includes(roleId)) reqs.push(keystoneApi.assignSystemUserRole(item.id, roleId));
+    });
+    return Promise.all(reqs);
+  },
+});
+
+export const userPasswordAction = () => ({
+  id: 'update-user-password',
+  type: 'modal',
+  title: t('Update User Password'),
+  getDefaultValues: (item) => ({ name: item.name, password: '', confirmPassword: '' }),
+  formItems: [
+    { name: 'name', label: t('User'), type: 'label' },
+    { name: 'password', label: t('New password'), type: 'password', required: true, rules: [passwordRule()] },
+    {
+      name: 'confirmPassword',
+      label: t('Confirm new password'),
+      type: 'password',
+      required: true,
+      rules: [confirmPasswordRule()],
+    },
+  ],
+  onSubmit: ({ password }, item) => keystoneApi.updateUser(item.id, { password }),
+});
+
+export const deleteUserAction = () => ({
+  ...deleteAction({ name: t('User'), onDelete: (it) => keystoneApi.deleteUser(it.id) }),
+  title: t('Delete User'),
+  actionName: t('delete user'),
+});
+
+export const enableUserAction = () => ({
+  id: 'Enable',
+  type: 'confirm',
+  title: t('Enable User'),
+  actionName: t('Enable User'),
+  allowed: (item) => item.enabled !== true,
+  onSubmit: (item) => keystoneApi.updateUser(item.id, { enabled: true }),
+});
+
+export const disableUserAction = () => ({
+  id: 'Disable',
+  type: 'confirm',
+  title: t('Disable User'),
+  actionName: t('Disable User'),
+  isDanger: true,
+  allowed: (item) => item.enabled !== false,
+  onSubmit: (item) => keystoneApi.updateUser(item.id, { enabled: false }),
+});
+
+/** legacy User/actions/SetDefaultProject: jumps to the user's projects tab */
+export const gotoSetDefaultProjectAction = (navigate) => ({
+  id: 'set-default-project',
+  type: 'custom',
+  title: t('Set Default Project'),
+  onExecute: (item) => navigate(`${detailPath.user(item.id)}?tab=project`),
+});
+
+export const userRowActions = (navigate) => ({
+  firstAction: editUserAction(),
+  moreActions: [
+    { action: systemRoleAction() },
+    { action: gotoSetDefaultProjectAction(navigate) },
+    { action: userPasswordAction() },
+    { action: deleteUserAction() },
+    { action: enableUserAction() },
+    { action: disableUserAction() },
+  ],
+});
+
+/* ------------------------------ Page ------------------------------ */
+
+export default function UserList() {
+  const navigate = useNavigate();
+  return (
+    <ResourcePage
+      title={t('Users')}
+      breadcrumb={[t('Identity'), t('Users')]}
+      description={t('Manage user credentials and access authorization in OpenStack Keystone.')}
+      fetch={() => fetchUsers()}
+      columns={() => userColumns({ mode: 'list' })}
+      filterParams={userFilters()}
+      searchFields={['name', 'id', 'email', 'real_name', 'domainName']}
+      primaryActions={[
+        {
+          id: 'user-create',
+          type: 'custom',
+          title: t('Create User'),
+          onExecute: () => navigate('/identity/user-admin/create'),
+        },
+      ]}
+      batchActions={[deleteUserAction()]}
+      rowActions={userRowActions(navigate)}
+    />
   );
 }

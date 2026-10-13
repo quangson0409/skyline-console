@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Breadcrumb, Button, Card, Space, Tabs, Result, Skeleton } from 'antd';
 import { ArrowLeftOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DetailCard from '@/components/DetailCard';
 import Status from '@/components/Status';
 import ItemActionButtons from '@/components/Action/ItemActionButtons';
@@ -36,7 +36,13 @@ export default function ResourceDetail({
   const navigate = useNavigate();
   const isAdmin = useIsAdminPage();
   const { currentProject, hasAdminRole } = useAuthStore();
-  const [activeKey, setActiveKey] = useState();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeKey = searchParams.get('tab') || undefined;
+  const setActiveKey = (key) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', key);
+    setSearchParams(next, { replace: true });
+  };
 
   const ctx = useMemo(
     () => ({ id, params, isAdmin, projectId: currentProject?.id, hasAdminRole, t }),
@@ -130,7 +136,7 @@ export default function ResourceDetail({
           {tabList.length ? (
             <Card variant="borderless" style={{ borderRadius: 8 }}>
               <Tabs
-                activeKey={activeKey || tabList[0].key}
+                activeKey={tabList.some((tab) => tab.key === activeKey) ? activeKey : tabList[0].key}
                 onChange={setActiveKey}
                 items={tabList.map((tab) => ({
                   key: tab.key,

@@ -7,6 +7,7 @@ import { renderModuleRoutes } from '@/routes';
 // Auth Layout & Login
 const AuthLayout = lazy(() => import('@/layouts/AuthLayout'));
 const Login = lazy(() => import('@/pages/Auth/Login'));
+const AuthChangePassword = lazy(() => import('@/pages/UserCenter/ChangePassword'));
 
 // Core Split Components
 const Overview = lazy(() => import('@/pages/Overview/Overview'));
@@ -15,26 +16,6 @@ const AdminOverview = lazy(() => import('@/pages/Overview/AdminOverview'));
 // Compute
 const InstanceList = lazy(() => import('@/pages/Instances/InstanceList'));
 const InstanceDetail = lazy(() => import('@/pages/Instances/InstanceDetail'));
-const FlavorList = lazy(() => import('@/pages/Compute/Flavors/FlavorList'));
-const KeypairList = lazy(() => import('@/pages/Compute/Keypairs/KeypairList'));
-const ImageList = lazy(() => import('@/pages/Compute/Images/ImageList'));
-const ServerGroupList = lazy(() => import('@/pages/Compute/ServerGroups/ServerGroupList'));
-const InstanceSnapshotList = lazy(() => import('@/pages/Compute/InstanceSnapshots/SnapshotList'));
-const HypervisorList = lazy(() => import('@/pages/Compute/Hypervisors/HypervisorList'));
-const AggregateList = lazy(() => import('@/pages/Compute/Aggregates/AggregateList'));
-
-// Storage
-const VolumeList = lazy(() => import('@/pages/Storage/Volumes/VolumeList'));
-const SnapshotList = lazy(() => import('@/pages/Storage/Snapshots/SnapshotList'));
-
-// Network
-const VpcNetworks = lazy(() => import('@/pages/Networks/VpcNetworks'));
-const FloatingIpList = lazy(() => import('@/pages/Networks/FloatingIps/FloatingIpList'));
-const SecurityGroupList = lazy(() => import('@/pages/Networks/SecurityGroups/SecurityGroupList'));
-
-// Identity
-const ProjectList = lazy(() => import('@/pages/Identity/Projects/ProjectList'));
-const UserList = lazy(() => import('@/pages/Identity/Users/UserList'));
 
 // Fallback Module Placeholder
 const ModulePlaceholder = lazy(() => import('@/components/Common/ModulePlaceholder'));
@@ -63,6 +44,14 @@ export default function App() {
           element={
             <Suspense fallback={<PageLoader />}>
               <Login />
+            </Suspense>
+          }
+        />
+        <Route
+          path="change-password"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <AuthChangePassword />
             </Suspense>
           }
         />
@@ -125,47 +114,7 @@ export default function App() {
             }
           />
           <Route path="instances" element={<Navigate to="/compute/instance" replace />} />
-          <Route
-            path="instance-snapshot"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <InstanceSnapshotList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="flavor"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <FlavorList />
-              </Suspense>
-            }
-          />
           <Route path="flavors" element={<Navigate to="/compute/flavor" replace />} />
-          <Route
-            path="server-group"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ServerGroupList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="image"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ImageList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="keypair"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <KeypairList />
-              </Suspense>
-            }
-          />
           <Route path="keypairs" element={<Navigate to="/compute/keypair" replace />} />
 
           {/* Admin Compute */}
@@ -177,198 +126,22 @@ export default function App() {
               </Suspense>
             }
           />
-          <Route
-            path="instance-snapshot-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <InstanceSnapshotList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="flavor-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <FlavorList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="server-group-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ServerGroupList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="image-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ImageList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="hypervisors-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <HypervisorList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="aggregates-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <AggregateList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="baremetal-node-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Bare Metal Nodes (Máy chủ Ironic)" service="Ironic" />
-              </Suspense>
-            }
-          />
         </Route>
 
         {/* 3. Storage */}
         <Route path="storage">
           {/* Tenant Storage */}
-          <Route
-            path="volume"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <VolumeList />
-              </Suspense>
-            }
-          />
           <Route path="volumes" element={<Navigate to="/storage/volume" replace />} />
-          <Route
-            path="backup"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Volume Backups (Sao lưu ổ cứng)" service="Cinder" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="snapshot"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <SnapshotList />
-              </Suspense>
-            }
-          />
           <Route path="snapshots" element={<Navigate to="/storage/snapshot" replace />} />
-          <Route
-            path="container"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Object Storage (Lưu trữ đối tượng Swift)" service="Swift" />
-              </Suspense>
-            }
-          />
 
           {/* Admin Storage */}
-          <Route
-            path="volume-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <VolumeList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="backup-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Volume Backups Admin" service="Cinder" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="snapshot-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <SnapshotList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="volume-type-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Volume Types & QoS Specs" service="Cinder" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="storage-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Storage Backends (Ceph / SAN Pool)" service="Cinder" />
-              </Suspense>
-            }
-          />
         </Route>
 
         {/* 4. Network */}
         <Route path="network">
           {/* Tenant Network */}
-          <Route
-            path="networks"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <VpcNetworks />
-              </Suspense>
-            }
-          />
           <Route path="vpc" element={<Navigate to="/network/networks" replace />} />
-          <Route
-            path="port"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Ports (Cổng mạng)" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="qos-policy"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="QoS Policies (Chính sách chất lượng dịch vụ)" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="router"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Routers (Bộ định tuyến ảo)" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="floatingip"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <FloatingIpList />
-              </Suspense>
-            }
-          />
           <Route path="floating-ips" element={<Navigate to="/network/floatingip" replace />} />
-          <Route
-            path="topo"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Topology (Sơ đồ kết nối mạng)" service="Neutron" />
-              </Suspense>
-            }
-          />
           <Route
             path="load-balancers"
             element={
@@ -385,31 +158,7 @@ export default function App() {
               </Suspense>
             }
           />
-          <Route
-            path="vpn"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="VPNs (Mạng riêng ảo IPsec)" service="Neutron VPN" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="security-group"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <SecurityGroupList />
-              </Suspense>
-            }
-          />
           <Route path="security-groups" element={<Navigate to="/network/security-group" replace />} />
-          <Route
-            path="firewall"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Firewalls (Tường lửa FWaaS)" service="Neutron Firewall" />
-              </Suspense>
-            }
-          />
           <Route
             path="dns/zones"
             element={
@@ -429,82 +178,10 @@ export default function App() {
 
           {/* Admin Network */}
           <Route
-            path="networks-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <VpcNetworks />
-              </Suspense>
-            }
-          />
-          <Route
-            path="port-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Ports Admin (Tất cả cổng mạng)" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="qos-policy-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="QoS Policies Admin" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="router-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Routers Admin (Tất cả bộ định tuyến)" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="floatingip-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <FloatingIpList />
-              </Suspense>
-            }
-          />
-          <Route
             path="load-balancers-admin"
             element={
               <Suspense fallback={<PageLoader />}>
                 <ModulePlaceholder title="Load Balancers Admin (Octavia)" service="Octavia" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="vpn-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="VPNs Admin" service="Neutron VPN" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="security-group-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <SecurityGroupList />
-              </Suspense>
-            }
-          />
-          <Route
-            path="rbac-policies-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="RBAC Policies (Chính sách chia sẻ tài nguyên mạng)" service="Neutron" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="firewall-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Firewalls Admin (FWaaS)" service="Neutron Firewall" />
               </Suspense>
             }
           />
@@ -584,48 +261,8 @@ export default function App() {
 
         {/* 11. Identity (Keystone) */}
         <Route path="identity">
-          <Route
-            path="domain-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Domains (Tên miền Keystone)" service="Keystone Identity" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="project-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ProjectList />
-              </Suspense>
-            }
-          />
           <Route path="projects" element={<Navigate to="/identity/project-admin" replace />} />
-          <Route
-            path="user-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <UserList />
-              </Suspense>
-            }
-          />
           <Route path="users" element={<Navigate to="/identity/user-admin" replace />} />
-          <Route
-            path="user-group-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="User Groups (Nhóm người dùng)" service="Keystone Identity" />
-              </Suspense>
-            }
-          />
-          <Route
-            path="role-admin"
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Roles (Phân quyền & Vai trò)" service="Keystone Identity" />
-              </Suspense>
-            }
-          />
         </Route>
 
         {/* 12. Global Settings (Admin) */}

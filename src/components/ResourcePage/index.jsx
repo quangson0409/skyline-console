@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Breadcrumb, Alert } from 'antd';
 import { Link } from 'react-router-dom';
 import BaseTable from '@/components/Tables/BaseTable';
@@ -38,6 +38,8 @@ export default function ResourcePage({
   pageSize = 10,
   notice,
   embedded = false,
+  initialFilters,
+  getCheckboxProps,
 }) {
   const { t } = useTranslation();
   const isAdmin = useIsAdminPage();
@@ -50,12 +52,18 @@ export default function ResourcePage({
     [isAdmin, projectId, hasAdminRole, t]
   );
 
+  // interval may be a number or (list) => ms, e.g. poll only while something is PENDING_*
+  const [dynamicInterval, setDynamicInterval] = useState(typeof interval === 'number' ? interval : 0);
   const { data, loading, refetch, setData } = useResource(
     () => fetch(ctx),
     [ctx, ...deps],
-    { interval }
+    { interval: dynamicInterval }
   );
   const list = Array.isArray(data) ? data : [];
+  useEffect(() => {
+    setDynamicInterval(typeof interval === 'function' ? interval(list) || 0 : interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, interval]);
   const fullCtx = useMemo(() => ({ ...ctx, data: list, refetch, setData }), [ctx, list, refetch, setData]);
 
   const onRefresh = useCallback(() => {
@@ -121,6 +129,8 @@ export default function ResourcePage({
         loading={loading}
         rowKey={rowKey}
         filterParams={filterParams}
+        filters={initialFilters}
+        getCheckboxProps={getCheckboxProps}
         searchFields={searchFields}
         onRefresh={onRefresh}
         primaryActions={primaryButtons}

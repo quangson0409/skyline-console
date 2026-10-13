@@ -1,283 +1,537 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Table,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Switch,
-  message,
-  Tooltip,
-} from 'antd';
-import {
-  PlusOutlined,
-  ReloadOutlined,
-  BankOutlined,
-  CopyOutlined,
-  DeleteOutlined,
-  SearchOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-} from '@ant-design/icons';
+import React from 'react';
+import { Checkbox, Divider, message } from 'antd';
+import { Link } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
-import { useTranslation } from '@/core/i18n';
+import ResourcePage, { nameColumn, deleteAction } from '@/components/ResourcePage';
+import { invalidateProjectMap } from '@/hooks/useProjectMap';
+import { t } from '@/core/i18n';
+import {
+  detailPath,
+  enabledColumn,
+  descriptionColumn,
+  domainColumn,
+  statusTypes,
+  yesNoFilterOptions,
+  ProjectTags,
+  MemberRoleSelector,
+  RoleLinks,
+  TagsExtra,
+  tagsRule,
+  nameRegexWithoutChinese,
+  fetchDomainOptions,
+  listDomains,
+  listRoles,
+  listAllUsers,
+  listAllGroups,
+  withDomainName,
+  safeList,
+  applyRoleDiff,
+  DomainSelect,
+} from '../common';
+import { manageQuotaAction } from './quota';
 
-export default function ProjectList() {
-  const { t } = useTranslation();
-  const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [form] = Form.useForm();
+/* ------------------------------ Data ------------------------------ */
 
-  const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await keystoneApi.listProjects();
-      if (res && res.projects) {
-        const normalized = res.projects.map((p) => ({
-          key: p.id,
-          id: p.id,
-          name: p.name,
-          domain: p.domain_id || 'Default',
-          description: p.description || '',
-          enabled: p.enabled ?? true,
-        }));
-        setProjects(normalized);
-      }
-    } catch (err) {
-      message.error(t('Failed to load projects: ') + err.message);
-    } finally {
-      setLoading(false);
+/** legacy ProjectStore.updateProject */
+export const updateProject = (project, roleAssignments, roles, domains) => {
+  const users = {};
+  const groups = {};
+  roleAssignments.forEach((ra) => {
+    const projectId = ra?.scope?.project?.id;
+    const userId = ra?.user?.id;
+    const groupId = ra?.group?.id;
+    const roleId = ra?.role?.id;
+    const roleItem = roles.find((it) => it.id === roleId);
+    if (projectId === project.id && roleId) {
+      if (userId) users[userId] = [...(users[userId] || []), roleItem];
+      if (groupId) groups[groupId] = [...(groups[groupId] || []), roleItem];
     }
-  }, [t]);
-
-  useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
-
-  const handleCreate = async (values) => {
-    try {
-      await keystoneApi.createProject({
-        name: values.name,
-        description: values.description || '',
-        enabled: values.enabled ?? true,
-      });
-      message.success(t('Project created successfully!'));
-      setIsModalOpen(false);
-      form.resetFields();
-      fetchProjects();
-    } catch (err) {
-      message.error(t('Failed to create project: ') + err.message);
-    }
+  });
+  const domain = domains.find((it) => it.id === project.domain_id);
+  return {
+    ...project,
+    tags: project.tags || [],
+    users,
+    groups,
+    userCount: Object.keys(users).length,
+    groupCount: Object.keys(groups).length,
+    domain,
+    domainName: domain?.name || project.domain_id,
   };
+};
 
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: `${t('Delete Project')} ${record.name}?`,
-      content: t('Are you sure you want to delete this project? All associated resources may be impacted.'),
-      okText: t('Delete'),
-      okType: 'danger',
-      cancelText: t('Cancel'),
-      onOk: async () => {
-        try {
-          await keystoneApi.deleteProject(record.id);
-          message.success(t('Project deleted successfully'));
-          fetchProjects();
-        } catch (err) {
-          message.error(t('Failed to delete project: ') + err.message);
-        }
+/** legacy ProjectStore list + listDidFetch (userId / groupId / domainId scoped variants) */
+export const fetchProjects = async ({ userId, groupId, domainId, withRole = true } = {}) => {
+  let items;
+  if (userId) {
+    items = (await keystoneApi.listUserProjects(userId))?.projects || [];
+  } else {
+    items = (await keystoneApi.listProjects(domainId ? { domain_id: domainId } : undefined))?.projects || [];
+  }
+  if (!items.length) return items;
+  const params = {};
+  if (groupId) params['group.id'] = groupId;
+  const [assigns, roles, domains] = await Promise.all([
+    withRole ? safeList(keystoneApi.listRoleAssignments(params), 'role_assignments') : [],
+    withRole ? listRoles() : [],
+    listDomains(),
+  ]);
+  const newItems = items.map((p) => updateProject(p, assigns, roles, domains));
+  if (userId) {
+    const userGroups = await safeList(keystoneApi.listUserGroups(userId), 'groups');
+    const groupIds = userGroups.map((g) => g.id);
+    return newItems.map((it) => {
+      const currentUsers = it.users[userId] ? { [userId]: it.users[userId] } : {};
+      const currentGroups = Object.keys(it.groups).reduce((acc, gid) => {
+        if (groupIds.includes(gid)) acc[gid] = { roles: it.groups[gid], group: userGroups.find((g) => g.id === gid) };
+        return acc;
+      }, {});
+      return {
+        ...it,
+        users: currentUsers,
+        userCount: Object.keys(currentUsers).length,
+        groups: currentGroups,
+        groupCount: Object.keys(currentGroups).length,
+      };
+    });
+  }
+  if (groupId) return newItems.filter((it) => !!it.groupCount);
+  return newItems;
+};
+
+/** legacy detailDidFetch */
+export const fetchProjectDetail = async (id) => {
+  const res = await keystoneApi.getProject(id);
+  const project = { id, ...(res?.project || {}) };
+  const [assigns, roles, domains] = await Promise.all([
+    safeList(keystoneApi.listRoleAssignments({ 'scope.project.id': id }), 'role_assignments'),
+    listRoles(),
+    listDomains(),
+  ]);
+  return updateProject(project, assigns, roles, domains);
+};
+
+/* ------------------------------ Columns ------------------------------ */
+
+/** legacy getUserProjectRole: [{ role, groups }] for the user detail page */
+const getUserProjectRole = (record) => {
+  const { users = {}, groups = {} } = record || {};
+  const userRoleIds = [];
+  const result = [];
+  Object.keys(users).forEach((id) => {
+    (users[id] || []).filter(Boolean).forEach((r) => {
+      result.push({ role: r, groups: [] });
+      userRoleIds.push(r.id);
+    });
+  });
+  Object.keys(groups).forEach((gid) => {
+    const { roles = [], group } = groups[gid] || {};
+    roles
+      .filter(Boolean)
+      .filter((r) => !userRoleIds.includes(r.id))
+      .forEach((r) => {
+        const existing = result.find((it) => it.role.id === r.id);
+        if (existing) existing.groups.push(group);
+        else result.push({ role: r, groups: [group] });
+      });
+  });
+  return result;
+};
+
+/**
+ * mode: 'list' (project list), 'domain' (domain detail tab), 'user' (user detail tab), 'group' (user group detail tab)
+ */
+export const projectColumns = ({ mode = 'list' } = {}) => {
+  const cols = [nameColumn({ title: t('Project ID/Name'), linkTo: (r) => detailPath.project(r.id) })];
+  if (mode === 'user') {
+    cols.push({
+      title: t('Role'),
+      dataIndex: 'userProjectRole',
+      key: 'userProjectRole',
+      render: (_, record) => {
+        const roles = getUserProjectRole(record);
+        if (!roles.length) return '-';
+        return (
+          <div>
+            {roles.map(({ role, groups }) => (
+              <div key={role.id}>
+                <Link to={detailPath.role(role.id)}>{role.name}</Link>
+                {groups.length ? (
+                  <>
+                    {' '}
+                    ({t('authorized by group ')}
+                    {groups.filter(Boolean).map((g) => (
+                      <Link key={g.id} to={detailPath.group(g.id)} style={{ marginRight: 8 }}>
+                        {g.name}
+                      </Link>
+                    ))}
+                    )
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        );
       },
     });
-  };
-
-  const filteredProjects = projects.filter((p) => {
-    const q = searchText.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      p.name.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q) ||
-      p.description.toLowerCase().includes(q)
-    );
-  });
-
-  const columns = [
-    {
-      title: t('ID/Name'),
-      dataIndex: 'name',
-      key: 'name',
-      render: (text, record) => (
-        <div>
-          <Space size={6}>
-            <BankOutlined style={{ color: '#0068ff' }} />
-            <span style={{ fontWeight: 600, color: '#0068ff' }}>{text}</span>
-          </Space>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span>ID: {record.id}</span>
-            <Tooltip title={t('Copy')}>
-              <CopyOutlined
-                style={{ cursor: 'pointer', color: '#64748b' }}
-                onClick={() => {
-                  navigator.clipboard.writeText(record.id);
-                  message.success(t('Copied'));
-                }}
-              />
-            </Tooltip>
-          </div>
+  }
+  if (mode === 'group') {
+    cols.push({
+      title: t('Role'),
+      dataIndex: 'groupProjectRole',
+      key: 'groupProjectRole',
+      render: (_, record) => <RoleLinks roles={Object.values(record.groups || {}).flat()} />,
+    });
+  }
+  if (mode === 'list' || mode === 'domain') {
+    cols.push({
+      title: t('Member Num'),
+      dataIndex: 'num',
+      key: 'num',
+      render: (_, r) => (
+        <div style={{ whiteSpace: 'nowrap' }}>
+          <span>
+            {t('User Num: ')}
+            {r.userCount}
+          </span>
+          <Divider type="vertical" />
+          <span>
+            {t('User Group Num: ')}
+            {r.groupCount}
+          </span>
         </div>
       ),
-    },
+    });
+  }
+  if (mode !== 'domain') cols.push(domainColumn());
+  cols.push(enabledColumn());
+  cols.push({ title: t('Tags'), dataIndex: 'tags', key: 'tags', render: (tags) => <ProjectTags tags={tags} /> });
+  cols.push(descriptionColumn());
+  return cols;
+};
+
+export const projectFilters = ({ inDomain } = {}) => [
+  { name: 'name', label: t('Project Name') },
+  { name: 'id', label: t('Project ID') },
+  { name: 'enabled', label: t('Enabled'), options: yesNoFilterOptions() },
+  ...(inDomain ? [] : [{ name: 'domainName', label: t('Domain Name') }]),
+  { name: 'tags', label: t('Tags') },
+];
+
+/* ------------------------------ Actions ------------------------------ */
+
+const projectNameRule = (getDomainId, selfId) => ({
+  validator: async (_, value) => {
+    if (!value) return;
+    if (!selfId && !nameRegexWithoutChinese.test(value)) {
+      throw new Error(t('Invalid: Project name can not be chinese'));
+    }
+    const domainId = getDomainId();
+    if (!domainId) return;
+    const projects = await safeList(keystoneApi.listProjects(), 'projects');
+    if (projects.find((p) => p.name === value && p.domain_id === domainId && p.id !== selfId)) {
+      throw new Error(t('Invalid: Project names in the domain can not be repeated'));
+    }
+  },
+});
+
+/** Domain select with legacy "Show All Domains" toggle */
+export const domainFormItems = async (item = {}) => {
+  const [options, all] = await Promise.all([fetchDomainOptions(item), listDomains()]);
+  const allOptions = all.map((d) => ({ label: d.name, value: d.id }));
+  return [
     {
-      title: t('Domain'),
-      dataIndex: 'domain',
-      key: 'domain',
-      render: (domain) => <Tag color="blue">{domain}</Tag>,
+      name: 'domain_id',
+      label: t('Domain'),
+      required: true,
+      render: ({ form }) => <DomainSelect form={form} options={options} allOptions={allOptions} />,
     },
-    {
-      title: t('Description'),
-      dataIndex: 'description',
-      key: 'description',
-      render: (desc) => desc || <span style={{ color: '#94a3b8' }}>-</span>,
-    },
-    {
-      title: t('Status'),
-      dataIndex: 'enabled',
-      key: 'enabled',
-      render: (enabled) =>
-        enabled ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            {t('Enabled')}
-          </Tag>
-        ) : (
-          <Tag color="error" icon={<StopOutlined />}>
-            {t('Disabled')}
-          </Tag>
-        ),
-    },
-    {
-      title: t('Actions'),
-      key: 'actions',
-      align: 'right',
-      render: (_, record) => (
-        <Button
-          type="text"
-          danger
-          size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleDelete(record)}
-        >
-          {t('Delete')}
-        </Button>
-      ),
-    },
+    { name: 'showAllDomains', type: 'checkbox', render: () => <Checkbox>{t('Show All Domains')}</Checkbox> },
   ];
+};
 
-  return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      <Breadcrumb
-        items={[
-          { title: t('Identity') },
-          { title: t('Projects') },
-        ]}
-        style={{ marginBottom: 16, fontSize: 13 }}
-      />
+/** name field whose duplicate check depends on the selected domain_id */
+export const nameInDomainRule = (check) => ({ getFieldValue }) => check(() => getFieldValue('domain_id'));
 
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-            {t('Projects')}
-          </h1>
-          <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
-            {t('Manage Keystone tenant projects and resource isolation domains.')}
-          </p>
-        </div>
+export const createProjectAction = () => ({
+  id: 'project-create',
+  type: 'modal',
+  title: t('Create Project'),
+  getDefaultValues: () => ({ domain_id: 'default', enabled: true, tags: [] }),
+  getFormItems: async () => {
+    const domainItems = await domainFormItems();
+    return [
+      {
+        name: 'name',
+        label: t('Name'),
+        type: 'input',
+        required: true,
+        placeholder: t('Please input name'),
+        tip: t('Project name can not be duplicated'),
+        rules: [nameInDomainRule((getDomain) => projectNameRule(getDomain))],
+      },
+      ...domainItems,
+      {
+        name: 'enabled',
+        label: t('Status'),
+        type: 'radio',
+        required: true,
+        options: statusTypes(),
+        tip: t(
+          'Disabling the project will have a negative impact. If the users associated with the project are only assigned to the project, they will not be able to log in'
+        ),
+      },
+      { name: 'description', label: t('Description'), type: 'textarea' },
+      { name: 'tags', label: t('Tags'), type: 'tags', rules: [tagsRule()], extra: <TagsExtra /> },
+    ];
+  },
+  onSubmit: async ({ tags, showAllDomains, ...projectData }) => {
+    const result = await keystoneApi.createProject(projectData);
+    invalidateProjectMap();
+    if (tags && tags.length && result?.project?.id) {
+      try {
+        await keystoneApi.updateProjectTags(result.project.id, tags);
+      } catch {
+        message.warning(
+          `${t('Project created successfully, but failed to add tags')} ${t(
+            'You can modify the tags later using the Modify Tags action.'
+          )}`
+        );
+      }
+    }
+    return result;
+  },
+});
 
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchProjects} loading={loading}>
-            {t('Refresh')}
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalOpen(true)}
-            style={{ backgroundColor: '#0068ff', borderRadius: 8, fontWeight: 600 }}
-          >
-            {t('Create Project')}
-          </Button>
-        </Space>
-      </div>
+export const editProjectAction = () => ({
+  id: 'project-edit',
+  type: 'modal',
+  title: t('Edit'),
+  getDefaultValues: (item) => ({ name: item.name, description: item.description, enabled: item.enabled }),
+  getFormItems: (item) => [
+    {
+      name: 'name',
+      label: t('Name'),
+      type: 'input',
+      required: true,
+      tip: t('Project name can not be duplicated'),
+      rules: [projectNameRule(() => item.domain_id, item.id)],
+    },
+    { name: 'description', label: t('Description'), type: 'textarea' },
+  ],
+  onSubmit: async ({ name, description }, item) => {
+    const res = await keystoneApi.updateProject(item.id, { description, name });
+    invalidateProjectMap();
+    return res;
+  },
+});
 
-      <Card
-        variant="borderless"
-        style={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-        }}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Input
-            placeholder={t('Search by Name or ID...')}
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 300, borderRadius: 8 }}
-            allowClear
+export const deleteProjectAction = () => ({
+  ...deleteAction({
+    name: t('Project'),
+    onDelete: async (it) => {
+      try {
+        await keystoneApi.deleteProject(it.id);
+        invalidateProjectMap();
+      } catch (err) {
+        const msg = err?.response?.data?.error?.message || '';
+        if (/^Resource(.*?)exists$/.test(msg)) {
+          throw new Error(t('There are resources under the project and cannot be deleted.'));
+        }
+        throw err;
+      }
+    },
+  }),
+  title: t('Delete Project'),
+  actionName: t('delete project'),
+  description: t('Before deleting the project, it is recommended to clean up the resources under the project.'),
+});
+
+export const enableProjectAction = () => ({
+  id: 'Enable',
+  type: 'confirm',
+  title: t('Enable Project'),
+  actionName: t('Enable Project'),
+  allowed: (item) => item.enabled !== true,
+  onSubmit: (item) => keystoneApi.updateProject(item.id, { enabled: true }),
+});
+
+export const disableProjectAction = () => ({
+  id: 'Disable',
+  type: 'confirm',
+  title: t('Disable Project'),
+  actionName: t('Disable Project'),
+  isDanger: true,
+  allowed: (item) => item.enabled !== false,
+  description: t(
+    'Disabling the project will have negative effect, and users associated with the project will not be able to login if they are only assigned to the project'
+  ),
+  onSubmit: (item) => keystoneApi.updateProject(item.id, { enabled: false }),
+});
+
+const initRoleMap = (map = {}) =>
+  Object.keys(map).reduce((acc, id) => {
+    acc[id] = (map[id] || []).filter(Boolean).map((r) => r.id);
+    return acc;
+  }, {});
+
+export const manageProjectUserAction = () => ({
+  id: 'management-user',
+  type: 'modal',
+  title: t('Manage User'),
+  width: 900,
+  getDefaultValues: (item) => ({ name: item.name, domain: item.domainName, userRoles: initRoleMap(item.users) }),
+  getFormItems: async (item) => {
+    const [users, roles, domains] = await Promise.all([listAllUsers(), listRoles(), listDomains()]);
+    const members = withDomainName(users, domains);
+    return [
+      { name: 'name', label: t('Name'), type: 'label' },
+      { name: 'domain', label: t('Domain'), type: 'label' },
+      {
+        name: 'userRoles',
+        label: t('User'),
+        render: () => (
+          <MemberRoleSelector
+            members={members}
+            roles={roles}
+            memberTitle={t('User ID/Name')}
+            defaultRolesFor={(id) =>
+              item.users?.[id] ? item.users[id].filter(Boolean).map((r) => r.id) : roles[0] ? [roles[0].id] : []
+            }
           />
-        </div>
+        ),
+      },
+    ];
+  },
+  onSubmit: ({ userRoles = {} }, item) =>
+    applyRoleDiff(
+      initRoleMap(item.users),
+      userRoles,
+      (userId, roleId) => keystoneApi.assignProjectUserRole(item.id, userId, roleId),
+      (userId, roleId) => keystoneApi.removeProjectUserRole(item.id, userId, roleId)
+    ),
+});
 
-        <Table
-          columns={columns}
-          dataSource={filteredProjects}
-          loading={loading}
-          pagination={{ pageSize: 10 }}
-          rowKey="id"
-        />
-      </Card>
+export const manageProjectGroupAction = () => ({
+  id: 'manage-group-group',
+  type: 'modal',
+  title: t('Manage User Group'),
+  width: 900,
+  getDefaultValues: (item) => ({ name: item.name, domain: item.domainName, groupRoles: initRoleMap(item.groups) }),
+  getFormItems: async (item) => {
+    const [groups, roles, domains] = await Promise.all([listAllGroups(), listRoles(), listDomains()]);
+    const members = withDomainName(groups, domains);
+    return [
+      { name: 'name', label: t('Name'), type: 'label' },
+      { name: 'domain', label: t('Domain'), type: 'label' },
+      {
+        name: 'groupRoles',
+        label: t('User Group'),
+        rules: [
+          {
+            validator: (_, value) =>
+              Object.keys(value || {}).find((gid) => !(value[gid] || []).length)
+                ? Promise.reject(new Error(t('Please set at least one role!')))
+                : Promise.resolve(),
+          },
+        ],
+        render: () => (
+          <MemberRoleSelector
+            members={members}
+            roles={roles}
+            memberTitle={t('User Group ID/Name')}
+            defaultRolesFor={(id) =>
+              item.groups?.[id] ? item.groups[id].filter(Boolean).map((r) => r.id) : roles[0] ? [roles[0].id] : []
+            }
+          />
+        ),
+      },
+    ];
+  },
+  onSubmit: ({ groupRoles = {} }, item) =>
+    applyRoleDiff(
+      initRoleMap(item.groups),
+      groupRoles,
+      (groupId, roleId) => keystoneApi.assignProjectGroupRole(item.id, groupId, roleId),
+      (groupId, roleId) => keystoneApi.removeProjectGroupRole(item.id, groupId, roleId)
+    ),
+});
 
-      <Modal
-        title={t('Create Project')}
-        open={isModalOpen}
-        onCancel={() => setIsModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreate} initialValues={{ enabled: true }}>
-          <Form.Item
-            name="name"
-            label={t('Name')}
-            rules={[{ required: true, message: t('Please input project name!') }]}
-          >
-            <Input placeholder="my-project" />
-          </Form.Item>
+export const modifyProjectTagsAction = () => ({
+  id: 'modify-project-tags',
+  type: 'modal',
+  title: t('Modify Project Tags'),
+  buttonText: t('Modify Project Tags'),
+  getDefaultValues: (item) => ({ tags: item.tags || [] }),
+  formItems: [{ name: 'tags', label: t('Tags'), type: 'tags', rules: [tagsRule()], extra: <TagsExtra /> }],
+  onSubmit: ({ tags = [] }, item) => keystoneApi.updateProjectTags(item.id, tags),
+});
 
-          <Form.Item name="description" label={t('Description')}>
-            <Input.TextArea rows={3} placeholder={t('Description')} />
-          </Form.Item>
+/** User detail > projects tab: legacy Project/actions/SetDefaultProject (row action) */
+export const setDefaultProjectAction = (user, onDone) => ({
+  id: 'set-default-project',
+  type: 'modal',
+  title: t('Set Default Project'),
+  allowed: (item) => user?.default_project_id !== item.id,
+  getFormItems: (item) => [
+    {
+      name: 'hint',
+      type: 'alert',
+      message: t(
+        'Are you sure set the project { project } as the default project? User login is automatically logged into the default project.',
+        { project: item.name }
+      ),
+    },
+  ],
+  onSubmit: async (_values, item) => {
+    const res = await keystoneApi.updateUser(user.id, { default_project_id: item.id });
+    if (onDone) onDone();
+    return res;
+  },
+});
 
-          <Form.Item name="enabled" label={t('Status')} valuePropName="checked">
-            <Switch defaultChecked />
-          </Form.Item>
+/** User detail > projects tab: legacy RemoveDefaultProject (primary action) */
+export const removeDefaultProjectAction = (user, onDone) => ({
+  id: 'remove-default-project',
+  type: 'confirm',
+  title: t('Remove Default Project'),
+  actionName: t('Remove default project for user'),
+  confirmText: t('Are you sure to remove the default project?'),
+  onSubmit: async () => {
+    const res = await keystoneApi.updateUser(user.id, { default_project_id: null });
+    if (onDone) onDone();
+    return res;
+  },
+});
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
-            <Button onClick={() => setIsModalOpen(false)}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ backgroundColor: '#0068ff' }}>
-              {t('Create')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
-    </div>
+export const projectRowActions = () => ({
+  firstAction: editProjectAction(),
+  moreActions: [
+    { action: deleteProjectAction() },
+    { action: manageQuotaAction() },
+    { action: manageProjectUserAction() },
+    { action: manageProjectGroupAction() },
+    { action: enableProjectAction() },
+    { action: disableProjectAction() },
+    { action: modifyProjectTagsAction() },
+  ],
+});
+
+/* ------------------------------ Page ------------------------------ */
+
+export default function ProjectList() {
+  return (
+    <ResourcePage
+      title={t('Projects')}
+      breadcrumb={[t('Identity'), t('Projects')]}
+      description={t('Manage Keystone tenant projects and resource isolation domains.')}
+      fetch={() => fetchProjects()}
+      columns={() => projectColumns({ mode: 'list' })}
+      filterParams={projectFilters()}
+      searchFields={['name', 'id', 'description', 'domainName']}
+      primaryActions={[createProjectAction()]}
+      batchActions={[deleteProjectAction()]}
+      rowActions={projectRowActions()}
+    />
   );
 }

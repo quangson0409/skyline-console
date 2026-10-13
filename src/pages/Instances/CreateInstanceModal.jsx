@@ -40,7 +40,7 @@ import { glanceApi } from '@/api/glance';
 import { neutronApi } from '@/api/neutron';
 import { cinderApi } from '@/api/cinder';
 
-export default function CreateInstanceModal({ open, onCancel, onSuccess }) {
+export default function CreateInstanceModal({ open, onCancel, onSuccess, preset }) {
   const { t } = useTranslation();
   const { currentProject } = useAuthStore();
   const [form] = Form.useForm();
@@ -105,9 +105,11 @@ export default function CreateInstanceModal({ open, onCancel, onSuccess }) {
         if (imgRes.status === 'fulfilled') {
           const imgs = imgRes.value?.images || imgRes.value?.data?.images || [];
           setImages(imgs.filter((img) => img.status === 'active'));
-          if (imgs.length > 0 && !selectedImageId) {
-            setSelectedImageId(imgs[0].id);
-            form.setFieldsValue({ imageRef: imgs[0].id });
+          const presetImage = preset?.image || preset?.snapshot;
+          const initialImage = imgs.find((img) => img.id === presetImage) || imgs[0];
+          if (initialImage && (!selectedImageId || presetImage)) {
+            setSelectedImageId(initialImage.id);
+            form.setFieldsValue({ imageRef: initialImage.id });
           }
         }
 

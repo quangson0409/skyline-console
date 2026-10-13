@@ -4,6 +4,9 @@ import { Form, Input, Button, Alert } from 'antd';
 import { UserOutlined, LockOutlined, GlobalOutlined } from '@ant-design/icons';
 import { useAuthStore, formatErrorMessage } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
+import { PASSWORD_INFO_KEY } from '@/pages/UserCenter/ChangePassword';
+
+const PASSWORD_EXPIRED = 'The password is expired and needs to be changed for user';
 
 export default function Login() {
   const [form] = Form.useForm();
@@ -31,6 +34,13 @@ export default function Login() {
         navigate(redirectUrl, { replace: true });
       } else {
         const msg = typeof res.error === 'string' ? res.error : formatErrorMessage(res.error);
+        if (msg && msg.includes(PASSWORD_EXPIRED)) {
+          // legacy dealWithChangePassword: "...for user: <user_id>. ..." -> change-password page
+          const userId = msg.split(':')[1]?.trim().split('.')[0];
+          sessionStorage.setItem(PASSWORD_INFO_KEY, JSON.stringify({ userId, oldPassword: values.password }));
+          navigate('/auth/change-password', { state: { userId, oldPassword: values.password } });
+          return;
+        }
         setErrorMsg(msg || t('Login Failed'));
       }
     } catch (err) {

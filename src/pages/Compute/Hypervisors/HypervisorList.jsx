@@ -1,322 +1,396 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Col,
-  Row,
-  Tag,
-  Space,
-  Modal,
-  Form,
-  Input,
-  Progress,
-  message,
-} from 'antd';
-import {
-  ReloadOutlined,
-  DesktopOutlined,
-  CheckCircleOutlined,
-  StopOutlined,
-  PlayCircleOutlined,
-} from '@ant-design/icons';
+import React, { useState } from 'react';
+import { Breadcrumb, Progress, Tabs, Tag, Tooltip } from 'antd';
 import { novaApi } from '@/api/nova';
-import BaseTable from '@/components/Tables/BaseTable';
-import { useTranslation } from '@/core/i18n';
+import { placementApi } from '@/api/placement';
+import ResourcePage, { nameColumn, statusColumn } from '@/components/ResourcePage';
+import { t } from '@/core/i18n';
+import { KpiCards, getGiBValue, sinceTime } from '../_shared';
 
-export default function HypervisorList() {
-  const { t } = useTranslation();
-  const [hypervisors, setHypervisors] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [magicFilters, setMagicFilters] = useState({});
-  const [disableModal, setDisableModal] = useState({ open: false, record: null });
-  const [disableForm] = Form.useForm();
+/* ------------------------------------------------------------------ */
+/* helpers (legacy resources/nova/service.js + stores/nova/hypervisor) */
+/* ------------------------------------------------------------------ */
+export const serviceStatus = () => ({ enabled: t('Enabled'), disabled: t('Disabled') });
+export const serviceState = () => ({ up: t('Up'), down: t('Down') });
 
-  const fetchHypervisors = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await novaApi.listHypervisors();
-      const list = res?.hypervisors || res?.data?.hypervisors || [];
-      setHypervisors(list);
-    } catch (err) {
-      message.error(err.message || t('Failed to fetch hypervisors'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    fetchHypervisors();
-  }, [fetchHypervisors]);
-
-  // Aggregate Metrics
-  const metrics = useMemo(() => {
+/** Applies placement allocation ratios (VCPU/PCPU/MEMORY_MB) like legacy listDidFetch */
+export const applyInventories = (item, inventoriesRes) => {
+  const next = { ...item };
+  if (next.hypervisor_type !== 'ironic') {
+    const inv = inventoriesRes?.inventories || {};
+    const { allocation_ratio, total: vcpuTotal } = inv.VCPU || {};
+    const { allocation_ratio: pcpuRatio, total: pcpuTotal } = inv.PCPU || {};
+    const { allocation_ratio: memoryRatio } = inv.MEMORY_MB || {};
     let totalVcpus = 0;
-    let usedVcpus = 0;
-    let totalRamMb = 0;
-    let usedRamMb = 0;
-    let runningVms = 0;
+    const cpuTypes = [];
+    if (pcpuTotal !== undefined) {
+      totalVcpus += pcpuTotal * (pcpuRatio || 1.0);
+      cpuTypes.push('pCPU');
+    }
+    if (allocation_ratio && vcpuTotal !== undefined) {
+      totalVcpus += vcpuTotal * allocation_ratio;
+      cpuTypes.push('vCPU');
+    }
+    if (totalVcpus > 0) {
+      next.vcpus = totalVcpus;
+      next.cpu_type = cpuTypes.join('+');
+    }
+    if (memoryRatio) next.memory_mb = (next.memory_mb || 0) * memoryRatio;
+  }
+  next.vcpus_used_percent = (next.vcpus && Number(((next.vcpus_used / next.vcpus) * 100).toFixed(2))) || 0;
+  next.memory_mb_percent =
+    (next.memory_mb && Number(((next.memory_mb_used / next.memory_mb) * 100).toFixed(2))) || 0;
+  next.storage_percent = (next.local_gb && Number(((next.local_gb_used / next.local_gb) * 100).toFixed(2))) || 0;
+  next.memory_mb_used_gb = getGiBValue(next.memory_mb_used);
+  next.memory_mb_gb = getGiBValue(next.memory_mb);
+  return next;
+};
 
-    hypervisors.forEach((h) => {
-      totalVcpus += h.vcpus || 0;
-      usedVcpus += h.vcpus_used || 0;
-      totalRamMb += h.memory_mb || 0;
-      usedRamMb += h.memory_mb_used || 0;
-      runningVms += h.running_vms || 0;
-    });
+export const mapHypervisor = (h = {}) => ({
+  ...h,
+  name: h?.service?.host || h?.hypervisor_hostname,
+  service_host: h?.service?.host || '',
+  service_id: h?.service?.id,
+  disabled_reason: h?.service?.disabled_reason,
+});
 
-    return {
-      totalVcpus,
-      usedVcpus,
-      totalRamGiB: (totalRamMb / 1024).toFixed(1),
-      usedRamGiB: (usedRamMb / 1024).toFixed(1),
-      runningVms,
-    };
-  }, [hypervisors]);
+export const fetchHypervisors = async () => {
+  const res = await novaApi.listHypervisorsV();
+  const list = (res?.hypervisors || []).map(mapHypervisor);
+  const inventories = await Promise.all(list.map((it) => placementApi.getInventories(it.id).catch(() => null)));
+  return list.map((it, idx) => applyInventories(it, inventories[idx]));
+};
 
-  const filterParams = useMemo(
-    () => [
-      { name: 'hypervisor_hostname', label: t('Hostname') },
-      {
-        name: 'state',
-        label: t('State'),
-        options: [
-          { key: 'up', label: 'Up' },
-          { key: 'down', label: 'Down' },
-        ],
-      },
-      {
-        name: 'status',
-        label: t('Status'),
-        options: [
-          { key: 'enabled', label: 'Enabled' },
-          { key: 'disabled', label: 'Disabled' },
-        ],
-      },
-    ],
-    [t]
+const ironicTip = () => (
+  <Tooltip title={t('vCPUs and RAM are not used for bare metal scheduling.')}>
+    <span>-</span>
+  </Tooltip>
+);
+
+const UsageBar = ({ percent = 0, label, color }) => (
+  <div style={{ width: 160 }}>
+    <div style={{ fontSize: 12, marginBottom: 2 }}>
+      {label} <span style={{ color: '#94a3b8' }}>({percent}%)</span>
+    </div>
+    <Progress
+      percent={Number(percent) || 0}
+      size="small"
+      showInfo={false}
+      strokeColor={percent > 85 ? '#ef4444' : color || '#0068ff'}
+    />
+  </div>
+);
+
+export const cpuRender = (_, r) =>
+  r.hypervisor_type === 'ironic' ? (
+    ironicTip()
+  ) : (
+    <Tooltip title={`${t(r.cpu_type || 'vCPU')}: ${r.vcpus_used} / ${r.vcpus}`}>
+      <span>
+        <UsageBar percent={r.vcpus_used_percent} label={`${r.vcpus_used ?? 0} / ${r.vcpus ?? 0}`} />
+      </span>
+    </Tooltip>
   );
 
-  const handleToggleService = (record) => {
-    const isEnabled = record.status === 'enabled';
-    if (isEnabled) {
-      setDisableModal({ open: true, record });
-    } else {
-      Modal.confirm({
-        title: `${t('Enable Service')}: ${record.hypervisor_hostname}?`,
-        content: t('Enable Nova compute service on this hypervisor to allow instance scheduling.'),
-        okText: t('Enable'),
-        onOk: async () => {
-          try {
-            await novaApi.enableService(record.service?.host || record.hypervisor_hostname);
-            message.success(t('Service enabled successfully'));
-            fetchHypervisors();
-          } catch (err) {
-            message.error(err.message || t('Failed to enable service'));
-          }
-        },
-      });
+export const memoryRender = (_, r) =>
+  r.hypervisor_type === 'ironic' ? (
+    ironicTip()
+  ) : (
+    <UsageBar percent={r.memory_mb_percent} label={`${r.memory_mb_used_gb} / ${r.memory_mb_gb}`} color="#10b981" />
+  );
+
+/* ------------------------------------------------------------------ */
+/* actions                                                            */
+/* ------------------------------------------------------------------ */
+export const disableServiceAction = ({ hostKey = 'host', idKey = 'id' } = {}) => ({
+  id: 'disable-host',
+  type: 'modal',
+  title: t('Disable Compute Host'),
+  buttonText: t('Disable'),
+  isDanger: true,
+  description: t('After disable the compute service, the new instance will not schedule to the compute node.'),
+  allowed: (item) => item.status === 'enabled' && Boolean(item[idKey]),
+  getDefaultValues: (item) => ({ host: item[hostKey] || item.id }),
+  formItems: [
+    { name: 'host', label: t('Current Host'), type: 'label' },
+    {
+      name: 'disabled_reason',
+      label: t('Reason'),
+      type: 'textarea',
+      rows: 3,
+      rules: [{ max: 64, message: `${t('Reason')} <= 64` }],
+    },
+  ],
+  onSubmit: (values, item) => {
+    const body = { status: 'disabled' };
+    if (values.disabled_reason) body.disabled_reason = values.disabled_reason;
+    return novaApi.updateServiceV(item[idKey], body);
+  },
+});
+
+export const enableServiceAction = ({ idKey = 'id' } = {}) => ({
+  id: 'enable-host',
+  type: 'confirm',
+  title: t('Enable Compute Host'),
+  buttonText: t('Enable'),
+  actionName: t('Enable compute host'),
+  allowed: (item) => item.status === 'disabled' && Boolean(item[idKey]),
+  onSubmit: async (target) => {
+    const list = Array.isArray(target) ? target : [target];
+    for (const it of list) {
+      // eslint-disable-next-line no-await-in-loop
+      await novaApi.updateServiceV(it[idKey], { status: 'enabled' });
     }
-  };
+  },
+});
 
-  const handleConfirmDisable = async (values) => {
-    try {
-      const host = disableModal.record.service?.host || disableModal.record.hypervisor_hostname;
-      await novaApi.disableService(host);
-      message.success(t('Service disabled successfully'));
-      setDisableModal({ open: false, record: null });
-      disableForm.resetFields();
-      fetchHypervisors();
-    } catch (err) {
-      message.error(err.message || t('Failed to disable service'));
-    }
-  };
-
-  const rowActions = {
-    firstAction: {
-      id: 'toggle-service',
-      title: t('Service Control'),
-      onClick: handleToggleService,
-    },
-  };
-
-  const columns = [
-    {
-      title: t('Hostname'),
-      dataIndex: 'hypervisor_hostname',
-      key: 'hypervisor_hostname',
-      sorter: (a, b) => (a.hypervisor_hostname || '').localeCompare(b.hypervisor_hostname || ''),
-      render: (text) => (
-        <Space>
-          <DesktopOutlined style={{ color: '#0068ff' }} />
-          <span style={{ fontWeight: 600, color: '#0068ff' }}>{text}</span>
-        </Space>
-      ),
-    },
-    {
-      title: t('Type'),
-      dataIndex: 'hypervisor_type',
-      key: 'hypervisor_type',
-      render: (type, r) => (
-        <span>
-          <b>{type || 'KVM'}</b> <span style={{ fontSize: 11, color: '#94a3b8' }}>({r.hypervisor_version || ''})</span>
-        </span>
-      ),
-    },
-    {
-      title: t('State'),
-      dataIndex: 'state',
-      key: 'state',
-      render: (state) => (
-        <Tag color={state === 'up' ? 'success' : 'error'} style={{ borderRadius: 10, textTransform: 'uppercase' }}>
-          {state || 'UP'}
-        </Tag>
-      ),
-    },
-    {
-      title: t('Status'),
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
+/* ------------------------------------------------------------------ */
+/* Hypervisors tab                                                    */
+/* ------------------------------------------------------------------ */
+export const hypervisorColumns = () => [
+  nameColumn({
+    title: t('ID/Name'),
+    dataIndex: 'service_host',
+    linkTo: (r) => `/compute/hypervisors-admin/detail/${r.id}`,
+  }),
+  {
+    title: t('Hostname'),
+    dataIndex: 'hypervisor_hostname',
+    key: 'hypervisor_hostname',
+    sorter: (a, b) => String(a.hypervisor_hostname || '').localeCompare(String(b.hypervisor_hostname || '')),
+  },
+  {
+    title: t('Type'),
+    dataIndex: 'hypervisor_type',
+    key: 'hypervisor_type',
+    render: (type, r) => (
+      <span>
+        <b>{type || '-'}</b>{' '}
+        {r.hypervisor_version ? <span style={{ fontSize: 11, color: '#94a3b8' }}>({r.hypervisor_version})</span> : null}
+      </span>
+    ),
+  },
+  {
+    title: t('State'),
+    dataIndex: 'state',
+    key: 'state',
+    render: (state) => (
+      <Tag color={state === 'up' ? 'success' : 'error'} style={{ borderRadius: 10, textTransform: 'uppercase' }}>
+        {serviceState()[state] || state || '-'}
+      </Tag>
+    ),
+  },
+  {
+    title: t('Status'),
+    dataIndex: 'status',
+    key: 'status',
+    render: (status, r) => (
+      <Tooltip title={r.disabled_reason ? `${t('Reason: ')} ${r.disabled_reason}` : ''}>
         <Tag color={status === 'enabled' ? 'blue' : 'warning'} style={{ borderRadius: 10, textTransform: 'uppercase' }}>
-          {status || 'ENABLED'}
+          {serviceStatus()[status] || status || '-'}
+        </Tag>
+      </Tooltip>
+    ),
+  },
+  {
+    title: t('CPU (Core)'),
+    dataIndex: 'vcpus_used_percent',
+    key: 'vcpus_used_percent',
+    sorter: (a, b) => a.vcpus_used_percent - b.vcpus_used_percent,
+    render: cpuRender,
+  },
+  {
+    title: t('Configured Memory (GiB)'),
+    dataIndex: 'memory_mb_percent',
+    key: 'memory_mb_percent',
+    sorter: (a, b) => a.memory_mb_percent - b.memory_mb_percent,
+    render: memoryRender,
+  },
+  {
+    title: t('Local Disk'),
+    key: 'disk',
+    render: (_, r) => {
+      if (r.local_gb === undefined) return '-';
+      const used = r.local_gb_used ?? (r.local_gb || 0) - (r.free_disk_gb || 0);
+      return (
+        <span style={{ fontSize: 12 }}>
+          <b>{used || 0}</b> / {r.local_gb || 0} GiB
+        </span>
+      );
+    },
+  },
+  {
+    title: t('Instances'),
+    dataIndex: 'running_vms',
+    key: 'running_vms',
+    sorter: (a, b) => (a.running_vms || 0) - (b.running_vms || 0),
+    render: (vms) =>
+      vms === undefined ? (
+        '-'
+      ) : (
+        <Tag color="geekblue" style={{ borderRadius: 10 }}>
+          <b>{vms}</b>
         </Tag>
       ),
-    },
-    {
-      title: 'vCPUs',
-      key: 'vcpus',
-      render: (_, r) => {
-        const pct = r.vcpus > 0 ? Math.round((r.vcpus_used / r.vcpus) * 100) : 0;
-        return (
-          <div style={{ width: 140 }}>
-            <div style={{ fontSize: 12, marginBottom: 2 }}>
-              <b>{r.vcpus_used}</b> / {r.vcpus} ({pct}%)
-            </div>
-            <Progress percent={pct} size="small" showInfo={false} strokeColor={pct > 85 ? '#ef4444' : '#0068ff'} />
-          </div>
-        );
-      },
-    },
-    {
-      title: t('RAM'),
-      key: 'ram',
-      render: (_, r) => {
-        const usedGiB = (r.memory_mb_used / 1024).toFixed(1);
-        const totalGiB = (r.memory_mb / 1024).toFixed(1);
-        const pct = r.memory_mb > 0 ? Math.round((r.memory_mb_used / r.memory_mb) * 100) : 0;
-        return (
-          <div style={{ width: 140 }}>
-            <div style={{ fontSize: 12, marginBottom: 2 }}>
-              <b>{usedGiB}</b> / {totalGiB} GiB
-            </div>
-            <Progress percent={pct} size="small" showInfo={false} strokeColor={pct > 85 ? '#ef4444' : '#10b981'} />
-          </div>
-        );
-      },
-    },
-    {
-      title: t('Local Disk'),
-      key: 'disk',
-      render: (_, r) => {
-        const used = r.local_gb_used ?? (r.local_gb - r.free_disk_gb);
-        return (
-          <span style={{ fontSize: 12 }}>
-            <b>{used || 0}</b> / {r.local_gb || 0} GiB
-          </span>
-        );
-      },
-    },
-    {
-      title: t('Running VMs'),
-      dataIndex: 'running_vms',
-      key: 'running_vms',
-      sorter: (a, b) => a.running_vms - b.running_vms,
-      render: (vms) => <Tag color="geekblue" style={{ borderRadius: 10 }}><b>{vms || 0}</b></Tag>,
-    },
-  ];
+  },
+];
 
+const hypervisorKpis = (data) => {
+  const sum = (k) => data.reduce((acc, h) => acc + (Number(h[k]) || 0), 0);
+  return [
+    { title: t('Total Hypervisors'), value: data.length },
+    {
+      title: 'vCPUs Allocation',
+      value: sum('vcpus_used'),
+      suffix: `/ ${Number(sum('vcpus').toFixed(2))}`,
+      color: '#10b981',
+    },
+    {
+      title: 'RAM Allocation',
+      value: (sum('memory_mb_used') / 1024).toFixed(1),
+      suffix: `/ ${(sum('memory_mb') / 1024).toFixed(1)} GiB`,
+      color: '#8b5cf6',
+    },
+    { title: t('Running Instances'), value: sum('running_vms'), color: '#0284c7' },
+  ];
+};
+
+export function HypervisorTab() {
   return (
-    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ marginBottom: 16 }}>
-        <Breadcrumb items={[{ title: t('Compute') }, { title: t('Hypervisors') }]} style={{ marginBottom: 6 }} />
-        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>{t('Hypervisors')}</h1>
+    <ResourcePage
+      embedded
+      fetch={fetchHypervisors}
+      columns={hypervisorColumns}
+      header={({ data }) => <KpiCards items={hypervisorKpis(data)} />}
+      filterParams={[
+        { name: 'service_host', label: t('Hostname') },
+        { name: 'hypervisor_hostname', label: t('Hypervisor Hostname') },
+        { name: 'hypervisor_type', label: t('Type') },
+        {
+          name: 'state',
+          label: t('State'),
+          options: Object.entries(serviceState()).map(([key, label]) => ({ key, label })),
+        },
+        {
+          name: 'status',
+          label: t('Status'),
+          options: Object.entries(serviceStatus()).map(([key, label]) => ({ key, label })),
+        },
+      ]}
+      searchFields={['service_host', 'hypervisor_hostname', 'id']}
+      rowActions={{
+        firstAction: null,
+        moreActions: [
+          {
+            title: t('Service Control'),
+            actions: [
+              disableServiceAction({ hostKey: 'service_host', idKey: 'service_id' }),
+              enableServiceAction({ idKey: 'service_id' }),
+            ],
+          },
+        ],
+      }}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Compute hosts tab                                                  */
+/* ------------------------------------------------------------------ */
+export const fetchComputeHosts = async () => {
+  let res;
+  try {
+    res = await novaApi.listComputeServicesExt({ binary: 'nova-compute' });
+  } catch {
+    res = await novaApi.listServicesV({ binary: 'nova-compute' });
+  }
+  return (res?.services || [])
+    .filter((s) => !s.binary || s.binary === 'nova-compute')
+    .map((s) => ({ ...s, name: s.host }));
+};
+
+export function ComputeHostTab() {
+  return (
+    <ResourcePage
+      embedded
+      fetch={fetchComputeHosts}
+      columns={() => [
+        { title: t('Host'), dataIndex: 'host', key: 'host', sorter: (a, b) => String(a.host).localeCompare(String(b.host)) },
+        { title: t('Availability Zone'), dataIndex: 'zone', key: 'zone', render: (v) => v || '-' },
+        {
+          ...statusColumn({ title: t('Service Status'), textMap: serviceStatus() }),
+          render: (value, r) => (
+            <Tooltip title={r.disabled_reason ? `${t('Reason: ')} ${r.disabled_reason}` : ''}>
+              <Tag color={value === 'enabled' ? 'blue' : 'warning'} style={{ borderRadius: 10 }}>
+                {serviceStatus()[value] || value || '-'}
+              </Tag>
+            </Tooltip>
+          ),
+        },
+        {
+          title: t('Service State'),
+          dataIndex: 'state',
+          key: 'state',
+          render: (v) => (
+            <Tag color={v === 'up' ? 'success' : 'error'} style={{ borderRadius: 10 }}>
+              {serviceState()[v] || v || '-'}
+            </Tag>
+          ),
+        },
+        {
+          title: t('Last Updated'),
+          dataIndex: 'updated_at',
+          key: 'updated_at',
+          sorter: (a, b) => new Date(a.updated_at || 0) - new Date(b.updated_at || 0),
+          render: (v) => <span style={{ color: '#64748b', fontSize: 12 }}>{sinceTime(v)}</span>,
+        },
+      ]}
+      filterParams={[
+        { name: 'host', label: t('Host') },
+        {
+          name: 'status',
+          label: t('Service Status'),
+          options: Object.entries(serviceStatus()).map(([key, label]) => ({ key, label })),
+        },
+        {
+          name: 'state',
+          label: t('Service State'),
+          options: Object.entries(serviceState()).map(([key, label]) => ({ key, label })),
+        },
+      ]}
+      searchFields={['host', 'zone', 'id']}
+      rowActions={{
+        firstAction: null,
+        moreActions: [{ action: disableServiceAction() }, { action: enableServiceAction() }],
+      }}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Page (legacy TabList: Hypervisors / Compute Hosts)                 */
+/* ------------------------------------------------------------------ */
+export default function HypervisorList() {
+  const [tab, setTab] = useState('Hypervisor');
+  return (
+    <div style={{ maxWidth: 1600, margin: '0 auto' }}>
+      <Breadcrumb items={[{ title: t('Compute') }, { title: t('Hypervisors') }]} style={{ marginBottom: 16, fontSize: 13 }} />
+      <div style={{ marginBottom: 20 }}>
+        <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
+          {t('Hypervisors')}
+        </h1>
         <p style={{ color: '#64748b', fontSize: 13, margin: '4px 0 0' }}>
           {t('Physical compute nodes monitoring, hardware allocation, and virtualization hypervisors.')}
         </p>
       </div>
-
-      {/* KPI Summary Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Total Hypervisors')}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#0068ff' }}>{hypervisors.length}</div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>vCPUs Allocation</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#10b981' }}>
-              {metrics.usedVcpus} <span style={{ fontSize: 13, color: '#94a3b8' }}>/ {metrics.totalVcpus}</span>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>RAM Allocation</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#8b5cf6' }}>
-              {metrics.usedRamGiB} <span style={{ fontSize: 13, color: '#94a3b8' }}>/ {metrics.totalRamGiB} GiB</span>
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" variant="borderless" style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>{t('Running Instances')}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, color: '#0284c7' }}>
-              {metrics.runningVms}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* BaseTable */}
-      <BaseTable
-        columns={columns}
-        dataSource={hypervisors}
-        loading={loading}
-        rowKey="id"
-        filterParams={filterParams}
-        filters={magicFilters}
-        onFilterChange={setMagicFilters}
-        onRefresh={fetchHypervisors}
-        rowActions={rowActions}
-      />
-
-      {/* Disable Service Modal */}
-      <Modal
-        title={`${t('Disable Service')}: ${disableModal.record?.hypervisor_hostname}`}
-        open={disableModal.open}
-        onCancel={() => setDisableModal({ open: false, record: null })}
-        footer={null}
+      <Tabs
+        activeKey={tab}
+        onChange={setTab}
         destroyOnHidden
-      >
-        <Form form={disableForm} layout="vertical" onFinish={handleConfirmDisable}>
-          <div style={{ marginBottom: 16, color: '#64748b', fontSize: 13 }}>
-            {t('Disabling service will prevent new instances from being scheduled on this physical host. Existing instances will not be affected.')}
-          </div>
-          <Form.Item name="reason" label={t('Reason')} initialValues="Scheduled maintenance">
-            <Input placeholder="e.g. Scheduled hardware maintenance" />
-          </Form.Item>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <Button onClick={() => setDisableModal({ open: false, record: null })}>{t('Cancel')}</Button>
-            <Button type="primary" danger htmlType="submit">
-              {t('Disable')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
+        items={[
+          { key: 'Hypervisor', label: t('Hypervisors'), children: <HypervisorTab /> },
+          { key: 'ComputeHost', label: t('Compute Hosts'), children: <ComputeHostTab /> },
+        ]}
+      />
     </div>
   );
 }

@@ -33,7 +33,7 @@ export function executeConfirmAction({
     (typeof action.buttonText === 'function' ? action.buttonText() : action.buttonText) ||
     t('operate');
 
-  let content = action.confirmText;
+  let content = typeof action.confirmText === 'function' ? action.confirmText(targetItems) : action.confirmText;
   if (!content) {
     if (isMultiple) {
       content = t('Are you sure to {action} {count} items: {names}?', {

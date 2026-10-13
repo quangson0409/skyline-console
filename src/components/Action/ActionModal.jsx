@@ -162,7 +162,7 @@ export default function ActionModal({
       <Form.Item
         key={field.name}
         name={field.name}
-        label={field.label}
+        label={field.type === 'checkbox' ? undefined : field.label}
         rules={rules}
         extra={field.tip || field.extra}
         valuePropName={field.type === 'switch' ? 'checked' : field.type === 'checkbox' ? 'checked' : 'value'}

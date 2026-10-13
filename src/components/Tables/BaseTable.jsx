@@ -37,6 +37,7 @@ export default function BaseTable({
   style = {},
   isAdmin = false,
   onActionClick,
+  getCheckboxProps,
 }) {
   const [searchText, setSearchText] = useState('');
   const [internalFilters, setInternalFilters] = useState(filters);
@@ -126,6 +127,7 @@ export default function BaseTable({
     ? {
         selectedRowKeys,
         onChange: onSelectChange,
+        getCheckboxProps,
       }
     : undefined;
 
@@ -188,7 +190,7 @@ export default function BaseTable({
                 <Button
                   key={action.id || idx}
                   danger={Boolean(action.danger || action.isDanger)}
-                  type={action.type || 'default'}
+                  type={['primary', 'dashed', 'link', 'text'].includes(action.type) ? action.type : 'default'}
                   icon={action.icon}
                   onClick={() => action.onClick ? action.onClick(selectedRowKeys) : onActionClick && onActionClick(action, selectedRowKeys)}
                   style={{ borderRadius: 6 }}

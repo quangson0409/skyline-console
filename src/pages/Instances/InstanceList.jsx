@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Breadcrumb,
   Button,
@@ -47,7 +47,14 @@ export default function InstanceList() {
   } = useInstances();
 
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Entry from other modules (image / volume / snapshot / server group "Create Instance")
+  const createPreset = useMemo(() => {
+    const keys = ['image', 'volume', 'snapshot', 'servergroup'];
+    const preset = Object.fromEntries(keys.filter((k) => searchParams.get(k)).map((k) => [k, searchParams.get(k)]));
+    return Object.keys(preset).length || searchParams.get('create') ? preset : null;
+  }, [searchParams]);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(Boolean(createPreset));
   const [magicFilters, setMagicFilters] = useState({});
 
   // Unified Skyline Action Runner (handles confirm, modal forms, etc.)
@@ -250,9 +257,14 @@ export default function InstanceList() {
       {/* Comprehensive Launch / Create Instance Modal */}
       <CreateInstanceModal
         open={isCreateModalOpen}
-        onCancel={() => setIsCreateModalOpen(false)}
+        preset={createPreset}
+        onCancel={() => {
+          setIsCreateModalOpen(false);
+          if (createPreset) setSearchParams({}, { replace: true });
+        }}
         onSuccess={() => {
           setIsCreateModalOpen(false);
+          if (createPreset) setSearchParams({}, { replace: true });
           refetch();
         }}
       />

@@ -22,7 +22,7 @@ and form field of a legacy container must exist in the ported page (labels may b
 
 - `src/api/endpoints.js` - `serviceBase('octavia')`, `serviceEndpoint('swift')`, `versionHeaders('nova')`, `currentProjectId()`, `hasEndpoint('manilav2')`.
   New API files must use `serviceBase(...)` (resolved per call, never at import time).
-- `src/components/ResourcePage` - list page. Props: `title, breadcrumb, description, fetch(ctx), columns(ctx), primaryActions(ctx), batchActions(ctx), rowActions(ctx), filterParams, interval, header, embedded`.
+- `src/components/ResourcePage` - list page. Props: `title, breadcrumb, description, fetch(ctx), columns(ctx), primaryActions(ctx), batchActions(ctx), rowActions(ctx), filterParams, initialFilters, getCheckboxProps, interval (ms or (list) => ms), header, embedded`. `ResourceDetail` syncs the active tab with `?tab=`.
   `ctx = { isAdmin, projectId, hasAdminRole, t, data, refetch }`. `isAdmin` is true on `*-admin` routes (legacy `isAdminPage`).
   Helpers: `nameColumn({ linkTo })`, `statusColumn({ textMap })`, `timeColumn()`, `textColumn()`, `boolColumn()`, `tagsColumn()`, `projectColumn(projectMap)`, `deleteAction({ name, onDelete, allowed })`, `formatSize`, `formatTime`, `parseKeyValues`, `stringifyKeyValues`, `CopyText`.
 - `src/components/ResourceDetail` - detail page. Props: `breadcrumb, backPath, fetch(id, ctx), info(detail, ctx), tabs(detail, ctx), actions(ctx)`.

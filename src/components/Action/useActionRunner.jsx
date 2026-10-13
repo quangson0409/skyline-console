@@ -48,7 +48,8 @@ export function useActionRunner({ onRefresh } = {}) {
         executeConfirmAction({
           action,
           item,
-          items,
+          // only batch calls pass a list; a single row must reach onSubmit as the item itself
+          items: isMultiple ? items : [],
           onSuccess: async () => {
             message.success(t('Operation completed successfully'));
             if (onRefresh) onRefresh();
