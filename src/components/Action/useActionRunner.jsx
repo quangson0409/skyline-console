@@ -73,7 +73,7 @@ export function useActionRunner({ onRefresh } = {}) {
 
           const initialValues =
             typeof action.getDefaultValues === 'function'
-              ? action.getDefaultValues(item)
+              ? await action.getDefaultValues(item)
               : action.defaultValue || {};
 
           setModalConfig({
@@ -101,6 +101,8 @@ export function useActionRunner({ onRefresh } = {}) {
       item={modalConfig.item}
       formItems={modalConfig.formItems}
       initialValues={modalConfig.initialValues}
+      width={modalConfig.action?.width}
+      okText={modalConfig.action?.okText}
       onSubmit={async (values, item) => {
         if (modalConfig.action && typeof modalConfig.action.onSubmit === 'function') {
           return modalConfig.action.onSubmit(values, item);

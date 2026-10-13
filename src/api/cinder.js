@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { useAuthStore } from '@/store/authStore';
+import { versionHeaders } from './endpoints';
 
 /**
  * OpenStack Cinder Block Storage API (v3)
@@ -89,6 +90,22 @@ export const cinderApi = {
     const pid = resolveProjectId(projectId);
     return apiClient.get(`${BASE_PATH}/${pid}/backups/detail`, { params });
   },
+
+  getBackup: (id) => apiClient.get(`${BASE_PATH}/${resolveProjectId()}/backups/${id}`, versionHeaders('cinder')),
+  createBackup: (data) =>
+    apiClient.post(`${BASE_PATH}/${resolveProjectId()}/backups`, { backup: data }, versionHeaders('cinder')),
+  updateBackup: (id, data) =>
+    apiClient.put(`${BASE_PATH}/${resolveProjectId()}/backups/${id}`, { backup: data }, versionHeaders('cinder')),
+  deleteBackup: (id) => apiClient.delete(`${BASE_PATH}/${resolveProjectId()}/backups/${id}`),
+  restoreBackup: (id, body) =>
+    apiClient.post(`${BASE_PATH}/${resolveProjectId()}/backups/${id}/restore`, { restore: body }),
+
+  // Quota & availability zones
+  getQuotaSet: (projectId) =>
+    apiClient.get(`${BASE_PATH}/${resolveProjectId()}/os-quota-sets/${resolveProjectId(projectId)}`, {
+      params: { usage: true },
+    }),
+  listAvailabilityZones: () => apiClient.get(`${BASE_PATH}/${resolveProjectId()}/os-availability-zone`),
 
   // Types
   listVolumeTypes: (projectId) => {

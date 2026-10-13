@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import MainLayout from '@/layouts/MainLayout';
+import { renderModuleRoutes } from '@/routes';
 
 // Auth Layout & Login
 const AuthLayout = lazy(() => import('@/layouts/AuthLayout'));
@@ -71,6 +72,9 @@ export default function App() {
       <Route path="/" element={<MainLayout />}>
         {/* Default route redirect to /base/overview */}
         <Route index element={<Navigate to="/base/overview" replace />} />
+
+        {/* Ported legacy modules (src/routes/modules/*) - take precedence over placeholders below */}
+        {renderModuleRoutes()}
 
         {/* 1. Home / Overview */}
         <Route

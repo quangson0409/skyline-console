@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { skylineApi } from '@/api/skyline';
 import apiClient from '@/api/client';
 import { message } from 'antd';
+import { saveEndpoints } from '@/api/endpoints';
 
 export const formatErrorMessage = (err) => {
   if (!err) return 'Lỗi không xác định';
@@ -142,6 +143,7 @@ export const useAuthStore = create((set, get) => ({
 
       localStorage.setItem('keystone_token', token);
       localStorage.setItem('keystone_token_expires_at', expiresAt);
+      saveEndpoints(res?.endpoints);
       localStorage.setItem('keystone_username', username);
       localStorage.setItem('keystone_domain', domain);
       localStorage.setItem('keystone_region', currentRegion);
@@ -218,6 +220,7 @@ export const useAuthStore = create((set, get) => ({
     try {
       const profile = await skylineApi.getProfile();
       if (profile) {
+        saveEndpoints(profile.endpoints);
         const keystoneUser = profile.user || {};
         let projectsList = [];
         if (profile.projects) {

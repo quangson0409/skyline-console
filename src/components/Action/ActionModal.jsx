@@ -72,7 +72,11 @@ export default function ActionModal({
   };
 
   const renderField = (field) => {
-    const { type, name, label, options, placeholder, min, max, step, disabled, tip, rows } = field;
+    const { type, name, label, options, placeholder, min, max, step, disabled, tip, rows, mode } = field;
+
+    if (typeof field.render === 'function') {
+      return field.render({ form, item, field });
+    }
 
     switch (type) {
       case 'label':
@@ -112,6 +116,7 @@ export default function ActionModal({
             placeholder={placeholder || t('Please select')}
             options={options}
             disabled={disabled}
+            mode={mode}
             allowClear
             showSearch
             filterOption={(input, opt) =>
@@ -119,6 +124,9 @@ export default function ActionModal({
             }
           />
         );
+
+      case 'tags':
+        return <Select mode="tags" placeholder={placeholder} options={options} disabled={disabled} tokenSeparators={[',']} />;
 
       case 'radio':
         return <Radio.Group options={options} disabled={disabled} />;
@@ -139,6 +147,29 @@ export default function ActionModal({
       default:
         return <Input placeholder={placeholder} disabled={disabled} />;
     }
+  };
+
+  const renderFormItem = (field) => {
+    const rules = [];
+    if (field.required) {
+      rules.push({ required: true, message: `${t('Please enter/select')} ${field.label}!` });
+    }
+    if (field.rules) {
+      rules.push(...field.rules);
+    }
+
+    return (
+      <Form.Item
+        key={field.name}
+        name={field.name}
+        label={field.label}
+        rules={rules}
+        extra={field.tip || field.extra}
+        valuePropName={field.type === 'switch' ? 'checked' : field.type === 'checkbox' ? 'checked' : 'value'}
+      >
+        {renderField(field)}
+      </Form.Item>
+    );
   };
 
   return (
@@ -195,30 +226,23 @@ export default function ActionModal({
             );
           }
 
-          if (field.hidden) {
+          if (field.hidden === true) {
             return null;
           }
 
-          const rules = [];
-          if (field.required) {
-            rules.push({ required: true, message: `${t('Please enter/select')} ${field.label}!` });
-          }
-          if (field.rules) {
-            rules.push(...field.rules);
+          // Conditional field: visible(values) re-evaluated on every form change
+          if (typeof field.visible === 'function') {
+            const { visible, ...rest } = field;
+            return (
+              <Form.Item key={`${field.name}-cond`} noStyle shouldUpdate>
+                {({ getFieldsValue }) =>
+                  visible({ ...initialValues, ...getFieldsValue(true) }) ? renderFormItem(rest) : null
+                }
+              </Form.Item>
+            );
           }
 
-          return (
-            <Form.Item
-              key={field.name}
-              name={field.name}
-              label={field.label}
-              rules={rules}
-              extra={field.tip || field.extra}
-              valuePropName={field.type === 'switch' ? 'checked' : field.type === 'checkbox' ? 'checked' : 'value'}
-            >
-              {renderField(field)}
-            </Form.Item>
-          );
+          return renderFormItem(field);
         })}
       </Form>
     </Modal>

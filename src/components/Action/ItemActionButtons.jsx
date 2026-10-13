@@ -124,7 +124,9 @@ export default function ItemActionButtons({
     return <span style={{ color: '#cbd5e1' }}>-</span>;
   }
 
-  const firstTitle = firstAction ? resolveText(firstAction.titleKey, firstAction.title || firstAction.label || t('Action')) : '';
+  const firstTitle = firstAction
+    ? resolveText(firstAction.titleKey, firstAction.buttonText || firstAction.title || firstAction.label || t('Action'))
+    : '';
   const firstDesc = firstAction ? resolveText(firstAction.descKey, firstAction.description) : '';
 
   return (

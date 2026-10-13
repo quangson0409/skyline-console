@@ -72,7 +72,11 @@ export default function Status({ status = 'active', text, style = {} }) {
   }
 
   // Display text: either custom text or translated status keyword
-  const displayText = text || t(status.charAt(0).toUpperCase() + status.slice(1).toLowerCase());
+  const displayText =
+    text ||
+    (typeof status === 'string'
+      ? t(status.charAt(0).toUpperCase() + status.slice(1).toLowerCase())
+      : t(status ? 'Yes' : 'No'));
 
   return (
     <Space size={6} style={style}>
