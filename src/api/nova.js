@@ -30,6 +30,8 @@ export const novaApi = {
   rescueServer: (id, rescue_image_ref) =>
     apiClient.post(`${BASE_PATH}/servers/${id}/action`, { rescue: rescue_image_ref ? { rescue_image_ref } : null }),
   unrescueServer: (id) => apiClient.post(`${BASE_PATH}/servers/${id}/action`, { unrescue: null }),
+  rebuildServer: (id, data) => apiClient.post(`${BASE_PATH}/servers/${id}/action`, { rebuild: data }),
+  updateServer: (id, data) => apiClient.put(`${BASE_PATH}/servers/${id}`, { server: data }),
 
   // Resizing & Configuration
   resizeServer: (id, flavorRef) =>
@@ -59,6 +61,12 @@ export const novaApi = {
   listInterfaces: (id) =>
     apiClient.get(`${BASE_PATH}/servers/${id}/os-interface`),
 
+  // Security Groups Attachment
+  addSecurityGroup: (id, name) =>
+    apiClient.post(`${BASE_PATH}/servers/${id}/action`, { addSecurityGroup: { name } }),
+  removeSecurityGroup: (id, name) =>
+    apiClient.post(`${BASE_PATH}/servers/${id}/action`, { removeSecurityGroup: { name } }),
+
   // Metadata & Tags
   setServerTags: (id, tags = []) =>
     apiClient.put(`${BASE_PATH}/servers/${id}/tags`, { tags }),
@@ -84,8 +92,17 @@ export const novaApi = {
 
   // Flavors
   listFlavors: (params) => apiClient.get(`${BASE_PATH}/flavors/detail`, { params }),
+  getFlavor: (id) => apiClient.get(`${BASE_PATH}/flavors/${id}`),
   createFlavor: (data) => apiClient.post(`${BASE_PATH}/flavors`, { flavor: data }),
   deleteFlavor: (id) => apiClient.delete(`${BASE_PATH}/flavors/${id}`),
+  getFlavorExtraSpecs: (id) => apiClient.get(`${BASE_PATH}/flavors/${id}/os-extra_specs`),
+  setFlavorExtraSpecs: (id, extra_specs) =>
+    apiClient.post(`${BASE_PATH}/flavors/${id}/os-extra_specs`, { extra_specs }),
+  getFlavorAccess: (id) => apiClient.get(`${BASE_PATH}/flavors/${id}/os-flavor-access`),
+  addFlavorAccess: (id, tenant_id) =>
+    apiClient.post(`${BASE_PATH}/flavors/${id}/action`, { addTenantAccess: { tenant: tenant_id } }),
+  removeFlavorAccess: (id, tenant_id) =>
+    apiClient.post(`${BASE_PATH}/flavors/${id}/action`, { removeTenantAccess: { tenant: tenant_id } }),
 
   // Keypairs
   listKeypairs: () => apiClient.get(`${BASE_PATH}/os-keypairs`),
@@ -94,9 +111,27 @@ export const novaApi = {
 
   // Server Groups
   listServerGroups: () => apiClient.get(`${BASE_PATH}/os-server-groups`),
+  getServerGroup: (id) => apiClient.get(`${BASE_PATH}/os-server-groups/${id}`),
+  createServerGroup: (data) => apiClient.post(`${BASE_PATH}/os-server-groups`, { server_group: data }),
+  deleteServerGroup: (id) => apiClient.delete(`${BASE_PATH}/os-server-groups/${id}`),
 
-  // Hypervisors & Quota
+  // Host Aggregates
+  listAggregates: () => apiClient.get(`${BASE_PATH}/os-aggregates`),
+  createAggregate: (data) => apiClient.post(`${BASE_PATH}/os-aggregates`, { aggregate: data }),
+  deleteAggregate: (id) => apiClient.delete(`${BASE_PATH}/os-aggregates/${id}`),
+  addHostToAggregate: (id, host) =>
+    apiClient.post(`${BASE_PATH}/os-aggregates/${id}/action`, { add_host: { host } }),
+  removeHostFromAggregate: (id, host) =>
+    apiClient.post(`${BASE_PATH}/os-aggregates/${id}/action`, { remove_host: { host } }),
+
+  // Hypervisors, Services & Quota
   listHypervisors: () => apiClient.get(`${BASE_PATH}/os-hypervisors/detail`),
+  listAvailabilityZones: () => apiClient.get(`${BASE_PATH}/os-availability-zone`),
+  listServices: (params) => apiClient.get(`${BASE_PATH}/os-services`, { params }),
+  enableService: (host, binary = 'nova-compute') =>
+    apiClient.put(`${BASE_PATH}/os-services/enable`, { host, binary }),
+  disableService: (host, binary = 'nova-compute') =>
+    apiClient.put(`${BASE_PATH}/os-services/disable`, { host, binary }),
   getQuotaSet: (projectId) => apiClient.get(`${BASE_PATH}/os-quota-sets/${projectId}/detail`),
 };
 

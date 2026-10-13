@@ -49,11 +49,37 @@ export function executeConfirmAction({
     }
   }
 
+  const description = action.description;
+  const modalContent = (
+    <div>
+      <div style={{ fontSize: 14, color: '#1e293b' }}>{content}</div>
+      {description && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: '10px 14px',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            fontSize: 12,
+            color: '#475569',
+            lineHeight: 1.5,
+          }}
+        >
+          <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>ℹ️ {t('Vendor action description (OpenStack)')}:</span>
+          </div>
+          <div>{description}</div>
+        </div>
+      )}
+    </div>
+  );
+
   const isDanger = Boolean(action.isDanger || action.danger);
 
   return Modal.confirm({
     title,
-    content,
+    content: modalContent,
     icon: isDanger ? (
       <ExclamationCircleFilled style={{ color: '#ef4444' }} />
     ) : (

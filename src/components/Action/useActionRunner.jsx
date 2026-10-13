@@ -79,6 +79,7 @@ export function useActionRunner({ onRefresh } = {}) {
           setModalConfig({
             open: true,
             title: action.title || action.buttonText || t('Action'),
+            description: action.description || '',
             item,
             formItems,
             initialValues,
@@ -96,6 +97,7 @@ export function useActionRunner({ onRefresh } = {}) {
     <ActionModal
       open={modalConfig.open}
       title={modalConfig.title}
+      description={modalConfig.description}
       item={modalConfig.item}
       formItems={modalConfig.formItems}
       initialValues={modalConfig.initialValues}

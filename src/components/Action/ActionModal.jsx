@@ -25,6 +25,7 @@ import { useTranslation } from '@/core/i18n';
 export default function ActionModal({
   open = false,
   title,
+  description,
   item = {},
   formItems = [],
   initialValues = {},
@@ -153,11 +154,31 @@ export default function ActionModal({
       width={width}
       maskClosable={false}
     >
+      {description && (
+        <Alert
+          message={
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('Vendor action description (OpenStack)')}</div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.5, color: '#334155' }}>{description}</div>
+            </div>
+          }
+          type="info"
+          showIcon
+          style={{
+            marginTop: 12,
+            marginBottom: 16,
+            borderRadius: 8,
+            backgroundColor: '#f0f9ff',
+            border: '1px solid #bae6fd',
+          }}
+        />
+      )}
+
       <Form
         form={form}
         layout="vertical"
         initialValues={initialValues}
-        style={{ marginTop: 16 }}
+        style={{ marginTop: description ? 8 : 16 }}
       >
         {formItems.map((field) => {
           if (!field) return null;

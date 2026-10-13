@@ -32,7 +32,7 @@ import { isAdminPath } from '@/layouts/menuConfig';
 import { useTranslation } from '@/core/i18n';
 import SelectLang from '@/components/SelectLang';
 
-export default function GlobalHeader({ onToggleSidebar }) {
+export default function GlobalHeader({ onToggleSidebar, isMobile = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -49,8 +49,10 @@ export default function GlobalHeader({ onToggleSidebar }) {
   } = useAuthStore();
 
   const { currentTheme, setTheme } = useThemeStore();
+  const isDark = currentTheme === THEMES.DARK_OPS;
   const isAdmin = isAdminPath(location.pathname);
 
+  // Projects list
   const projectList = Array.isArray(projects) ? projects : Object.values(projects || {});
   const projectItems = projectList.map((p) => {
     const pId = p.id || p.key || 'admin';
@@ -60,9 +62,9 @@ export default function GlobalHeader({ onToggleSidebar }) {
     return {
       key: pId,
       label: (
-        <Space>
+        <Space size={8}>
           {isCurrent && <CheckCircleFilled style={{ color: '#0068ff' }} />}
-          <b style={{ color: '#0f172a' }}>{pName}</b>
+          <span style={{ fontWeight: isCurrent ? 700 : 500 }}>{pName}</span>
           {pDesc && <span style={{ fontSize: 11, color: '#8c8c8c' }}>({pDesc})</span>}
         </Space>
       ),
@@ -73,15 +75,16 @@ export default function GlobalHeader({ onToggleSidebar }) {
     };
   });
 
+  // Regions list
   const regionList = Array.isArray(regions) ? regions : ['RegionOne'];
   const regionItems = regionList.map((r) => {
     const rName = typeof r === 'string' ? r : r.id || 'RegionOne';
     return {
       key: rName,
       label: (
-        <Space>
+        <Space size={8}>
           {rName === currentRegion && <CheckCircleFilled style={{ color: '#0068ff' }} />}
-          <span>Region: {rName}</span>
+          <span>{rName}</span>
         </Space>
       ),
       onClick: () => {
@@ -94,7 +97,7 @@ export default function GlobalHeader({ onToggleSidebar }) {
   const userRoleTags = ((user && user.roles) || ['admin']).map((r, i) => {
     const roleName = typeof r === 'string' ? r : (r && r.name) || 'member';
     return (
-      <Tag key={i} color="blue" style={{ fontSize: 10, margin: '0 2px' }}>
+      <Tag key={i} color="blue" variant="borderless" style={{ fontSize: 10, margin: '0 2px' }}>
         {roleName}
       </Tag>
     );
@@ -146,272 +149,219 @@ export default function GlobalHeader({ onToggleSidebar }) {
   ];
 
   const themeOptions = [
-    { label: 'Skyline Light', value: THEMES.SKYLINE_LIGHT },
-    { label: 'Tech Blue', value: THEMES.TECH_BLUE },
-    { label: 'Dark Ops', value: THEMES.DARK_OPS },
+    { label: 'Light', value: THEMES.SKYLINE_LIGHT },
+    { label: 'Tech', value: THEMES.TECH_BLUE },
+    { label: 'Dark', value: THEMES.DARK_OPS },
   ];
 
-  const isDark = currentTheme === THEMES.DARK_OPS;
-
   return (
-    <div
-      className="skyline-header"
+    <header
       style={{
-        height: 56,
-        lineHeight: '56px',
-        padding: '0 18px',
+        height: 54,
+        padding: isMobile ? '0 12px' : '0 20px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: isDark ? '#0d131f' : '#ffffff',
-        borderBottom: isDark ? '1px solid #1f293d' : '1px solid #e2e8f0',
+        background: isDark ? '#0f172a' : '#ffffff',
+        borderBottom: isDark ? '1px solid #1e293b' : '1px solid #f1f5f9',
         color: isDark ? '#ffffff' : '#0f172a',
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        transition: 'all 0.3s ease',
+        boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.4)' : '0 1px 3px rgba(0,0,0,0.03)',
+        boxSizing: 'border-box',
       }}
     >
-      {/* Left: Hamburger, Skyline Logo, Subtitle, Project pill, Region pill */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      {/* Left: Hamburger, Brand, Project & Region Selectors */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14 }}>
+        {/* Hamburger Toggle */}
         <button
           onClick={onToggleSidebar}
-          aria-label="Toggle sidebar"
+          aria-label="Toggle navigation"
           style={{
-            background: 'none',
+            background: 'transparent',
             border: 'none',
             cursor: 'pointer',
-            padding: '6px 8px',
+            width: 32,
+            height: 32,
             borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: isDark ? '#94a3b8' : '#475569',
-            fontSize: 16,
-            transition: 'background 0.2s',
+            padding: 0,
+            transition: 'background 0.15s ease',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = isDark ? '#1e293b' : '#f1f5f9')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
         >
-          <MenuOutlined />
+          <MenuOutlined style={{ fontSize: 16 }} />
         </button>
 
-        {/* Brand: Skyline Console */}
+        {/* Brand Logo & Name */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
-          onClick={() => navigate('/base/overview')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+          onClick={() => navigate(isAdmin ? '/base/overview-admin' : '/base/overview')}
         >
           <div
             style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: 'linear-gradient(135deg, #0068ff, #005ade)',
+              width: 26,
+              height: 26,
+              borderRadius: 6,
+              background: 'linear-gradient(135deg, #0068ff, #0052cc)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(0, 104, 255, 0.3)',
+              boxShadow: '0 2px 4px rgba(0, 104, 255, 0.25)',
             }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M4 18 L12 6 L20 18 Z" stroke="#ffffff" strokeWidth="2.4" strokeLinejoin="round" />
               <circle cx="12" cy="13" r="2" fill="#ffffff" />
             </svg>
           </div>
 
-          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: -0.2 }}>
-            <span style={{ color: isDark ? '#60a5fa' : '#0068ff' }}>Skyline</span>{' '}
-            <span style={{ color: isDark ? '#ffffff' : '#0f172a', fontWeight: 700 }}>Console</span>
+          <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.2, whiteSpace: 'nowrap' }}>
+            <span style={{ color: '#0068ff' }}>Skyline</span>
+            {!isMobile && (
+              <span style={{ color: isDark ? '#ffffff' : '#0f172a', fontWeight: 600, marginLeft: 4 }}>
+                Console
+              </span>
+            )}
           </div>
-
-          {/* Vertical Divider */}
-          <div style={{ width: 1, height: 18, background: isDark ? '#334155' : '#e2e8f0' }} />
-
-          {/* Subtitle */}
-          <span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>
-            OpenStack Cloud Platform
-          </span>
         </div>
 
-        {/* Pill 1: Project Dropdown */}
-        <Dropdown menu={{ items: projectItems }} trigger={['click']}>
-          <div
-            style={{
-              background: isDark ? '#141c2b' : '#ffffff',
-              border: isDark ? '1px solid #223048' : '1px solid #cbd5e1',
-              borderRadius: 20,
-              padding: '3px 12px',
-              fontSize: 12,
-              fontWeight: 600,
-              color: isDark ? '#e2e8f0' : '#1e293b',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              lineHeight: '22px',
-              transition: 'border-color 0.2s',
-            }}
-          >
-            <BankOutlined style={{ color: '#0068ff', fontSize: 12 }} />
-            <span>{currentProject ? (currentProject.displayName || currentProject.name) : 'Default > admin'}</span>
-            <DownOutlined style={{ fontSize: 9, color: '#94a3b8' }} />
-          </div>
-        </Dropdown>
+        {/* Project & Region Context Dropdowns (Desktop only) */}
+        {!isMobile && (
+          <>
+            <div style={{ width: 1, height: 16, background: isDark ? '#334155' : '#e2e8f0', margin: '0 2px' }} />
 
-        {/* Pill 2: Region Dropdown */}
-        <Dropdown menu={{ items: regionItems }} trigger={['click']}>
-          <div
-            style={{
-              background: isDark ? '#141c2b' : '#ffffff',
-              border: isDark ? '1px solid #223048' : '1px solid #cbd5e1',
-              borderRadius: 20,
-              padding: '3px 12px',
-              fontSize: 12,
-              fontWeight: 600,
-              color: isDark ? '#e2e8f0' : '#1e293b',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              lineHeight: '22px',
-              transition: 'border-color 0.2s',
-            }}
-          >
-            <GlobalOutlined style={{ color: '#0068ff' }} />
-            <span>Region: {currentRegion || 'RegionOne'}</span>
-            <DownOutlined style={{ fontSize: 9, color: '#94a3b8' }} />
-          </div>
-        </Dropdown>
+            {/* Project Dropdown (Clean text style matching legacy Skyline) */}
+            <Dropdown menu={{ items: projectItems }} trigger={['click']}>
+              <div
+                style={{
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = isDark ? '#1e293b' : '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <BankOutlined style={{ color: '#0068ff', fontSize: 13 }} />
+                <span>
+                  <span style={{ color: '#94a3b8', fontSize: 12 }}>Default &gt; </span>
+                  <span style={{ fontWeight: 600 }}>{currentProject ? (currentProject.name || currentProject.displayName) : 'admin'}</span>
+                </span>
+                <DownOutlined style={{ fontSize: 9, color: '#94a3b8' }} />
+              </div>
+            </Dropdown>
+
+            {/* Region Dropdown */}
+            <Dropdown menu={{ items: regionItems }} trigger={['click']}>
+              <div
+                style={{
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 13,
+                  color: isDark ? '#cbd5e1' : '#334155',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = isDark ? '#1e293b' : '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                <GlobalOutlined style={{ color: '#0068ff', fontSize: 13 }} />
+                <span style={{ fontWeight: 500 }}>{currentRegion || 'RegionOne'}</span>
+                <DownOutlined style={{ fontSize: 9, color: '#94a3b8' }} />
+              </div>
+            </Dropdown>
+          </>
+        )}
       </div>
 
-      {/* Right: Quick actions, Theme switcher, Avatar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      {/* Right Side: Scope Toggle, SelectLang, Theme Switcher, Avatar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12 }}>
         {/* Project / Administrator Scope Switcher */}
         {isAdmin ? (
           <Button
-            type="primary"
-            ghost
+            type="text"
             size="small"
-            icon={<AppstoreOutlined />}
+            icon={<AppstoreOutlined style={{ color: '#0068ff' }} />}
             onClick={() => {
               navigate('/base/overview');
-              message.info(t('Switch to Project'));
+              message.info(t('Switched to Project view'));
             }}
             style={{
-              borderRadius: 14,
+              height: 30,
+              borderRadius: 6,
               fontWeight: 600,
               fontSize: 12,
-              height: 28,
-              borderColor: '#0068ff',
               color: '#0068ff',
+              padding: isMobile ? '0 6px' : '0 8px',
             }}
           >
-            {t('Switch to Project')}
+            {isMobile ? '' : t('Project View')}
           </Button>
         ) : (
           <Button
+            type="text"
             size="small"
-            icon={<SafetyCertificateOutlined style={{ color: '#ef4444' }} />}
+            icon={<SafetyCertificateOutlined style={{ color: '#475569' }} />}
             onClick={() => {
               navigate('/base/overview-admin');
-              message.info(t('Administrator View'));
+              message.info(t('Switched to Administrator view'));
             }}
             style={{
-              borderRadius: 14,
+              height: 30,
+              borderRadius: 6,
               fontWeight: 600,
               fontSize: 12,
-              height: 28,
-              borderColor: isDark ? '#334155' : '#cbd5e1',
-              color: isDark ? '#f87171' : '#b91c1c',
-              background: isDark ? '#1e293b' : '#fff1f2',
+              color: isDark ? '#cbd5e1' : '#475569',
+              padding: isMobile ? '0 6px' : '0 8px',
             }}
           >
-            {t('Administrator')}
+            {isMobile ? '' : t('Administrator')}
           </Button>
         )}
 
         {/* Language selector (i18n) */}
-        <SelectLang />
+        <SelectLang compact={isMobile} />
 
-        {/* Theme mode switcher */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: isDark ? '#141c2b' : '#f1f5f9',
-            padding: '2px 8px',
-            borderRadius: 16,
-          }}
-        >
-          <Tooltip title={t('Theme')}>
-            <BgColorsOutlined style={{ color: '#0068ff' }} />
-          </Tooltip>
+        {/* Theme mode switcher (Desktop only) */}
+        {!isMobile && (
           <Segmented
             size="small"
             value={currentTheme}
             onChange={(val) => setTheme(val)}
             options={themeOptions}
+            style={{ fontSize: 12 }}
           />
-        </div>
+        )}
 
-        {/* AI Cloud Assistant */}
-        <Tooltip title="Skyline Cloud Assistant">
-          <div
-            style={{
-              cursor: 'pointer',
-              padding: '6px 8px',
-              borderRadius: 6,
-              color: '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <ThunderboltOutlined style={{ fontSize: 15 }} />
-          </div>
-        </Tooltip>
-
-        {/* OpenStack CLI Terminal */}
-        <Tooltip title={t('Web CLI')}>
-          <div
-            style={{
-              cursor: 'pointer',
-              padding: '6px 8px',
-              borderRadius: 6,
-              color: '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <CodeOutlined style={{ fontSize: 15 }} />
-          </div>
-        </Tooltip>
-
-        {/* Activity log */}
-        <Tooltip title={t('Operation Log')}>
-          <div
-            style={{
-              cursor: 'pointer',
-              padding: '6px 8px',
-              borderRadius: 6,
-              color: '#64748b',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-          >
-            <ClockCircleOutlined style={{ fontSize: 15 }} />
-          </div>
-        </Tooltip>
-
-        {/* User Avatar */}
-        <Dropdown menu={{ items: userMenuItems }} trigger={['click']}>
+        {/* User Avatar & Menu */}
+        <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 4,
               cursor: 'pointer',
-              padding: '2px 4px',
+              padding: '2px',
               borderRadius: 20,
             }}
           >
@@ -422,14 +372,15 @@ export default function GlobalHeader({ onToggleSidebar }) {
                 color: '#ffffff',
                 fontWeight: 700,
                 fontSize: 12,
+                cursor: 'pointer',
               }}
             >
               {user && user.username ? user.username.substring(0, 2).toUpperCase() : 'AD'}
             </Avatar>
-            <DownOutlined style={{ fontSize: 9, color: '#94a3b8' }} />
+            <DownOutlined style={{ fontSize: 8, color: '#94a3b8' }} />
           </div>
         </Dropdown>
       </div>
-    </div>
+    </header>
   );
 }

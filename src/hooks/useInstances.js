@@ -349,16 +349,70 @@ export function useInstances() {
     async (values) => {
       setActionLoading(true);
       try {
-        await novaApi.createServer({
+        const payload = {
           name: values.name,
-          imageRef: values.imageRef || values.image,
           flavorRef: values.flavorRef || values.flavor,
-        });
+        };
+
+        if (values.availability_zone) {
+          payload.availability_zone = values.availability_zone;
+        }
+
+        if (values.min_count) {
+          payload.min_count = Number(values.min_count);
+        }
+        if (values.max_count) {
+          payload.max_count = Number(values.max_count);
+        }
+
+        // Boot Source & Block Device Mapping
+        if (values.block_device_mapping_v2 && Array.isArray(values.block_device_mapping_v2)) {
+          payload.block_device_mapping_v2 = values.block_device_mapping_v2;
+        } else if (values.imageRef || values.image) {
+          payload.imageRef = values.imageRef || values.image;
+        }
+
+        // Networks
+        if (values.networks && Array.isArray(values.networks)) {
+          payload.networks = values.networks;
+        } else if (values.networkId) {
+          payload.networks = [{ uuid: values.networkId }];
+        }
+
+        // Security Groups
+        if (values.security_groups && Array.isArray(values.security_groups)) {
+          payload.security_groups = values.security_groups;
+        } else if (values.securityGroupNames && Array.isArray(values.securityGroupNames)) {
+          payload.security_groups = values.securityGroupNames.map((name) => ({ name }));
+        }
+
+        // Keypair
+        if (values.key_name) {
+          payload.key_name = values.key_name;
+        }
+
+        // Admin Password
+        if (values.adminPass) {
+          payload.adminPass = values.adminPass;
+        }
+
+        // User Data (Cloud-init) - Base64 encode if plain text
+        if (values.user_data) {
+          try {
+            payload.user_data = btoa(unescape(encodeURIComponent(values.user_data)));
+          } catch {
+            payload.user_data = btoa(values.user_data);
+          }
+        }
+
+        await novaApi.createServer(payload);
         message.success(`Đã gửi lệnh tạo máy ảo ${values.name} lên OpenStack!`);
         await fetchServers();
+        return { success: true };
       } catch (err) {
         const msg = err.response?.data?.badRequest?.message || err.message || 'Lỗi tạo máy ảo';
         message.error(`Không thể tạo máy ảo: ${msg}`);
+        return { success: false, error: msg };
       } finally {
         setActionLoading(false);
       }

@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { useAuthStore } from '@/store/authStore';
 
 /**
  * OpenStack Cinder Block Storage API (v3)
@@ -6,23 +7,94 @@ import apiClient from './client';
  */
 const BASE_PATH = '/openstack/regionone/cinder/v3';
 
+const resolveProjectId = (projectId) => {
+  if (typeof projectId === 'string' && projectId && projectId !== 'undefined') {
+    return projectId;
+  }
+  try {
+    const state = useAuthStore.getState ? useAuthStore.getState() : {};
+    return state?.currentProject?.id || state?.user?.project_id || 'admin';
+  } catch {
+    return 'admin';
+  }
+};
+
 export const cinderApi = {
   // Volumes
-  listVolumes: (projectId, params) => apiClient.get(`${BASE_PATH}/${projectId}/volumes/detail`, { params }),
-  getVolume: (projectId, id) => apiClient.get(`${BASE_PATH}/${projectId}/volumes/${id}`),
-  createVolume: (projectId, data) => apiClient.post(`${BASE_PATH}/${projectId}/volumes`, { volume: data }),
-  deleteVolume: (projectId, id) => apiClient.delete(`${BASE_PATH}/${projectId}/volumes/${id}`),
+  listVolumes: (projectId, params) => {
+    if (typeof projectId === 'object' && projectId !== null && !params) {
+      params = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.get(`${BASE_PATH}/${pid}/volumes/detail`, { params });
+  },
+  getVolume: (projectId, id) => {
+    if (!id && projectId) {
+      id = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.get(`${BASE_PATH}/${pid}/volumes/${id}`);
+  },
+  createVolume: (projectId, data) => {
+    if (typeof projectId === 'object' && !data) {
+      data = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.post(`${BASE_PATH}/${pid}/volumes`, { volume: data });
+  },
+  deleteVolume: (projectId, id) => {
+    if (!id && projectId) {
+      id = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.delete(`${BASE_PATH}/${pid}/volumes/${id}`);
+  },
 
   // Snapshots
-  listSnapshots: (projectId, params) => apiClient.get(`${BASE_PATH}/${projectId}/snapshots/detail`, { params }),
-  createSnapshot: (projectId, data) => apiClient.post(`${BASE_PATH}/${projectId}/snapshots`, { snapshot: data }),
-  deleteSnapshot: (projectId, id) => apiClient.delete(`${BASE_PATH}/${projectId}/snapshots/${id}`),
+  listSnapshots: (projectId, params) => {
+    if (typeof projectId === 'object' && projectId !== null && !params) {
+      params = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.get(`${BASE_PATH}/${pid}/snapshots/detail`, { params });
+  },
+  createSnapshot: (projectId, data) => {
+    if (typeof projectId === 'object' && !data) {
+      data = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.post(`${BASE_PATH}/${pid}/snapshots`, { snapshot: data });
+  },
+  deleteSnapshot: (projectId, id) => {
+    if (!id && projectId) {
+      id = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.delete(`${BASE_PATH}/${pid}/snapshots/${id}`);
+  },
 
   // Backups
-  listBackups: (projectId, params) => apiClient.get(`${BASE_PATH}/${projectId}/backups/detail`, { params }),
+  listBackups: (projectId, params) => {
+    if (typeof projectId === 'object' && projectId !== null && !params) {
+      params = projectId;
+      projectId = null;
+    }
+    const pid = resolveProjectId(projectId);
+    return apiClient.get(`${BASE_PATH}/${pid}/backups/detail`, { params });
+  },
 
   // Types
-  listVolumeTypes: (projectId) => apiClient.get(`${BASE_PATH}/${projectId}/types`),
+  listVolumeTypes: (projectId) => {
+    const pid = resolveProjectId(projectId);
+    return apiClient.get(`${BASE_PATH}/${pid}/types`);
+  },
 };
 
 export default cinderApi;

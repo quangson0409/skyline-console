@@ -33,6 +33,14 @@ export default function ItemActionButtons({
     return true;
   };
 
+  // Helper to resolve translated text
+  const resolveText = (key, fallback) => {
+    if (key) return t(key);
+    if (typeof fallback === 'function') return fallback();
+    if (fallback) return t(fallback);
+    return '';
+  };
+
   // Build Antd 5 dropdown items
   const menuItems = [];
 
@@ -41,17 +49,31 @@ export default function ItemActionButtons({
     if (group.actions && Array.isArray(group.actions)) {
       const groupChildren = group.actions
         .filter(checkAllowed)
-        .map((act) => ({
-          key: act.id || act.key || act.title,
-          label: act.title || act.name,
-          danger: Boolean(act.isDanger || act.danger),
-          onClick: () => onActionClick && onActionClick(act, item),
-        }));
+        .map((act) => {
+          const actTitle = resolveText(act.titleKey, act.title || act.name);
+          const actDesc = resolveText(act.descKey, act.description);
+          return {
+            key: act.id || act.key || actTitle,
+            label: (
+              <div style={{ display: 'flex', flexDirection: 'column', padding: '2px 0' }}>
+                <span style={{ fontWeight: 500 }}>{actTitle}</span>
+                {actDesc && (
+                  <span style={{ fontSize: 11, color: '#94a3b8', maxWidth: 260, whiteSpace: 'normal', lineHeight: 1.25 }}>
+                    {actDesc}
+                  </span>
+                )}
+              </div>
+            ),
+            title: actDesc || actTitle,
+            danger: Boolean(act.isDanger || act.danger),
+            onClick: () => onActionClick && onActionClick(act, item),
+          };
+        });
 
       if (groupChildren.length > 0) {
         menuItems.push({
           key: `group-${gIdx}`,
-          label: group.title,
+          label: resolveText(group.titleKey, group.title),
           type: 'group',
           children: groupChildren,
         });
@@ -60,9 +82,21 @@ export default function ItemActionButtons({
       // Single action without group wrapper
       const act = group.action;
       if (checkAllowed(act)) {
+        const actTitle = resolveText(act.titleKey, act.title || act.name);
+        const actDesc = resolveText(act.descKey, act.description);
         menuItems.push({
-          key: act.id || act.key || act.title,
-          label: act.title || act.name,
+          key: act.id || act.key || actTitle,
+          label: (
+            <div style={{ display: 'flex', flexDirection: 'column', padding: '2px 0' }}>
+              <span style={{ fontWeight: 500 }}>{actTitle}</span>
+              {actDesc && (
+                <span style={{ fontSize: 11, color: '#94a3b8', maxWidth: 260, whiteSpace: 'normal', lineHeight: 1.25 }}>
+                  {actDesc}
+                </span>
+              )}
+            </div>
+          ),
+          title: actDesc || actTitle,
           danger: Boolean(act.isDanger || act.danger),
           onClick: () => onActionClick && onActionClick(act, item),
         });
@@ -70,9 +104,12 @@ export default function ItemActionButtons({
     } else if (group.title || group.label) {
       // Direct action object
       if (checkAllowed(group)) {
+        const gTitle = resolveText(group.titleKey, group.title || group.label);
+        const gDesc = resolveText(group.descKey, group.description);
         menuItems.push({
-          key: group.id || group.key || group.title,
-          label: group.title || group.label,
+          key: group.id || group.key || gTitle,
+          label: gTitle,
+          title: gDesc || gTitle,
           danger: Boolean(group.isDanger || group.danger),
           onClick: () => onActionClick && onActionClick(group, item),
         });
@@ -87,16 +124,20 @@ export default function ItemActionButtons({
     return <span style={{ color: '#cbd5e1' }}>-</span>;
   }
 
+  const firstTitle = firstAction ? resolveText(firstAction.titleKey, firstAction.title || firstAction.label || t('Action')) : '';
+  const firstDesc = firstAction ? resolveText(firstAction.descKey, firstAction.description) : '';
+
   return (
     <Space size={6} split={hasFirst && hasMore ? <Divider type="vertical" style={{ margin: 0 }} /> : null}>
       {hasFirst && (
         <Button
           type="link"
           size="small"
+          title={firstDesc || firstTitle}
           style={{ padding: 0, fontWeight: 600, color: '#0068ff' }}
           onClick={() => onActionClick && onActionClick(firstAction, item)}
         >
-          {firstAction.title || firstAction.label || t('Action')}
+          {firstTitle}
         </Button>
       )}
 

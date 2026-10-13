@@ -128,7 +128,7 @@ export default function SidebarNav({ collapsed }) {
           </div>
           <Tag
             color={isAdmin ? 'error' : 'processing'}
-            bordered={false}
+            variant="borderless"
             style={{ fontSize: 10, lineHeight: '16px', padding: '0 6px', margin: 0, borderRadius: 10 }}
           >
             {isAdmin ? 'System-Admin' : t('Project')}
@@ -146,6 +146,7 @@ export default function SidebarNav({ collapsed }) {
           onClick={({ key }) => {
             if (key.startsWith('/')) {
               navigate(key);
+              if (onSelect) onSelect();
             }
           }}
           style={{

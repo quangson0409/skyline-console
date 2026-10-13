@@ -17,6 +17,10 @@ const InstanceDetail = lazy(() => import('@/pages/Instances/InstanceDetail'));
 const FlavorList = lazy(() => import('@/pages/Compute/Flavors/FlavorList'));
 const KeypairList = lazy(() => import('@/pages/Compute/Keypairs/KeypairList'));
 const ImageList = lazy(() => import('@/pages/Compute/Images/ImageList'));
+const ServerGroupList = lazy(() => import('@/pages/Compute/ServerGroups/ServerGroupList'));
+const InstanceSnapshotList = lazy(() => import('@/pages/Compute/InstanceSnapshots/SnapshotList'));
+const HypervisorList = lazy(() => import('@/pages/Compute/Hypervisors/HypervisorList'));
+const AggregateList = lazy(() => import('@/pages/Compute/Aggregates/AggregateList'));
 
 // Storage
 const VolumeList = lazy(() => import('@/pages/Storage/Volumes/VolumeList'));
@@ -121,7 +125,7 @@ export default function App() {
             path="instance-snapshot"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Instance Snapshots (Ảnh chụp máy ảo)" service="Nova / Glance" />
+                <InstanceSnapshotList />
               </Suspense>
             }
           />
@@ -138,7 +142,7 @@ export default function App() {
             path="server-group"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Server Groups (Nhóm máy chủ)" service="Nova" />
+                <ServerGroupList />
               </Suspense>
             }
           />
@@ -173,7 +177,7 @@ export default function App() {
             path="instance-snapshot-admin"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Instance Snapshots (Toàn hệ thống)" service="Nova / Glance" />
+                <InstanceSnapshotList />
               </Suspense>
             }
           />
@@ -189,7 +193,7 @@ export default function App() {
             path="server-group-admin"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Server Groups Admin" service="Nova" />
+                <ServerGroupList />
               </Suspense>
             }
           />
@@ -205,7 +209,7 @@ export default function App() {
             path="hypervisors-admin"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Hypervisors (Cụm máy chủ vật lý KVM)" service="Nova Compute" />
+                <HypervisorList />
               </Suspense>
             }
           />
@@ -213,7 +217,7 @@ export default function App() {
             path="aggregates-admin"
             element={
               <Suspense fallback={<PageLoader />}>
-                <ModulePlaceholder title="Host Aggregates (Nhóm máy chủ vật lý)" service="Nova" />
+                <AggregateList />
               </Suspense>
             }
           />

@@ -45,6 +45,23 @@ const savedCurrentProject = (() => {
   }
 })();
 
+// Token expiration verification on store load
+const savedToken = localStorage.getItem('keystone_token') || '';
+const savedExpiresAt = localStorage.getItem('keystone_token_expires_at');
+const isInitialExpired = (() => {
+  if (!savedToken) return true;
+  if (!savedExpiresAt) return false;
+  return Date.now() >= new Date(savedExpiresAt).getTime();
+})();
+
+if (savedToken && isInitialExpired) {
+  localStorage.removeItem('keystone_token');
+  localStorage.removeItem('keystone_token_expires_at');
+}
+
+const initialToken = isInitialExpired ? '' : savedToken;
+const initialIsAuth = !isInitialExpired && !!savedToken;
+
 export const useAuthStore = create((set, get) => ({
   user: {
     username: localStorage.getItem('keystone_username') || 'admin',
@@ -52,8 +69,9 @@ export const useAuthStore = create((set, get) => ({
     roles: ['admin', 'member', 'manager'],
     email: 'admin@skyline.openstack.org',
   },
-  token: localStorage.getItem('keystone_token') || '',
-  isAuthenticated: !!localStorage.getItem('keystone_token'),
+  token: initialToken,
+  expiresAt: isInitialExpired ? null : savedExpiresAt,
+  isAuthenticated: initialIsAuth,
   backendUrl: 'http://10.0.29.10:9999',
   backendConnected: false,
   lastPingMs: null,
@@ -116,7 +134,14 @@ export const useAuthStore = create((set, get) => ({
       }
 
       const currentRegion = res?.region || 'RegionOne';
+      const expiresAt =
+        res?.expires_at ||
+        res?.token?.expires_at ||
+        res?.keystone_token_expires_at ||
+        new Date(Date.now() + 3600 * 1000).toISOString();
+
       localStorage.setItem('keystone_token', token);
+      localStorage.setItem('keystone_token_expires_at', expiresAt);
       localStorage.setItem('keystone_username', username);
       localStorage.setItem('keystone_domain', domain);
       localStorage.setItem('keystone_region', currentRegion);
@@ -164,6 +189,7 @@ export const useAuthStore = create((set, get) => ({
 
       set({
         token,
+        expiresAt,
         isAuthenticated: true,
         backendConnected: true,
         currentRegion,
@@ -233,14 +259,16 @@ export const useAuthStore = create((set, get) => ({
   },
 
   // Disconnect / Logout
-  logout: async () => {
+  logout: async (silent = false) => {
     try {
       await skylineApi.logout().catch(() => {});
     } finally {
       localStorage.removeItem('keystone_token');
+      localStorage.removeItem('keystone_token_expires_at');
       localStorage.removeItem('keystone_username');
       set({
         token: '',
+        expiresAt: null,
         isAuthenticated: false,
         user: {
           username: 'admin',
@@ -249,7 +277,21 @@ export const useAuthStore = create((set, get) => ({
           email: 'admin@skyline.openstack.org',
         },
       });
-      message.info('Đã đăng xuất phiên làm việc OpenStack.');
+      if (!silent) {
+        message.info('Đã đăng xuất phiên làm việc OpenStack.');
+      }
     }
+  },
+
+  // Check if token has expired
+  checkTokenExpiry: () => {
+    const { token, expiresAt } = get();
+    if (!token) return true;
+    const exp = expiresAt || localStorage.getItem('keystone_token_expires_at');
+    if (exp && Date.now() >= new Date(exp).getTime()) {
+      get().logout(true);
+      return true;
+    }
+    return false;
   },
 }));

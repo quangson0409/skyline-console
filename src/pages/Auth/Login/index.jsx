@@ -77,6 +77,17 @@ export default function Login() {
         </p>
       </div>
 
+      {/* Session Expired Notice */}
+      {searchParams.get('expired') === '1' && (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('Phiên làm việc OpenStack đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.')}
+          style={{ marginBottom: 16, borderRadius: 8 }}
+          closable
+        />
+      )}
+
       {/* Error Alert */}
       {errorMsg && (
         <Alert

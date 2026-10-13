@@ -24,9 +24,11 @@ import {
 } from '@ant-design/icons';
 import { neutronApi } from '@/api/neutron';
 import { useTranslation } from '@/core/i18n';
+import { useAuthStore } from '@/store/authStore';
 
 export default function SecurityGroupList() {
   const { t } = useTranslation();
+  const { currentProject } = useAuthStore();
   const [secGroups, setSecGroups] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -38,7 +40,14 @@ export default function SecurityGroupList() {
   const fetchSecGroups = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await neutronApi.listSecurityGroups();
+      const pid = currentProject?.id;
+      const params = {
+        limit: 10,
+      };
+      if (pid) {
+        params.project_id = pid;
+      }
+      const res = await neutronApi.listSecurityGroups(params);
       if (res && res.security_groups) {
         const normalized = res.security_groups.map((sg) => ({
           key: sg.id,
@@ -67,7 +76,7 @@ export default function SecurityGroupList() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, currentProject?.id]);
 
   useEffect(() => {
     fetchSecGroups();
@@ -78,6 +87,7 @@ export default function SecurityGroupList() {
       await neutronApi.createSecurityGroup({
         name: values.name,
         description: values.description || '',
+        project_id: currentProject?.id,
       });
       message.success(t('Security Group created successfully!'));
       setIsModalOpen(false);

@@ -29,6 +29,7 @@ import BaseTable from '@/components/Tables/BaseTable';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { rowActions, batchActions } from './actions';
 import { useTranslation } from '@/core/i18n';
+import CreateInstanceModal from './CreateInstanceModal';
 
 export default function InstanceList() {
   const { t } = useTranslation();
@@ -48,29 +49,9 @@ export default function InstanceList() {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [magicFilters, setMagicFilters] = useState({});
-  const [availableImages, setAvailableImages] = useState([]);
-  const [availableFlavors, setAvailableFlavors] = useState([]);
-  const [form] = Form.useForm();
 
   // Unified Skyline Action Runner (handles confirm, modal forms, etc.)
   const { handleAction, actionModal } = useActionRunner({ onRefresh: refetch });
-
-  // Load images and flavors for Create Modal
-  useEffect(() => {
-    if (isCreateModalOpen) {
-      Promise.allSettled([
-        glanceApi.listImages(),
-        novaApi.listFlavors(),
-      ]).then(([imgRes, flavRes]) => {
-        if (imgRes.status === 'fulfilled' && imgRes.value?.images) {
-          setAvailableImages(imgRes.value.images);
-        }
-        if (flavRes.status === 'fulfilled' && flavRes.value?.flavors) {
-          setAvailableFlavors(flavRes.value.flavors);
-        }
-      });
-    }
-  }, [isCreateModalOpen]);
 
   // MagicInput filter parameters matching legacy Skyline
   const filterParams = useMemo(
@@ -104,12 +85,6 @@ export default function InstanceList() {
     ],
     [t]
   );
-
-  const handleCreateSubmit = async (values) => {
-    await createInstance(values);
-    setIsCreateModalOpen(false);
-    form.resetFields();
-  };
 
   const columns = useMemo(
     () => [
@@ -272,62 +247,15 @@ export default function InstanceList() {
       {/* Dynamic Action Modal (Mounts AttachVolume, Resize, Snapshot, Password, etc.) */}
       {actionModal}
 
-      {/* Create Instance Modal */}
-      <Modal
-        title={`${t('Create')} ${t('Instances')}`}
+      {/* Comprehensive Launch / Create Instance Modal */}
+      <CreateInstanceModal
         open={isCreateModalOpen}
         onCancel={() => setIsCreateModalOpen(false)}
-        footer={null}
-        destroyOnHidden
-      >
-        <Form form={form} layout="vertical" onFinish={handleCreateSubmit}>
-          <Form.Item name="name" label={t('Name')} rules={[{ required: true, message: t('Please input name!') }]}>
-            <Input placeholder="my-server-01" />
-          </Form.Item>
-
-          <Form.Item name="imageRef" label={t('Images')} rules={[{ required: true, message: t('Please select image!') }]}>
-            <Select
-              placeholder={t('Select Image')}
-              options={
-                availableImages.length > 0
-                  ? availableImages.map((img) => ({
-                      label: `${img.name} (${img.disk_format?.toUpperCase() || 'RAW'})`,
-                      value: img.id,
-                    }))
-                  : [
-                      { label: 'Ubuntu 22.04 LTS (Jammy)', value: 'ubuntu-22.04' },
-                      { label: 'Rocky Linux 9.2 (Blue Onyx)', value: 'rocky-9.2' },
-                    ]
-              }
-            />
-          </Form.Item>
-
-          <Form.Item name="flavorRef" label={t('Flavors')} rules={[{ required: true, message: t('Please select flavor!') }]}>
-            <Select
-              placeholder={t('Select Flavor')}
-              options={
-                availableFlavors.length > 0
-                  ? availableFlavors.map((flv) => ({
-                      label: `${flv.name} (${flv.vcpus} vCPU / ${flv.ram >= 1024 ? flv.ram / 1024 : flv.ram} GiB RAM)`,
-                      value: flv.id,
-                    }))
-                  : [
-                      { label: 'm1.small (1 vCPU / 2 GiB)', value: '1' },
-                      { label: 'm1.medium (2 vCPU / 4 GiB)', value: '2' },
-                      { label: 'm1.large (4 vCPU / 8 GiB)', value: '3' },
-                    ]
-              }
-            />
-          </Form.Item>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-            <Button onClick={() => setIsCreateModalOpen(false)}>{t('Cancel')}</Button>
-            <Button type="primary" htmlType="submit" style={{ backgroundColor: '#0068ff' }}>
-              {t('Create')}
-            </Button>
-          </div>
-        </Form>
-      </Modal>
+        onSuccess={() => {
+          setIsCreateModalOpen(false);
+          refetch();
+        }}
+      />
     </div>
   );
 }
