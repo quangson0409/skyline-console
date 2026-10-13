@@ -1,8 +1,71 @@
 @import 'variables.less';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --font-sans: 'Inter', -apple-system, blinkmacsystemfont, 'Segoe UI', roboto,
+    sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-primary: #0068ff;
+  --color-success: #10b981;
+  --color-warning: #fa8c16;
+  --color-error: #ef4444;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+}
 
 :global {
   body {
+    color: @color-text-title;
     font-family: @font-family;
+    background-color: @body-bg-color;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Custom Slim Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 40%);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 60%);
+  }
+
+  /* Table Header Modern Typography */
+  .ant-table-thead > tr > th {
+    color: #64748b !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    letter-spacing: 0.5px !important;
+    text-transform: uppercase !important;
+    background: #f8fafc !important;
+  }
+
+  /* Interactive Cards */
+  .interactive-card {
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      border-color: #93c5fd !important;
+      box-shadow: 0 4px 12px rgba(0, 104, 255, 8%) !important;
+    }
   }
 
   .code {

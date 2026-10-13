@@ -13,14 +13,16 @@
 // limitations under the License.
 
 module.exports = {
-  'primary-color': '#0C63FA',
-  'link-color': '#0C63FA',
-  'success-color': '#52C41A',
-  'warning-color': '#FAAD14',
-  'error-color': '#D40000',
-  'btn-default-color': '#0C63FA',
-  'btn-default-border': '#0C63FA',
-  'border-color-base': '#E8E8EA',
-  'border-radius-base': '2px',
-  'font-size-base': '12px',
+  'primary-color': '#0068ff',
+  'link-color': '#0068ff',
+  'success-color': '#10b981',
+  'warning-color': '#fa8c16',
+  'error-color': '#ef4444',
+  'btn-default-color': '#0f172a',
+  'btn-default-border': '#e2e8f0',
+  'border-color-base': '#e2e8f0',
+  'border-radius-base': '8px',
+  'font-size-base': '13px',
+  'font-family':
+    "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
 };
