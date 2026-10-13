@@ -30,6 +30,7 @@ export default function ResourceDetail({
   tabs,
   actions,
   interval = 0,
+  isTransition,
 }) {
   const { t } = useTranslation();
   const params = useParams();
@@ -57,7 +58,7 @@ export default function ResourceDetail({
   });
 
   // detail pages poll only while the resource is in a transition status (legacy TabDetail)
-  useAutoRefresh({ data: detail, refetch, initialAuto: false });
+  useAutoRefresh({ data: detail, refetch, initialAuto: false, ...(isTransition ? { isTransition } : {}) });
 
   const afterAction = (action) => {
     if (action?.id === 'delete' && backPath) {

@@ -1,0 +1,5 @@
+{
+  "Manage DNS zones and their record sets (Designate).": "管理DNS区域及其记录集（Designate）。",
+  "PTR records of floating IP addresses (Designate reverse DNS).": "浮动IP地址的PTR记录（Designate反向DNS）。",
+  "Please input a valid email!": "请输入有效的邮箱！"
+}

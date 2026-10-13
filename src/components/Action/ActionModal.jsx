@@ -164,6 +164,7 @@ export default function ActionModal({
         name={field.name}
         label={field.type === 'checkbox' ? undefined : field.label}
         rules={rules}
+        dependencies={field.dependencies}
         extra={field.tip || field.extra}
         valuePropName={field.type === 'switch' ? 'checked' : field.type === 'checkbox' ? 'checked' : 'value'}
       >

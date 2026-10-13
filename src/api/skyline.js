@@ -21,3 +21,17 @@ export const skylineApi = {
 };
 
 export default skylineApi;
+
+/**
+ * Skyline settings (legacy skylineClient.setting): GET /settings, GET /setting/{key},
+ * PUT /setting { key, value }, DELETE /setting/{key} (reset to the initial value).
+ */
+Object.assign(skylineApi, {
+  listSettings: () => apiClient.get('/openstack/skyline/api/v1/settings'),
+  getSetting: (key) => apiClient.get(`/openstack/skyline/api/v1/setting/${encodeURIComponent(key)}`),
+  updateSetting: (body) => apiClient.put('/openstack/skyline/api/v1/setting', body),
+  resetSetting: (key) => apiClient.delete(`/openstack/skyline/api/v1/setting/${encodeURIComponent(key)}`),
+  /** Soft-deleted servers (legacy skylineClient.extension.recycleServers) */
+  listRecycleServers: (params) =>
+    apiClient.get('/openstack/skyline/api/v1/extension/recycle_servers', { params }),
+});

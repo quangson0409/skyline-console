@@ -1,0 +1,5 @@
+{
+  "Manage DNS zones and their record sets (Designate).": "Manage DNS zones and their record sets (Designate).",
+  "PTR records of floating IP addresses (Designate reverse DNS).": "PTR records of floating IP addresses (Designate reverse DNS).",
+  "Please input a valid email!": "Please input a valid email!"
+}

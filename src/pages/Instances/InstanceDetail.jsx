@@ -1104,7 +1104,7 @@ export default function InstanceDetail() {
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#0f172a' }}>
+                <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
                   {instance.name}
                 </h1>
                 <Tooltip title={t('Edit Instance')}>

@@ -1,0 +1,11 @@
+{
+  "Content Types": "Content Types",
+  "Creator ID": "Creator ID",
+  "Download": "Download",
+  "Download Payload": "Download Payload",
+  "Expired": "Expired",
+  "Failed to load the secret content": "Failed to load the secret content",
+  "Secrets stored in the Barbican key manager.": "Secrets stored in the Barbican key manager.",
+  "TLS certificates stored in Barbican for load balancer listeners.": "TLS certificates stored in Barbican for load balancer listeners.",
+  "The name cannot contain Chinese characters.": "The name cannot contain Chinese characters."
+}

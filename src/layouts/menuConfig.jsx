@@ -13,6 +13,8 @@ import {
   SettingOutlined,
   DeploymentUnitOutlined,
   LockOutlined,
+  DashboardOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 
 /**
@@ -254,7 +256,7 @@ export const getTenantMenu = (t = (s) => s) => [
       {
         key: '/container-service/containers',
         path: '/container-service/containers',
-        label: t('Containers'),
+        label: t('Zun Containers'),
       },
       {
         key: '/container-service/capsules',
@@ -272,6 +274,12 @@ export const getTenantMenu = (t = (s) => s) => [
         label: t('Cluster Templates'),
       },
     ],
+  },
+  {
+    key: 'maintenance',
+    label: t('Maintenance'),
+    icon: <ToolOutlined />,
+    children: [{ key: '/management/recycle-bin', path: '/management/recycle-bin', label: t('Recycle Bin') }],
   },
 ];
 
@@ -516,6 +524,26 @@ export const getAdminMenu = (t = (s) => s) => [
     ],
   },
   {
+    key: 'monitorCenterAdmin',
+    label: t('Monitor Center'),
+    icon: <DashboardOutlined />,
+    children: [
+      { key: '/monitor-center/overview-admin', path: '/monitor-center/overview-admin', label: t('Monitor Overview') },
+      { key: '/monitor-center/physical-node-admin', path: '/monitor-center/physical-node-admin', label: t('Physical Nodes') },
+      { key: '/monitor-center/storage-cluster-admin', path: '/monitor-center/storage-cluster-admin', label: t('Storage Clusters') },
+      { key: '/monitor-center/openstack-service-admin', path: '/monitor-center/openstack-service-admin', label: t('OpenStack Services') },
+      { key: '/monitor-center/other-service-admin', path: '/monitor-center/other-service-admin', label: t('Other Services') },
+    ],
+  },
+  {
+    key: 'maintenanceAdmin',
+    label: t('Maintenance'),
+    icon: <ToolOutlined />,
+    children: [
+      { key: '/management/recycle-bin-admin', path: '/management/recycle-bin-admin', label: t('Recycle Bin') },
+    ],
+  },
+  {
     key: 'configurationAdmin',
     label: t('Global Settings'),
     icon: <SettingOutlined />,
@@ -557,7 +585,7 @@ export const getAdminMenu = (t = (s) => s) => [
       {
         key: '/container-service/containers-admin',
         path: '/container-service/containers-admin',
-        label: t('Containers'),
+        label: t('Zun Containers'),
       },
       {
         key: '/container-service/hosts-admin',

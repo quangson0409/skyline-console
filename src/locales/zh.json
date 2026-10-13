@@ -3598,5 +3598,7 @@
   "{name} {id} could not be found.": "您查看的资源{name} {id} 无法获取",
   "{number} {resource}": "{number}个{resource}",
   "{pageSize} items/page": "{pageSize} 条/页",
-  "{seconds} seconds": "{seconds}秒"
+  "{seconds} seconds": "{seconds}秒",
+  "Operation failed": "操作失败",
+  "Operation completed successfully": "操作成功"
 }

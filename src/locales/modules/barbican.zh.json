@@ -1,0 +1,12 @@
+{
+  "Content Types": "内容类型",
+  "Creator ID": "创建者ID",
+  "Download": "下载",
+  "Download Payload": "下载负载内容",
+  "Expired": "已过期",
+  "Failed to load the secret content": "加载密钥内容失败",
+  "Please enter/select": "请输入/选择",
+  "Secrets stored in the Barbican key manager.": "存储在Barbican密钥管理器中的密钥。",
+  "TLS certificates stored in Barbican for load balancer listeners.": "存储在Barbican中、供负载均衡监听器使用的TLS证书。",
+  "The name cannot contain Chinese characters.": "名称不能包含中文字符。"
+}
