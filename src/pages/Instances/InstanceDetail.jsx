@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
 import { useParams, useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Card,
@@ -155,6 +156,8 @@ export default function InstanceDetail() {
   const { hasAdminRole, user, currentProject } = useAuthStore();
   const isAdmin = Boolean(hasAdminRole || (user?.roles || []).includes('admin'));
   const isAdminPage = useIsAdminPage();
+  const isSystemReaderOnly = useAuthStore((st) => st.isSystemReaderOnly);
+  usePolicyStore((st) => st.rules); // re-render when policies load
   const { pathname } = useLocation();
   const isRecycleBinDetail = pathname.includes('recycle-bin');
   const listPath = isRecycleBinDetail
@@ -420,6 +423,8 @@ export default function InstanceDetail() {
   const can = (action) => {
     if (!action || !actionItem) return false;
     if (action.adminOnly && !isAdmin) return false;
+    // legacy policy rules (same check as list row actions)
+    if (!checkActionPolicy(action, { item: actionItem, isAdminPage, isSystemReaderOnly })) return false;
     try {
       return action.allowed ? Boolean(action.allowed(actionItem)) : true;
     } catch {

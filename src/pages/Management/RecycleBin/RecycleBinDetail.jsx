@@ -6,6 +6,8 @@ import useActionRunner from '@/components/Action/useActionRunner';
 import { useIsAdminPage } from '@/components/ResourcePage';
 import { useTranslation } from '@/core/i18n';
 import { recoverAction, forceDeleteAction } from './RecycleBinList';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+import { useAuthStore } from '@/store/authStore';
 
 const InstanceDetail = lazy(() => import('@/pages/Instances/InstanceDetail'));
 
@@ -22,6 +24,11 @@ export default function RecycleBinDetail() {
   const listUrl = isAdmin ? '/management/recycle-bin-admin' : '/management/recycle-bin';
   const { handleAction, actionModal } = useActionRunner({ onRefresh: () => navigate(listUrl) });
   const item = { id, name: id };
+  usePolicyStore((st) => st.rules);
+  const isSystemReaderOnly = useAuthStore((st) => st.isSystemReaderOnly);
+  const policyCtx = { item, isAdminPage: isAdmin, isSystemReaderOnly };
+  const recover = recoverAction();
+  const forceDelete = forceDeleteAction();
 
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>
@@ -38,12 +45,16 @@ export default function RecycleBinDetail() {
             </h1>
           </Space>
           <Space>
-            <Button type="primary" onClick={() => handleAction(recoverAction(), item)}>
-              {t('Recover')}
-            </Button>
-            <Button danger onClick={() => handleAction(forceDeleteAction(), item)}>
-              {t('Delete')}
-            </Button>
+            {checkActionPolicy(recover, policyCtx) && (
+              <Button type="primary" onClick={() => handleAction(recover, item)}>
+                {t('Recover')}
+              </Button>
+            )}
+            {checkActionPolicy(forceDelete, policyCtx) && (
+              <Button danger onClick={() => handleAction(forceDelete, item)}>
+                {t('Delete')}
+              </Button>
+            )}
           </Space>
         </div>
       </Card>

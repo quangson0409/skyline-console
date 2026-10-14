@@ -7,6 +7,7 @@ import Status from '@/components/Status';
 import ItemActionButtons from '@/components/Action/ItemActionButtons';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useAuthStore } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
@@ -31,6 +32,8 @@ export default function ResourceDetail({
   actions,
   interval = 0,
   isTransition,
+  policy,
+  aliasPolicy,
 }) {
   const { t } = useTranslation();
   const params = useParams();
@@ -52,7 +55,15 @@ export default function ResourceDetail({
     [id, isAdmin, currentProject?.id, hasAdminRole, t]
   );
 
-  const { data: detail, loading, error, refetch } = useResource(() => fetch(id, ctx), [ctx], {
+  // legacy TabDetail `get policy()`
+  const policyRules = usePolicyStore((st) => st.rules);
+  const canView = useMemo(
+    () => checkActionPolicy({ policy, aliasPolicy }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [policy, aliasPolicy, policyRules]
+  );
+
+  const { data: detail, loading, error, refetch } = useResource(() => (canView ? fetch(id, ctx) : Promise.resolve(null)), [ctx, canView], {
     initial: null,
     interval,
   });
@@ -71,6 +82,16 @@ export default function ResourceDetail({
 
   const fullCtx = { ...ctx, refetch, detail };
   const back = typeof backPath === 'function' ? backPath(ctx) : backPath;
+
+  if (!canView) {
+    return (
+      <Result
+        status="403"
+        title={t("You don't have access to get {name}.", { name: typeof title === 'string' ? title : '' })}
+        extra={back ? <Button onClick={() => navigate(back)}>{t('Back')}</Button> : null}
+      />
+    );
+  }
 
   if (error && !detail) {
     return (

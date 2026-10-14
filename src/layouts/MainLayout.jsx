@@ -9,7 +9,7 @@ import { handleSessionExpired, isTokenExpired } from '@/api/client';
 import { useTranslation } from '@/core/i18n';
 import { isAdminPath, getRequiredEndpoint } from '@/layouts/menuConfig';
 import { hasEndpoint } from '@/api/endpoints';
-import { Result, Button } from 'antd';
+import { Result, Button, Spin } from 'antd';
 import viVN from 'antd/locale/vi_VN';
 import enUS from 'antd/locale/en_US';
 import zhCN from 'antd/locale/zh_CN';
@@ -27,7 +27,25 @@ export default function MainLayout() {
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  const { isAuthenticated, token, checkTokenExpiry, hasAdminPageRole, fetchProfile } = useAuthStore();
+  const { isAuthenticated, token, checkTokenExpiry, hasAdminPageRole, fetchProfile, applyProfile } = useAuthStore();
+  // SSO return (legacy rootStore.getUserProfileAndPolicy on load): the IdP round-trip leaves only the
+  // skyline session cookie, so try the profile once before sending the user to the login page.
+  const [probingSession, setProbingSession] = useState(!token);
+  useEffect(() => {
+    if (token) return undefined;
+    let alive = true;
+    fetch('/api/openstack/skyline/api/v1/profile', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(async (profile) => {
+        if (alive && profile?.keystone_token) await applyProfile(profile);
+      })
+      .catch(() => {})
+      .finally(() => alive && setProbingSession(false));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -71,6 +89,14 @@ export default function MainLayout() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  if (probingSession && !token) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
 
   // Proactive Route Guard: if unauthenticated or expired, redirect to login
   if (!isAuthenticated || !token || isTokenExpired()) {

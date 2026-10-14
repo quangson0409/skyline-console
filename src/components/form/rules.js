@@ -62,3 +62,26 @@ export const jsonRule = () => ({
     }
   },
 });
+
+// legacy utils/validate.js nameRegex / nameRegexWithoutChinese (FormItem type 'input-name')
+// eslint-disable-next-line no-useless-escape
+const NAME_RE = /^[a-zA-Z一-龥][一-龥\w"'\[\]^.:()_-]{0,127}$/;
+// eslint-disable-next-line no-useless-escape
+const NAME_RE_NO_CHINESE = /^[a-zA-Z][\w"'\[\]^.:()_-]{0,127}$/;
+
+/** Legacy name rule: starts with a letter (or Chinese), 1-128 chars of 0-9 a-z A-Z "-'_()[].:^ */
+export const nameRule = ({ withoutChinese = false } = {}) => ({
+  validator: (_, value) => {
+    if (value === undefined || value === null || value === '') return Promise.resolve();
+    if ((withoutChinese ? NAME_RE_NO_CHINESE : NAME_RE).test(String(value))) return Promise.resolve();
+    return Promise.reject(
+      new Error(
+        `${t('Invalid: ')}${t(
+          withoutChinese
+            ? 'The name should start with upper letter or lower letter, and be a string of 1 to 128, characters can only contain "0-9, a-z, A-Z, "-\'_()[].:^".'
+            : 'The name should start with upper letter, lower letter or chinese, and be a string of 1 to 128, characters can only contain "0-9, a-z, A-Z, "-\'_()[].:^".'
+        )}`
+      )
+    );
+  },
+});

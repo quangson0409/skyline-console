@@ -2121,5 +2121,6 @@
   "Download": "Tải xuống",
   "No data": "Không có dữ liệu",
   "If you are not authorized to access any project, or if the project you are involved in has been deleted or disabled, contact the platform administrator to reassign the project": "Nếu bạn chưa được cấp quyền truy cập dự án nào, hoặc dự án bạn tham gia đã bị xóa hay vô hiệu hóa, hãy liên hệ quản trị viên nền tảng để được gán lại dự án",
-  "If you are not sure which authentication method to use, please contact your administrator.": "Nếu bạn không chắc nên dùng phương thức xác thực nào, vui lòng liên hệ quản trị viên."
+  "If you are not sure which authentication method to use, please contact your administrator.": "Nếu bạn không chắc nên dùng phương thức xác thực nào, vui lòng liên hệ quản trị viên.",
+  "You don't have access to get {name}.": "Bạn không có quyền xem {name}."
 }

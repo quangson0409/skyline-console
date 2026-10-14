@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Breadcrumb, Alert } from 'antd';
+import { Breadcrumb, Alert, Result } from 'antd';
 import { Link } from 'react-router-dom';
 import BaseTable from '@/components/Tables/BaseTable';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
 import { useServerPaging } from '@/hooks/useServerPaging';
 import { useAutoRefresh, defaultIsTransition } from '@/hooks/useAutoRefresh';
 import { useAuthStore } from '@/store/authStore';
@@ -54,6 +55,8 @@ export default function ResourcePage({
   isTransition,
   autoRefreshEnabled = true,
   serverSide,
+  policy,
+  aliasPolicy,
 }) {
   const { t } = useTranslation();
   const isAdmin = useIsAdminPage();
@@ -66,9 +69,20 @@ export default function ResourcePage({
     [isAdmin, projectId, hasAdminRole, t]
   );
 
+  // legacy List `get policy()`: without the list permission the page shows a notice and fetches nothing
+  const policyRules = usePolicyStore((st) => st.rules);
+  const canView = useMemo(
+    () => checkActionPolicy({ policy, aliasPolicy }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [policy, aliasPolicy, policyRules]
+  );
+
   const remoteMode = Boolean(serverSide && serverSide.fetchPage);
-  const local = useResource(() => (remoteMode ? Promise.resolve([]) : fetch(ctx)), [ctx, remoteMode, ...deps]);
-  const paging = useServerPaging({ serverSide, ctx, deps, initialFilters, enabled: remoteMode });
+  const local = useResource(
+    () => (remoteMode || !canView ? Promise.resolve([]) : fetch(ctx)),
+    [ctx, remoteMode, canView, ...deps]
+  );
+  const paging = useServerPaging({ serverSide, ctx, deps, initialFilters, enabled: remoteMode && canView });
   const data = remoteMode ? paging.items : local.data;
   const loading = remoteMode ? paging.loading : local.loading;
   const refetch = remoteMode ? paging.refetch : local.refetch;
@@ -169,6 +183,18 @@ export default function ResourcePage({
   const crumbs = (breadcrumb || [title]).map((c) =>
     typeof c === 'object' && c.path ? { title: <Link to={c.path}>{c.title}</Link> } : { title: c }
   );
+
+  if (!canView) {
+    return (
+      <div style={embedded ? undefined : { maxWidth: 1600, margin: '0 auto' }}>
+        {!embedded && <Breadcrumb items={crumbs} style={{ marginBottom: 16, fontSize: 13 }} />}
+        <Result
+          status="403"
+          title={t("You don't have access to get {name}.", { name: typeof title === 'string' ? title : '' })}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={embedded ? undefined : { maxWidth: 1600, margin: '0 auto' }}>
