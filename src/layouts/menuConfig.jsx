@@ -85,6 +85,11 @@ export const getTenantMenu = (t = (s) => s) => [
         label: t('Volume Backups'),
       },
       {
+        key: '/storage/backup-schedule',
+        path: '/storage/backup-schedule',
+        label: t('Backup Schedules'),
+      },
+      {
         key: '/storage/snapshot',
         path: '/storage/snapshot',
         label: t('Volume Snapshots'),
@@ -352,6 +357,11 @@ export const getAdminMenu = (t = (s) => s) => [
         key: '/storage/backup-admin',
         path: '/storage/backup-admin',
         label: t('Volume Backups'),
+      },
+      {
+        key: '/storage/backup-schedule-admin',
+        path: '/storage/backup-schedule-admin',
+        label: t('Backup Schedules'),
       },
       {
         key: '/storage/snapshot-admin',
@@ -640,6 +650,7 @@ export const getAdminMenu = (t = (s) => s) => [
 export const MENU_ENDPOINTS = {
   '/storage/volume': 'cinder',
   '/storage/backup': 'cinder',
+  '/storage/backup-schedule': 'cinder',
   '/storage/snapshot': 'cinder',
   '/storage/container': 'swift',
   '/network/qos-policy': 'neutron_qos',
@@ -667,6 +678,7 @@ export const MENU_ENDPOINTS = {
   '/compute/baremetal-node-admin': 'ironic',
   '/storage/volume-admin': 'cinder',
   '/storage/backup-admin': 'cinder',
+  '/storage/backup-schedule-admin': 'cinder',
   '/storage/snapshot-admin': 'cinder',
   '/storage/volume-type-admin': 'cinder',
   '/storage/storage-admin': 'cinder',

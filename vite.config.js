@@ -26,6 +26,12 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 3000,
     proxy: {
+      // backup scheduler service (backup-scheduler/), see docs/BACKUP_SCHEDULER.md
+      '/scheduler-api': {
+        target: process.env.SCHEDULER_URL || 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/scheduler-api/, '/api/v1'),
+      },
       '/api': {
         target: 'http://10.0.29.10:9999',
         changeOrigin: true,

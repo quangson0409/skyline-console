@@ -1,0 +1,13 @@
+{
+  "name": "backup-scheduler",
+  "version": "1.0.0",
+  "description": "Cinder volume backup scheduler service (zero dependencies)",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  }
+}

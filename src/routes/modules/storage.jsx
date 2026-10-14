@@ -2,6 +2,8 @@ import { lazy } from 'react';
 
 const BackupList = lazy(() => import('@/pages/Storage/Backups/BackupList'));
 const BackupDetail = lazy(() => import('@/pages/Storage/Backups/BackupDetail'));
+const BackupScheduleList = lazy(() => import('@/pages/Storage/BackupSchedules/BackupScheduleList'));
+const BackupScheduleDetail = lazy(() => import('@/pages/Storage/BackupSchedules/BackupScheduleDetail'));
 const VolumeList = lazy(() => import('@/pages/Storage/Volumes/VolumeList'));
 const VolumeCreate = lazy(() =>
   import('@/pages/Storage/Volumes/VolumeList').then((m) => ({ default: m.VolumeCreatePage }))
@@ -23,6 +25,11 @@ export default [
   { path: 'storage/backup/detail/:id', component: BackupDetail },
   { path: 'storage/backup-admin', component: BackupList },
   { path: 'storage/backup-admin/detail/:id', component: BackupDetail },
+  // Backup schedules (backup-scheduler service)
+  { path: 'storage/backup-schedule', component: BackupScheduleList },
+  { path: 'storage/backup-schedule/detail/:id', component: BackupScheduleDetail },
+  { path: 'storage/backup-schedule-admin', component: BackupScheduleList },
+  { path: 'storage/backup-schedule-admin/detail/:id', component: BackupScheduleDetail },
   // Volumes
   { path: 'storage/volume', component: VolumeList },
   { path: 'storage/volume-admin', component: VolumeList },
