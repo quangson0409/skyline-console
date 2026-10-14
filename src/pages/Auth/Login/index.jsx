@@ -9,6 +9,36 @@ import { PASSWORD_INFO_KEY } from '@/pages/UserCenter/ChangePassword';
 
 const PASSWORD_EXPIRED = 'The password is expired and needs to be changed for user';
 
+/** legacy getUsernameAndDomain: "<username>" or "<username>@<domain>" (e-mail usernames keep the domain field) */
+export const splitUsernameDomain = (raw = '', fallbackDomain = 'Default') => {
+  const value = String(raw).trim();
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return { username: value, domain: fallbackDomain };
+  const at = value.lastIndexOf('@');
+  return at > 0
+    ? { username: value.slice(0, at), domain: value.slice(at + 1) || fallbackDomain }
+    : { username: value, domain: fallbackDomain };
+};
+
+/** legacy Login getErrorMessage: friendly texts for common keystone failures */
+const friendlyLoginError = (message, t) => {
+  const msg = String(message || '');
+  if (msg.includes('The account is locked for user')) {
+    return t('Frequent login failure will cause the account to be temporarily locked, please operate after 5 minutes');
+  }
+  if (msg.includes('The account is disabled for user')) {
+    return t('The user has been disabled, please contact the administrator');
+  }
+  if (msg.includes('You are not authorized for any projects or domains')) {
+    return t(
+      'If you are not authorized to access any project, or if the project you are involved in has been deleted or disabled, contact the platform administrator to reassign the project'
+    );
+  }
+  if (msg.includes('requires authentication') || msg.includes('(HTTP 401)')) {
+    return t('Username or password is incorrect');
+  }
+  return msg || t('Login Failed');
+};
+
 export default function Login() {
   const [form] = Form.useForm();
   const navigate = useNavigate();
@@ -23,13 +53,41 @@ export default function Login() {
   const [regions, setRegions] = useState([]);
   const [totp, setTotp] = useState(null); // { receipt, domain, username }
   const [passcode, setPasscode] = useState('');
+  // legacy: default domain from skyline /config, SSO login types from /sso
+  const [defaultDomain, setDefaultDomain] = useState('Default');
+  const [sso, setSso] = useState({ enable_sso: false, protocols: [] });
+  const [loginType, setLoginType] = useState('password');
 
   useEffect(() => {
     skylineApi
       .getRegions()
       .then((res) => setRegions(Array.isArray(res) ? res : []))
       .catch(() => setRegions([]));
+    skylineApi
+      .getConfig()
+      .then((res) => {
+        if (res?.default_domain) {
+          setDefaultDomain(res.default_domain);
+          if (!form.getFieldValue('domain')) form.setFieldsValue({ domain: res.default_domain });
+        }
+      })
+      .catch(() => {});
+    skylineApi
+      .getSSO()
+      .then((res) => setSso({ enable_sso: Boolean(res?.enable_sso), protocols: res?.protocols || [] }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const ssoOptions = sso.enable_sso
+    ? [
+        { value: 'password', label: t('Keystone Credentials') },
+        ...sso.protocols.map((it) => ({
+          value: it.url,
+          label: it.label || (it.protocol === 'openid' ? t('OpenID Connect') : it.protocol),
+        })),
+      ]
+    : [];
 
   const handleTotpLogin = async () => {
     if (!/^\d{6}$/.test(passcode)) {
@@ -46,18 +104,25 @@ export default function Login() {
   const redirectUrl = searchParams.get('redirect') || '/base/overview';
 
   const handlePasswordLogin = async (values) => {
+    if (loginType !== 'password') {
+      // legacy SSO: hand over to the identity provider
+      document.location.href = loginType;
+      return;
+    }
     setLoading(true);
     setErrorMsg('');
+    // "user@domain" in the username box overrides the domain box (legacy single-field login)
+    const { username, domain } = splitUsernameDomain(values.username, values.domain || defaultDomain);
     try {
       const res = await login({
-        domain: values.domain || 'Default',
-        username: values.username,
+        domain,
+        username,
         password: values.password,
         region: values.region,
       });
 
       if (res.totpRequired) {
-        setTotp({ receipt: res.receipt, domain: values.domain || 'Default', username: values.username });
+        setTotp({ receipt: res.receipt, domain, username });
         setPasscode('');
         return;
       }
@@ -72,10 +137,10 @@ export default function Login() {
           navigate('/auth/change-password', { state: { userId, oldPassword: values.password } });
           return;
         }
-        setErrorMsg(msg || t('Login Failed'));
+        setErrorMsg(friendlyLoginError(msg, t));
       }
     } catch (err) {
-      setErrorMsg(formatErrorMessage(err) || t('Login Failed'));
+      setErrorMsg(friendlyLoginError(formatErrorMessage(err), t));
     } finally {
       setLoading(false);
     }
@@ -174,18 +239,29 @@ export default function Login() {
         layout="vertical"
         onFinish={handlePasswordLogin}
         initialValues={{
-          domain: 'Default',
-          username: 'admin',
+          domain: defaultDomain,
+          username: '',
           password: '',
         }}
         requiredMark={false}
       >
-        {regions.length > 1 && (
+        {ssoOptions.length > 0 && (
+          <Form.Item
+            label={t('Login Type')}
+            extra={t('If you are not sure which authentication method to use, please contact your administrator.')}
+          >
+            <Select size="large" value={loginType} onChange={setLoginType} options={ssoOptions} />
+          </Form.Item>
+        )}
+
+        {loginType === 'password' && regions.length > 1 && (
           <Form.Item label={t('Region')} name="region" initialValue={regions[0]}>
             <Select size="large" options={regions.map((r) => ({ value: r, label: r }))} />
           </Form.Item>
         )}
 
+        {loginType === 'password' && (
+          <>
         <Form.Item
           label={t('Domain')}
           name="domain"
@@ -225,6 +301,8 @@ export default function Login() {
             style={{ borderRadius: 8 }}
           />
         </Form.Item>
+          </>
+        )}
 
         <Button
           type="primary"
