@@ -226,6 +226,7 @@ export default function IpsecSiteConnectionsTab() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy="get_ipsec_site_connection"
       embedded
       title={t('IPsec Site Connections')}
       fetch={(ctx) => vpnLists.connections(listParams(ctx))}

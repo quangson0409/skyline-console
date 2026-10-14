@@ -9,6 +9,7 @@ import { certificateRowActions } from './CertificateList';
 export default function CertificateSecretDetail() {
   return (
     <ResourceDetail
+      policy="secret:get"
       breadcrumb={[t('Network'), { title: t('Certificates'), path: '/network/certificate?tab=CA' }]}
       backPath="/network/certificate?tab=CA"
       fetch={fetchCertificateSecret}

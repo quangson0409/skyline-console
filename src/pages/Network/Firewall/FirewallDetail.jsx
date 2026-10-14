@@ -6,7 +6,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import ResourcePage, { textColumn, nameColumn, statusColumn, IdNameCell } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import { t } from '@/core/i18n';
-import { adminSuffix, detailPath } from '../common';
+import { adminSuffix, detailPath, policyTabs } from '../common';
 import {
   firewallStatus,
   adminState,
@@ -23,6 +23,7 @@ import { firewallActions } from './actions';
 function FirewallPorts({ detail }) {
   return (
     <ResourcePage
+      policy="get_port"
       embedded
       fetch={() => fetchFirewallPorts(detail.ports)}
       deps={[detail]}
@@ -69,6 +70,7 @@ export default function FirewallDetail() {
   const projectMap = useProjectMap();
   return (
     <ResourceDetail
+      policy="get_firewall_group"
       breadcrumb={[
         isAdminPage ? t('Administrator') : t('Network'),
         { title: t('Firewalls'), path: firewallTabPath(isAdminPage) },
@@ -88,7 +90,7 @@ export default function FirewallDetail() {
           { label: t('Description'), value: d.description },
         ].filter(Boolean)
       }
-      tabs={(d, { isAdmin }) => [
+      tabs={(d, { isAdmin }) => policyTabs([
         {
           key: 'base',
           label: t('Base Info'),
@@ -118,8 +120,8 @@ export default function FirewallDetail() {
             />
           ),
         },
-        { key: 'ports', label: t('Ports'), render: () => <FirewallPorts detail={d} /> },
-      ]}
+        { key: 'ports', label: t('Ports'), policy: 'get_port', render: () => <FirewallPorts detail={d} /> },
+      ])}
       actions={(ctx) => firewallActions({ ...ctx, navigate, projectMap }).rowActions}
     />
   );

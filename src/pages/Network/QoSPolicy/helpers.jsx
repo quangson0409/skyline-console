@@ -12,6 +12,7 @@ import { nameColumn, projectColumn, timeColumn, yesNo, deleteAction } from '@/co
 import { t } from '@/core/i18n';
 import { sortParams, pageParams } from '@/api/paging';
 import { detailPath } from '../common';
+import { nameRule } from '@/components/form/rules';
 
 /* ---------------- rules helpers ---------------- */
 const rulesOf = (item) => (Array.isArray(item?.rules) ? item.rules : []);
@@ -215,7 +216,7 @@ export const createQosPolicyAction = ({ isAdmin, projectId } = {}) => ({
       }
     }
     return [
-      { name: 'name', label: t('Policy Name'), type: 'input', required: true },
+      { name: 'name', label: t('Policy Name'), type: 'input', required: true, rules: [nameRule({ withoutChinese: true })] },
       {
         name: 'project_id',
         label: t('Project'),
@@ -255,7 +256,7 @@ export const editQosPolicyAction = ({ isAdmin } = {}) => ({
     is_default: item.is_default,
   }),
   getFormItems: () => [
-    { name: 'name', label: t('Policy Name'), type: 'input', required: true },
+    { name: 'name', label: t('Policy Name'), type: 'input', required: true, rules: [nameRule({ withoutChinese: true })] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
     { name: 'shared', label: t('Shared Policy'), type: 'switch', hidden: !isAdmin },
     { name: 'is_default', label: t('Default Policy'), type: 'switch', hidden: !isAdmin },

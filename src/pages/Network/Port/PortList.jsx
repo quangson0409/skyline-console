@@ -1,5 +1,6 @@
-import React from 'react';
-import ResourcePage, { nameColumn, statusColumn, projectColumn, IdNameCell } from '@/components/ResourcePage';
+import React, { useCallback, useRef, useState } from 'react';
+import { Checkbox } from 'antd';
+import ResourcePage, { nameColumn, statusColumn, projectColumn, IdNameCell, useIsAdminPage } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { adminSuffix, detailPath } from '../common';
@@ -96,7 +97,7 @@ export const portColumns = ({ isAdmin, projectMap, networkId, subnetId, instance
   ].filter(Boolean);
 };
 
-export const portFilters = ({ networkId, subnetId, instanceId } = {}) => {
+export const portFilters = ({ networkId, subnetId, instanceId, isAdmin } = {}) => {
   const networkMode = Boolean(networkId) && !subnetId;
   return [
     { name: 'name', label: t('Name') },
@@ -117,7 +118,48 @@ export const portFilters = ({ networkId, subnetId, instanceId } = {}) => {
       label: t('Device Owner'),
       options: deviceOwnerOptions().map((o) => ({ key: o.key, label: o.label })),
     },
+    // legacy List adminPageHasProjectFilter (Port: true) -> project_id sent to /extension/ports
+    isAdmin && { name: 'project_id', label: t('Project ID') },
   ].filter(Boolean);
+};
+
+/** legacy Device Owner option { key: 'compute:nova', isQuick, checkLabel: 'Filter Instance Ports' } */
+export const INSTANCE_OWNER = 'compute:nova';
+
+/**
+ * Legacy MagicInput quick filter: a "Filter Instance Ports" checkbox next to the list that adds /
+ * removes the Device Owner = Instance filter. The list is re-mounted with the new filters so the
+ * filter tags and the backend query stay in sync; the checkbox follows the tags the user edits.
+ */
+function useInstancePortsQuickFilter() {
+  const filtersRef = useRef({});
+  const [checked, setChecked] = useState(false);
+  const [seed, setSeed] = useState({ key: 0, filters: undefined });
+  const observe = useCallback((filters = {}) => {
+    filtersRef.current = filters || {};
+    setChecked(filtersRef.current.device_owner_group === INSTANCE_OWNER);
+  }, []);
+  const toggle = (on) => {
+    const { device_owner_group: _drop, ...rest } = filtersRef.current || {};
+    const next = on ? { ...rest, device_owner_group: INSTANCE_OWNER } : rest;
+    filtersRef.current = next;
+    setChecked(on);
+    setSeed((prev) => ({ key: prev.key + 1, filters: next }));
+  };
+  const header = (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+      <Checkbox checked={checked} onChange={(e) => toggle(e.target.checked)}>
+        {t('Filter Instance Ports')}
+      </Checkbox>
+    </div>
+  );
+  return { header, observe, seedKey: seed.key, initialFilters: seed.filters };
+}
+
+/** wraps a fetchPage / fetch so the quick filter sees the active filters */
+const observed = (fn, observe) => (args = {}) => {
+  observe(args.filters || {});
+  return fn(args);
 };
 
 /** Action sets (legacy actionConfigs / actionConfigsInDetail / adminActions) */
@@ -163,6 +205,8 @@ export const portActionSets = ({ isAdmin, networkId, instanceId, readOnly } = {}
  */
 export function PortsEmbedded({ filters = {}, networkId, subnetId, instanceId, readOnly = false }) {
   const projectMap = useProjectMap();
+  const isAdminPage = useIsAdminPage();
+  const quick = useInstancePortsQuickFilter();
   const netId = networkId || filters?.network_id;
   const query = { ...filters };
   if (networkId && !query.network_id) query.network_id = networkId;
@@ -172,16 +216,23 @@ export function PortsEmbedded({ filters = {}, networkId, subnetId, instanceId, r
   const remote = !subnetId && !query.fixed_ips && !query.subnetId;
   return (
     <ResourcePage
+      key={quick.seedKey}
       embedded
+      policy="get_port"
       deps={[key, subnetId]}
+      initialFilters={quick.initialFilters}
+      header={instanceId ? undefined : quick.header}
       fetch={(ctx) => fetchPorts({ ...ctx, filters: query, subnetId })}
       serverSide={
         remote
-          ? { ...portServerSide, fetchPage: (args) => fetchPortsPage({ ...args, extraParams: query }) }
+          ? {
+              ...portServerSide,
+              fetchPage: observed((args) => fetchPortsPage({ ...args, extraParams: query }), quick.observe),
+            }
           : undefined
       }
       columns={({ isAdmin }) => portColumns({ isAdmin, projectMap, networkId: netId, subnetId, instanceId })}
-      filterParams={portFilters({ networkId: netId, subnetId, instanceId })}
+      filterParams={portFilters({ networkId: netId, subnetId, instanceId, isAdmin: isAdminPage })}
       primaryActions={({ isAdmin }) => portActionSets({ isAdmin, networkId: netId, instanceId, readOnly }).primary}
       batchActions={({ isAdmin }) => portActionSets({ isAdmin, networkId: netId, instanceId, readOnly }).batch}
       rowActions={({ isAdmin }) => portActionSets({ isAdmin, networkId: netId, instanceId, readOnly }).row}
@@ -191,15 +242,21 @@ export function PortsEmbedded({ filters = {}, networkId, subnetId, instanceId, r
 
 export default function PortList() {
   const projectMap = useProjectMap();
+  const isAdminPage = useIsAdminPage();
+  const quick = useInstancePortsQuickFilter();
   return (
     <ResourcePage
+      key={quick.seedKey}
       title={t('Ports')}
+      policy="get_port"
       breadcrumb={[t('Network'), t('Ports')]}
       description={t('Port mainly used for binding instance and other operations, occupying the quota of the port.')}
       fetch={(ctx) => fetchPorts(ctx)}
-      serverSide={portServerSide}
+      serverSide={{ ...portServerSide, fetchPage: observed(portServerSide.fetchPage, quick.observe) }}
+      initialFilters={quick.initialFilters}
+      header={quick.header}
       columns={({ isAdmin }) => portColumns({ isAdmin, projectMap })}
-      filterParams={portFilters()}
+      filterParams={portFilters({ isAdmin: isAdminPage })}
       primaryActions={({ isAdmin }) => portActionSets({ isAdmin }).primary}
       batchActions={({ isAdmin }) => portActionSets({ isAdmin }).batch}
       rowActions={({ isAdmin }) => portActionSets({ isAdmin }).row}

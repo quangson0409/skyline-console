@@ -25,6 +25,8 @@ import Status from '@/components/Status';
 import { t } from '@/core/i18n';
 import { createRouterAction, routerStatus } from '../Router/actions';
 import { combosBackground, combosColors, subnetsColors } from './topologyColor';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+import { createNetworkAction } from '@/pages/Networks/NetworkParts/actions';
 
 const successColor = '#52c41a';
 export const activeShadowColor = 'rgba(87,227,155,0.61)';
@@ -355,6 +357,8 @@ const markerId = (color) => `topo-arrow-${String(color).replace(/[^a-zA-Z0-9]/g,
 export default function Topology() {
   const navigate = useNavigate();
   const projectId = useAuthStore((s) => s.currentProject?.id);
+  const hasAdminRole = useAuthStore((s) => s.hasAdminRole);
+  usePolicyStore((s) => s.rules); // legacy PrimaryActionButtons hide denied actions
   const { currentTheme } = useThemeStore();
   const isDark = currentTheme === THEMES.DARK_OPS;
   const [data, setData] = useState(null);
@@ -416,15 +420,26 @@ export default function Topology() {
         </p>
       </div>
       <Space wrap style={{ marginBottom: 16 }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleAction(createRouterAction(), undefined)}>
-          {t('Create Router')}
-        </Button>
-        <Button icon={<PlusOutlined />} onClick={() => navigate('/network/networks')}>
-          {t('Create Network')}
-        </Button>
-        <Button icon={<PlusOutlined />} onClick={() => navigate('/compute/instance')}>
-          {t('Create Instance')}
-        </Button>
+        {checkActionPolicy(createRouterAction()) ? (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => handleAction(createRouterAction(), undefined)}>
+            {t('Create Router')}
+          </Button>
+        ) : null}
+        {/* legacy Topology: Network/actions/CreateNetwork modal in place */}
+        {checkActionPolicy(createNetworkAction({ isAdmin: false, projectId, hasAdminRole })) ? (
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => handleAction(createNetworkAction({ isAdmin: false, projectId, hasAdminRole }), undefined)}
+          >
+            {t('Create Network')}
+          </Button>
+        ) : null}
+        {/* legacy Topology: compute Instance StepCreate (os_compute_api:servers:create) */}
+        {checkActionPolicy({ policy: 'os_compute_api:servers:create' }) ? (
+          <Button icon={<PlusOutlined />} onClick={() => navigate('/compute/instance/create')}>
+            {t('Create Instance')}
+          </Button>
+        ) : null}
         <Tooltip title={t('Refresh')}>
           <Button shape="circle" icon={<ReloadOutlined />} onClick={load} loading={loading} />
         </Tooltip>

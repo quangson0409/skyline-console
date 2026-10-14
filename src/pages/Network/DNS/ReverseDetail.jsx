@@ -11,6 +11,7 @@ export default function ReverseDetail() {
   const { id: routeId } = useParams();
   return (
     <ResourceDetail
+      policy="get_image"
       breadcrumb={[t('Network'), { title: t('Reverse DNS'), path: '/network/dns/reverse' }]}
       backPath="/network/dns/reverse"
       title={(d) => d.address || d.id || routeId}

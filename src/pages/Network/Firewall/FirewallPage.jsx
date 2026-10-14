@@ -27,10 +27,12 @@ const dash = (v) => (v === undefined || v === null || v === '' ? '-' : String(v)
 /* ------------------------------ Firewalls ------------------------------ */
 export function FirewallList() {
   const navigate = useNavigate();
+  const isAdmin = useIsAdminPage();
   const projectMap = useProjectMap();
   const actionsOf = (ctx) => firewallActions({ ...ctx, navigate, projectMap });
   return (
     <ResourcePage
+      policy="get_firewall_group"
       embedded
       fetch={fetchFirewalls}
       columns={({ isAdmin }) =>
@@ -90,7 +92,11 @@ export function FirewallList() {
         { label: t('Status'), name: 'status', options: mapOptions(firewallStatus()) },
         { label: t('Admin State'), name: 'admin_state_up', options: mapOptions(adminState()) },
         defaultFilter(t('Hide Default Firewalls')),
-      ]}
+        // legacy List adminPageHasProjectFilter
+        isAdmin && { label: t('Project ID'), name: 'project_id' },
+      ].filter(Boolean)}
+      // legacy Firewall list initFilter { notDefault: true }: default firewalls hidden on first load
+      initialFilters={{ notDefault: 'true' }}
       primaryActions={(ctx) => actionsOf(ctx).primaryActions}
       batchActions={(ctx) => actionsOf(ctx).batchActions}
       rowActions={(ctx) => actionsOf(ctx).rowActions}
@@ -101,10 +107,12 @@ export function FirewallList() {
 /* ------------------------------- Policies ------------------------------ */
 export function PolicyList() {
   const navigate = useNavigate();
+  const isAdmin = useIsAdminPage();
   const projectMap = useProjectMap();
   const actionsOf = (ctx) => policyActions({ ...ctx, navigate });
   return (
     <ResourcePage
+      policy="get_firewall_policy"
       embedded
       fetch={fetchPolicies}
       columns={({ isAdmin }) =>
@@ -133,7 +141,8 @@ export function PolicyList() {
         { label: t('Shared'), name: 'shared', options: yesNoOptions() },
         { label: t('Audited'), name: 'audited', options: yesNoOptions() },
         defaultFilter(t('Hide Default Policies')),
-      ]}
+        isAdmin && { label: t('Project ID'), name: 'project_id' },
+      ].filter(Boolean)}
       primaryActions={(ctx) => actionsOf(ctx).primaryActions}
       batchActions={(ctx) => actionsOf(ctx).batchActions}
       rowActions={(ctx) => actionsOf(ctx).rowActions}
@@ -175,16 +184,18 @@ export const ruleFilters = () => [
 /** policy: when given, lists the rules of that policy (legacy Rule list inside Policy detail) */
 export function RuleList({ policy }) {
   const navigate = useNavigate();
+  const isAdmin = useIsAdminPage();
   const projectMap = useProjectMap();
   const inDetail = !!policy;
   const actionsOf = (ctx) => ruleActions({ ...ctx, navigate }, inDetail);
   return (
     <ResourcePage
+      policy="get_firewall_rule"
       embedded
       fetch={(ctx) => (inDetail ? fetchRulesByPolicy(policy.firewall_rules) : fetchRules(ctx))}
       deps={[policy]}
       columns={(ctx) => ruleColumns({ ...ctx, projectMap })}
-      filterParams={ruleFilters()}
+      filterParams={[...ruleFilters(), isAdmin && { label: t('Project ID'), name: 'project_id' }].filter(Boolean)}
       primaryActions={(ctx) => actionsOf(ctx).primaryActions}
       batchActions={(ctx) => actionsOf(ctx).batchActions}
       rowActions={(ctx) => actionsOf(ctx).rowActions}

@@ -2,10 +2,10 @@ import React from 'react';
 import { Table, Card } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import ResourceDetail from '@/components/ResourceDetail';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, formatTime, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, timeColumn, formatTime, yesNo, useIsAdminPage } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import { t } from '@/core/i18n';
-import { networkLink, adminSuffix, renderFixedIps, networkStatus } from '../common';
+import { networkLink, adminSuffix, renderFixedIps, networkStatus, policyTabs } from '../common';
 import {
   routerStatus,
   getRouterState,
@@ -52,6 +52,7 @@ function RouterPorts({ router, isAdmin }) {
   return (
     <ResourcePage
       embedded
+      policy="get_port"
       deps={[router.id]}
       fetch={async () => (await neutronApi.listPorts({ device_id: router.id }))?.ports || []}
       columns={[
@@ -177,9 +178,11 @@ function RouterBaseDetail({ router, isAdmin }) {
 }
 
 export default function RouterDetail() {
+  const isAdminPage = useIsAdminPage();
   return (
     <ResourceDetail
-      breadcrumb={[t('Network'), { title: t('Routers'), path: '/network/router' }]}
+      policy="get_router"
+      breadcrumb={[t('Network'), { title: t('Routers'), path: `/network/router${adminSuffix(isAdminPage)}` }]}
       backPath={({ isAdmin }) => `/network/router${adminSuffix(isAdmin)}`}
       fetch={fetchRouterDetail}
       info={(d, { isAdmin }) =>
@@ -194,15 +197,19 @@ export default function RouterDetail() {
           { label: t('Updated At'), value: formatTime(d.updated_at) },
         ].filter(Boolean)
       }
-      tabs={(d, { isAdmin }) => [
-        { key: 'detail', label: t('Detail'), render: () => <RouterBaseDetail router={d} isAdmin={isAdmin} /> },
-        { key: 'ports', label: t('Ports'), render: () => <RouterPorts router={d} isAdmin={isAdmin} /> },
-        {
-          key: 'staticRoutes',
-          label: t('Static Routes'),
-          render: () => <StaticRoutes router={d} isAdmin={isAdmin} />,
-        },
-      ]}
+      tabs={(d, { isAdmin }) =>
+        policyTabs([
+          { key: 'detail', label: t('Detail'), render: () => <RouterBaseDetail router={d} isAdmin={isAdmin} /> },
+          // legacy Router/Port (get_port) and Router/StaticRouter (get_router) containers
+          { key: 'ports', label: t('Ports'), policy: 'get_port', render: () => <RouterPorts router={d} isAdmin={isAdmin} /> },
+          {
+            key: 'staticRoutes',
+            label: t('Static Routes'),
+            policy: 'get_router',
+            render: () => <StaticRoutes router={d} isAdmin={isAdmin} />,
+          },
+        ])
+      }
       actions={({ isAdmin }) => routerRowActions(isAdmin)}
     />
   );

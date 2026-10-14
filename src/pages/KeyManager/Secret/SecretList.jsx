@@ -15,6 +15,7 @@ export const secretRowActions = () => ({
 export default function SecretList() {
   return (
     <ResourcePage
+      aliasPolicy="barbican:secret:get"
       title={t('Secrets')}
       breadcrumb={[t('Key Manager'), t('Secrets')]}
       description={t('Secrets stored in the Barbican key manager.')}

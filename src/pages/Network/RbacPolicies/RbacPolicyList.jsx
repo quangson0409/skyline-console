@@ -268,6 +268,7 @@ export default function RbacPolicyList() {
   const projectMap = useProjectMap();
   return (
     <ResourcePage
+      policy="get_rbac_policy"
       title={t('RBAC Policies')}
       breadcrumb={[t('Network'), t('RBAC Policies')]}
       description={t('Share networks and QoS policies with other projects through role-based access control.')}

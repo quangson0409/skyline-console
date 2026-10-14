@@ -2,7 +2,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
 import ResourceDetail from '@/components/ResourceDetail';
-import { formatTime, yesNo } from '@/components/ResourcePage';
+import { formatTime, yesNo, useIsAdminPage } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import { t } from '@/core/i18n';
 import { adminSuffix, networkLink, networkStatus } from '../common';
@@ -113,12 +113,15 @@ function PortBaseDetail({ port, isAdmin }) {
 
 export default function RouterPortDetail() {
   const { routerId } = useParams();
+  const isAdminPage = useIsAdminPage();
+  const sfx = adminSuffix(isAdminPage);
   return (
     <ResourceDetail
+      policy="get_port"
       breadcrumb={[
         t('Network'),
-        { title: t('Routers'), path: '/network/router' },
-        { title: routerId, path: `/network/router/detail/${routerId}` },
+        { title: t('Routers'), path: `/network/router${sfx}` },
+        { title: routerId, path: `/network/router${sfx}/detail/${routerId}` },
       ]}
       backPath={({ isAdmin }) => `/network/router${adminSuffix(isAdmin)}/detail/${routerId}`}
       fetch={fetchPort}

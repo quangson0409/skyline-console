@@ -46,6 +46,7 @@ export default function ZoneList() {
   const projectMap = useProjectMap();
   return (
     <ResourcePage
+      policy="get_zones"
       title={t('DNS Zones')}
       breadcrumb={[t('Network'), t('DNS Zones')]}
       description={t('Manage DNS zones and their record sets (Designate).')}

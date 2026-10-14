@@ -34,6 +34,8 @@ function QosPolicyTable({ tab, embedded }) {
   return (
     <ResourcePage
       embedded={embedded}
+      policy="get_policy"
+      aliasPolicy="neutron:get_policy"
       title={t('QoS Policies')}
       breadcrumb={[t('Network'), t('QoS Policies')]}
       description={t(DESCRIPTION)}

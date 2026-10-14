@@ -72,6 +72,7 @@ export default function VpnServicesTab() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy="get_vpnservice"
       embedded
       title={t('VPN Gateways')}
       fetch={(ctx) => vpnLists.services(listParams(ctx))}

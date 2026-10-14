@@ -23,6 +23,7 @@ export const fetchSecretDetail = async (id) => {
 export default function SecretDetail() {
   return (
     <ResourceDetail
+      policy="secret:get"
       breadcrumb={[t('Key Manager'), { title: t('Secrets'), path: '/key-manager/secret' }]}
       backPath="/key-manager/secret"
       statusField="__none"

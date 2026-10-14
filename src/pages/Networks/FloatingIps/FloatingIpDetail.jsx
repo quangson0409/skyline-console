@@ -2,9 +2,9 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
 import ResourceDetail from '@/components/ResourceDetail';
-import ResourcePage, { formatTime } from '@/components/ResourcePage';
+import ResourcePage, { formatTime, useIsAdminPage } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { detailPath, networkLink, portLink } from '@/pages/Network/common';
+import { detailPath, networkLink, portLink, policyTabs } from '@/pages/Network/common';
 import { fetchPfwEnabled, floatingIpStatus, portForwardingProtocols, qosEnabled } from './helpers';
 import {
   associateAction,
@@ -124,9 +124,11 @@ function PortForwardingTab({ fip, isAdmin }) {
 }
 
 export default function FloatingIpDetail() {
+  const isAdminPage = useIsAdminPage();
   return (
     <ResourceDetail
-      breadcrumb={[t('Network'), { title: t('Floating IPs'), path: '/network/floatingip' }]}
+      policy="get_floatingip"
+      breadcrumb={[t('Network'), { title: t('Floating IPs'), path: isAdminPage ? '/network/floatingip-admin' : '/network/floatingip' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/network/floatingip-admin' : '/network/floatingip')}
       fetch={fetchDetail}
       title={(d) => d.floating_ip_address || d.id}
@@ -176,13 +178,14 @@ export default function FloatingIpDetail() {
       }
       tabs={(d, { isAdmin }) =>
         d.pfwEnabled && d.fixed_ip_address == null
-          ? [
+          ? policyTabs([
               {
                 key: 'port_forwarding',
                 label: t('Port Forwardings'),
+                policy: 'get_floatingip_port_forwarding', // legacy FloatingIp/Detail/PortForwarding
                 render: () => <PortForwardingTab fip={d} isAdmin={isAdmin} />,
               },
-            ]
+            ])
           : []
       }
       actions={({ isAdmin, detail }) =>

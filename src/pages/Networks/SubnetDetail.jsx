@@ -8,7 +8,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import { formatTime, useIsAdminPage } from '@/components/ResourcePage';
 import { PortsEmbedded } from '@/pages/Network/Port/PortList';
-import { detailPath, yesNoText } from '@/pages/Network/common';
+import { detailPath, yesNoText, policyTabs } from '@/pages/Network/common';
 import { t } from '@/core/i18n';
 import { editSubnetAction, deleteSubnetAction } from './NetworkParts/actions';
 import { fetchNetworkDetail } from './NetworkDetail';
@@ -49,6 +49,7 @@ export default function SubnetDetail() {
   const networkPath = detailPath('networks', networkId, isAdminPage);
   return (
     <ResourceDetail
+      policy="get_subnet"
       breadcrumb={[
         t('Network'),
         { title: t('Networks'), path: listPath },
@@ -66,7 +67,7 @@ export default function SubnetDetail() {
         { label: t('Updated At'), value: formatTime(d.updated_at) },
         { label: t('Description'), value: d.description },
       ]}
-      tabs={(d, { isAdmin, hasAdminRole }) => [
+      tabs={(d, { isAdmin, hasAdminRole }) => policyTabs([
         {
           key: 'detail',
           label: t('Detail'),
@@ -119,15 +120,17 @@ export default function SubnetDetail() {
         {
           key: 'ports',
           label: t('Ports'),
+          policy: 'get_port',
           render: () => (
             <PortsEmbedded
+              readOnly={!isAdmin}
               filters={{ network_id: d.network_id || networkId, fixed_ips: [`subnet_id=${d.id}`] }}
               networkId={d.network_id || networkId}
               subnetId={d.id}
             />
           ),
         },
-      ]}
+      ])}
       actions={(ctx) => ({
         firstAction: editSubnetAction(ctx),
         moreActions: [{ action: deleteSubnetAction(ctx) }],

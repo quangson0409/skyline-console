@@ -9,6 +9,7 @@ import { octaviaApi } from '@/api/octavia';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
 import { loadAssociateFipData } from '@/components/network/associateFip';
+import { FixedIpSelectTable, FipSelectTable } from '../fipSelectTables';
 import {
   nameRule,
   urlPathRule,
@@ -109,7 +110,7 @@ export const associateFipAction = ({ isAdmin } = {}) => ({
   type: 'modal',
   policy: 'update_floatingip',
   title: t('Associate Floating IP'),
-  width: 760,
+  width: 960,
   allowed: (item) => !isAdmin && isActive(item) && (item.fip === null || item.fip === undefined),
   getDefaultValues: (item) => ({ lb: item.name || item.id, fixed_ip: item.vip_address }),
   getFormItems: async (item) => {
@@ -117,52 +118,25 @@ export const associateFipAction = ({ isAdmin } = {}) => ({
     const bySubnet = Object.fromEntries(interfaces.map((i) => [i.fixed_ip_address, i.subnet_id]));
     return [
       { name: 'lb', label: t('Load Balancer'), type: 'label' },
+      // legacy getFixedIPFormItemForAssociate / getFIPFormItemForAssociate select-tables
       {
         name: 'fixed_ip',
         label: t('Fixed IP'),
-        type: 'select',
         required: true,
-        options: interfaces.map((i) => ({
-          value: i.fixed_ip_address,
-          disabled: !i.available,
-          label: `${i.fixed_ip_address} | ${i.network_name || '-'}${i.reason ? ` - ${i.reason}` : ''}`,
-        })),
+        render: () => <FixedIpSelectTable interfaces={interfaces} showSubnet={false} />,
       },
       {
         name: 'fip',
         label: t('Floating IP'),
         required: true,
         tip: t('The floating IP configured with port forwardings cannot be bound'),
-        render: ({ form }) => <FipSelect form={form} fipsFor={(ip) => fipsForSubnet(bySubnet[ip])} />,
+        render: ({ form }) => <FipSelectTable form={form} fipsFor={(ip) => fipsForSubnet(bySubnet[ip])} />,
       },
     ];
   },
   onSubmit: (values, item) =>
     neutronApi.updateFloatingIp(values.fip, { port_id: item.vip_port_id, fixed_ip_address: values.fixed_ip }),
 });
-
-function FipSelect({ value, onChange, form, fipsFor }) {
-  const fixedIp = Form.useWatch('fixed_ip', form);
-  const options = fixedIp
-    ? fipsFor(fixedIp).map((fip) => ({
-        value: fip.id,
-        label: `${fip.floating_ip_address} (${fip.network_name})`,
-        disabled: (fip.port_forwardings || []).length > 0,
-      }))
-    : [];
-  return (
-    <Select
-      value={value}
-      onChange={onChange}
-      options={options}
-      allowClear
-      showSearch
-      optionFilterProp="label"
-      placeholder={t('Please select')}
-      notFoundContent={fixedIp ? t('No available floating IP') : t('Please select fixed IP first')}
-    />
-  );
-}
 
 export const disassociateFipAction = () => ({
   id: 'disassociate-fip-from-lb',

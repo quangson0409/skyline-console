@@ -2,6 +2,7 @@
  * Floating IP actions - port of legacy pages/network/containers/FloatingIp/actions/*
  * and Detail/PortForwarding/actions/*.
  */
+import { checkPolicyRule } from '@/core/policy';
 import React, { useEffect, useRef, useState } from 'react';
 import { Checkbox, Form, Radio, Select } from 'antd';
 import { IdNameCell } from '@/components/ResourcePage/helpers';
@@ -115,6 +116,10 @@ function SubnetSelect({ form, value, onChange }) {
   );
 }
 
+/** legacy FloatingIp/actions/Allocate canSpecifyFloatingIp */
+export const canSpecifyFloatingIp = () =>
+  checkPolicyRule('create_floatingip') && checkPolicyRule('create_floatingip:floating_ip_address');
+
 export const allocateAction = () => {
   const cache = {};
   return {
@@ -189,7 +194,8 @@ export const allocateAction = () => {
             },
           ],
         },
-        {
+        // legacy Allocate canSpecifyFloatingIp(): create_floatingip + create_floatingip:floating_ip_address
+        canSpecifyFloatingIp() && {
           name: 'floating_ip_address',
           label: t('Floating IP'),
           type: 'input',

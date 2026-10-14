@@ -3,7 +3,7 @@ import { DatePicker } from 'antd';
 import { barbicanApi, refId } from '@/api/barbican';
 import { t } from '@/core/i18n';
 import { TextareaFromFile, toIso, disabledPastDate } from '@/pages/KeyManager/common';
-import { noChineseRule } from '@/components/form/rules';
+import { noChineseRule, nameRule } from '@/components/form/rules';
 import { certificateMode } from './common';
 
 /** Port of legacy pages/network/containers/Certificate/actions */
@@ -84,7 +84,14 @@ export const createCertificateAction = (mode = 'SERVER') => ({
   width: 800,
   getDefaultValues: () => ({ mode }),
   getFormItems: () => [
-    { name: 'name', label: t('Certificate Name'), type: 'input', required: true, rules: [noChineseRule()] },
+    // legacy 'input-name' withoutChinese
+    {
+      name: 'name',
+      label: t('Certificate Name'),
+      type: 'input',
+      required: true,
+      rules: [noChineseRule(), nameRule({ withoutChinese: true })],
+    },
     {
       name: 'mode',
       label: t('Certificate Type'),

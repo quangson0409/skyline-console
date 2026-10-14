@@ -13,7 +13,7 @@ import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { sortParams, pageParams } from '@/api/paging';
 import { detailPath, listAll } from '../common';
-import { routerStatus, mapRouter, createRouterAction, deleteRouterAction, routerRowActions } from './actions';
+import { routerStatus, mapRouter, createRouterAction, deleteRouterAction, deleteRouterBatchAction, routerRowActions } from './actions';
 
 /** legacy RouterStore.updateExternalNetworkForItems */
 export const fillExternalNetworkNames = async (items) => {
@@ -98,6 +98,7 @@ export default function RouterList() {
   const isAdmin = useIsAdminPage();
   return (
     <ResourcePage
+      policy="get_router"
       title={t('Routers')}
       breadcrumb={[t('Network'), t('Routers')]}
       description={t('Virtual routers connect subnets to each other and to external networks.')}
@@ -115,7 +116,7 @@ export default function RouterList() {
         ...(isAdmin ? [{ name: 'project_id', label: t('Project ID') }] : []),
       ]}
       primaryActions={(ctx) => (ctx.isAdmin ? [] : [createRouterAction()])}
-      batchActions={[deleteRouterAction()]}
+      batchActions={[deleteRouterBatchAction()]}
       rowActions={(ctx) => routerRowActions(ctx.isAdmin)}
       interval={15000}
     />

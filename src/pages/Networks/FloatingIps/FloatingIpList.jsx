@@ -207,6 +207,7 @@ export default function FloatingIpList() {
 
   return (
     <ResourcePage
+      policy="get_floatingip"
       title={t('Floating IPs')}
       breadcrumb={[t('Network'), t('Floating IPs')]}
       description={t('Public IP addresses routed from external networks to cloud compute instances.')}

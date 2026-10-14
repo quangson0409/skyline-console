@@ -8,7 +8,7 @@ import DetailCard from '@/components/DetailCard';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
-import { adminSuffix, detailPath, networkStatus } from '../common';
+import { adminSuffix, detailPath, networkStatus, policyTabs } from '../common';
 import { fetchPortDetail, fetchFixedIps, qosEnabled } from './helpers';
 import {
   editPortAction,
@@ -343,6 +343,7 @@ export default function PortDetail() {
   const { back, breadcrumb } = useParentContext();
   return (
     <ResourceDetail
+      policy="get_port"
       breadcrumb={breadcrumb}
       backPath={back}
       fetch={(id, ctx) => fetchPortDetail(id, ctx)}
@@ -369,6 +370,7 @@ export default function PortDetail() {
           {
             key: 'fixed_ips',
             label: t('Fixed IPs'),
+            policy: 'get_port',
             render: () => <FixedIpsTab detail={d} isAdmin={isAdmin} refetch={refetch} />,
           },
           {
@@ -379,10 +381,11 @@ export default function PortDetail() {
           {
             key: 'allowed_address_pair',
             label: t('Allowed Address Pairs'),
+            policy: 'get_port',
             render: () => <AllowedAddressPairTab detail={d} isAdmin={isAdmin} refetch={refetch} />,
           },
         ];
-        return d.port_security_enabled ? tabs : tabs.filter((it) => it.key !== 'security_groups');
+        return policyTabs(d.port_security_enabled ? tabs : tabs.filter((it) => it.key !== 'security_groups'));
       }}
       actions={portDetailActions}
     />

@@ -12,6 +12,7 @@ import {
   fetchCaCertificates,
 } from './common';
 import { createCertificateAction, deleteContainerAction, deleteCaSecretAction } from './actions';
+import { checkPolicyRule } from '@/core/policy';
 
 export const certificateRowActions = (mode) => ({
   firstAction: mode === 'CA' ? deleteCaSecretAction() : deleteContainerAction(),
@@ -26,6 +27,8 @@ export default function CertificateList() {
 
   return (
     <ResourcePage
+      policy={['containers:get', 'secrets:get']}
+      aliasPolicy={['barbican:containers:get', 'barbican:secrets:get']}
       key={mode}
       title={t('Certificates')}
       breadcrumb={[t('Network'), t('Certificates')]}
@@ -47,7 +50,8 @@ export default function CertificateList() {
       deps={[mode]}
       fetch={() => (mode === 'CA' ? fetchCaCertificates() : fetchServerCertificates())}
       columns={[
-        nameColumn({ linkTo: (r) => certificateDetailPath(mode, r.id) }),
+        // legacy Certificate showDetail: checkPolicyRule('barbican:secret:decrypt')
+        nameColumn({ linkTo: checkPolicyRule('barbican:secret:decrypt', true) ? (r) => certificateDetailPath(mode, r.id) : undefined }),
         {
           title: t('Certificate Type'),
           dataIndex: 'mode',

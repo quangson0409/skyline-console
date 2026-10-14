@@ -13,6 +13,7 @@ export default function FirewallRuleDetail() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourceDetail
+      policy="get_firewall_rule"
       breadcrumb={[
         isAdminPage ? t('Administrator') : t('Network'),
         { title: t('Firewall Rules'), path: firewallTabPath(isAdminPage, 'rules') },

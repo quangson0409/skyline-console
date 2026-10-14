@@ -1,0 +1,9 @@
+{
+  "Filter Instance Ports": "Filter Instance Ports",
+  "You are not allowed to delete policy \"{ name }\" used by firewalls: { firewalls }.": "You are not allowed to delete policy \"{ name }\" used by firewalls: { firewalls }.",
+  "You are not allowed to delete policy \"{ name }\".": "You are not allowed to delete policy \"{ name }\".",
+  "You are not allowed to delete rule \"{ name }\" in use.": "You are not allowed to delete rule \"{ name }\" in use.",
+  "You are not allowed to delete rule \"{ name }\".": "You are not allowed to delete rule \"{ name }\".",
+  "Unable to delete router \"{ name }\". External gateway is opened, please clear external gateway first.": "Unable to delete router \"{ name }\". External gateway is opened, please clear external gateway first.",
+  "You are not allowed to delete router \"{ name }\".": "You are not allowed to delete router \"{ name }\"."
+}

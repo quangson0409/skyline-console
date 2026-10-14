@@ -59,6 +59,7 @@ export default function RecordSetDetail() {
   const { zoneId, id: routeId } = useParams();
   return (
     <ResourceDetail
+      policy="get_recordset"
       breadcrumb={[t('Network'), { title: t('DNS Zones'), path: '/network/dns/zones' }, t('Record Sets')]}
       backPath={({ isAdmin }) => `${zoneDetailPath(zoneId, isAdmin)}?tab=record_sets`}
       title={(d) => d.name || d.id || routeId}

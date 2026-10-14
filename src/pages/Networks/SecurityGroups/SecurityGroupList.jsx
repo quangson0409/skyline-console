@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Drawer, Tag } from 'antd';
 import { neutronResources, neutronApi } from '@/api/neutron';
 import { pageParams } from '@/api/paging';
-import ResourcePage, { nameColumn, timeColumn, projectColumn } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, timeColumn, projectColumn, useIsAdminPage } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { keystoneApi } from '@/api/keystone';
 import { t } from '@/core/i18n';
@@ -114,9 +114,11 @@ export const securityGroupRowActions = ({ isAdmin, onManageRules }) => {
 export default function SecurityGroupList() {
   const projectMap = useProjectMap();
   const [drawerGroup, setDrawerGroup] = useState(null);
+  const isAdminPage = useIsAdminPage();
 
   return (
     <ResourcePage
+      policy="get_security_group"
       title={t('Security Groups')}
       breadcrumb={[t('Network'), t('Security Groups')]}
       description={t('Virtual firewalls controlling inbound and outbound network traffic for compute instances.')}
@@ -126,6 +128,8 @@ export default function SecurityGroupList() {
       filterParams={[
         { name: 'name', label: t('Name') },
         { name: 'description', label: t('Description') },
+        // legacy List adminPageHasProjectFilter -> neutron project_id
+        ...(isAdminPage ? [{ name: 'project_id', label: t('Project ID') }] : []),
       ]}
       primaryActions={({ isAdmin }) => (isAdmin ? [] : [createSecurityGroupAction()])}
       batchActions={({ isAdmin }) => [deleteSecurityGroupAction({ isAdmin })]}

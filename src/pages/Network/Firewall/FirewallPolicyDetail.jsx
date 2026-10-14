@@ -7,12 +7,14 @@ import { t } from '@/core/i18n';
 import { fetchPolicyDetail, firewallTabPath } from './helpers';
 import { policyActions } from './actions';
 import { RuleList } from './FirewallPage';
+import { policyTabs } from '../common';
 
 export default function FirewallPolicyDetail() {
   const navigate = useNavigate();
   const isAdminPage = useIsAdminPage();
   return (
     <ResourceDetail
+      policy="get_firewall_policy"
       breadcrumb={[
         isAdminPage ? t('Administrator') : t('Network'),
         { title: t('Firewall Policies'), path: firewallTabPath(isAdminPage, 'policies') },
@@ -27,7 +29,12 @@ export default function FirewallPolicyDetail() {
         { label: t('Shared'), value: d.shared, render: () => yesNo(d.shared) },
         { label: t('Audited'), value: d.audited, render: () => yesNo(d.audited) },
       ]}
-      tabs={(d) => [{ key: 'rules', label: t('Policy Rules'), render: () => <RuleList policy={d} /> }]}
+      tabs={(d) =>
+        policyTabs([
+          // legacy Firewall/Rule container (get_firewall_rule)
+          { key: 'rules', label: t('Policy Rules'), policy: 'get_firewall_rule', render: () => <RuleList policy={d} /> },
+        ])
+      }
       actions={(ctx) => policyActions({ ...ctx, navigate }).rowActions}
     />
   );

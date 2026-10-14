@@ -25,6 +25,7 @@ import {
 } from './helpers';
 import { listenerRowActions, memberRowActions, memberPrimaryActions } from './actions';
 import { withAfterSubmit, wrapRowActions } from './LoadBalancerDetail';
+import { policyTabs } from '@/pages/Network/common';
 
 const Help = ({ title, tip }) => (
   <Space size={4}>
@@ -144,6 +145,7 @@ function Members({ listener, isAdmin, projectId, refetchDetail }) {
   const ctx = { listener, isAdmin, projectId };
   return (
     <ResourcePage
+      policy="os_load-balancer_api:member:get_all"
       embedded
       deps={[listener.id, listener.default_pool_id]}
       fetch={() => fetchMembers(listener.default_pool_id)}
@@ -162,6 +164,7 @@ function Members({ listener, isAdmin, projectId, refetchDetail }) {
 export default function ListenerDetail() {
   return (
     <ResourceDetail
+      policy="os_load-balancer_api:listener:get_one"
       breadcrumb={[t('Network'), { title: t('Load Balancers'), path: '/network/load-balancers' }]}
       backPath={({ isAdmin, params }) => lbDetailPath(params.loadBalancerId, isAdmin)}
       fetch={fetchListenerDetail}
@@ -196,14 +199,15 @@ export default function ListenerDetail() {
           { label: t('Updated At'), value: formatTime(d.updated_at) },
         ];
       }}
-      tabs={(d, { isAdmin, projectId, refetch }) => [
+      tabs={(d, { isAdmin, projectId, refetch }) => policyTabs([
         { key: 'detail', label: t('Detail'), render: () => <ListenerBaseDetail listener={d} isAdmin={isAdmin} /> },
         {
           key: 'members',
+          policy: 'os_load-balancer_api:member:get_all', // legacy Listener/Detail/Member
           label: t('Members'),
           render: () => <Members listener={d} isAdmin={isAdmin} projectId={projectId} refetchDetail={refetch} />,
         },
-      ]}
+      ])}
       actions={({ isAdmin, detail }) => listenerRowActions({ isAdmin, lb: detail?.loadBalancer || undefined, inDetail: true })}
     />
   );

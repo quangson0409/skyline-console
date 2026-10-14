@@ -2,9 +2,9 @@ import React from 'react';
 import { neutronApi } from '@/api/neutron';
 import { keystoneApi } from '@/api/keystone';
 import ResourceDetail from '@/components/ResourceDetail';
-import { formatTime } from '@/components/ResourcePage';
+import { formatTime, useIsAdminPage } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { yesNoText } from '@/pages/Network/common';
+import { yesNoText, policyTabs } from '@/pages/Network/common';
 import { TagList } from '../FloatingIps/helpers';
 import {
   createRuleAction,
@@ -25,9 +25,14 @@ const fetchDetail = async (id, { isAdmin } = {}) => {
 };
 
 export default function SecurityGroupDetail() {
+  const isAdminPage = useIsAdminPage();
   return (
     <ResourceDetail
-      breadcrumb={[t('Network'), { title: t('Security Groups'), path: '/network/security-group' }]}
+      policy="get_security_group"
+      breadcrumb={[
+        t('Network'),
+        { title: t('Security Groups'), path: isAdminPage ? '/network/security-group-admin' : '/network/security-group' },
+      ]}
       backPath={({ isAdmin }) => (isAdmin ? '/network/security-group-admin' : '/network/security-group')}
       fetch={fetchDetail}
       info={(d, { isAdmin }) =>
@@ -45,17 +50,18 @@ export default function SecurityGroupDetail() {
           { label: t('Updated At'), value: formatTime(d.updated_at) },
         ].filter(Boolean)
       }
-      tabs={(d, { isAdmin }) => [
+      tabs={(d, { isAdmin }) => policyTabs([
         {
           key: 'rules',
           label: t('Rules'),
+          policy: 'get_security_group_rule', // legacy SecurityGroup/Detail/Rule
           render: () => <RulesTable
               securityGroupId={d.id}
               isAdmin={isAdmin}
               refreshKey={`${d.revision_number}-${(d.security_group_rules || []).length}`}
             />,
         },
-      ]}
+      ])}
       actions={({ isAdmin, detail }) =>
         isAdmin
           ? { firstAction: deleteSecurityGroupAction({ isAdmin }), moreActions: [] }

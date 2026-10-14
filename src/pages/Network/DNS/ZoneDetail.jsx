@@ -21,6 +21,7 @@ import {
 } from './common';
 import { createRecordSetAction, editRecordSetAction, deleteRecordSetAction } from './actions';
 import { zoneRowActions } from './ZoneList';
+import { policyTabs } from '@/pages/Network/common';
 
 export const recordSetRowActions = () => ({
   firstAction: editRecordSetAction(),
@@ -74,6 +75,7 @@ function ZoneOverview({ zone }) {
 function RecordSets({ zone, isAdmin }) {
   return (
     <ResourcePage
+      policy="get_recordsets"
       embedded
       deps={[zone.id]}
       fetch={() => designateApi.listRecordsets(zone.id, {}, { allProjects: isAdmin })}
@@ -109,6 +111,7 @@ export default function ZoneDetail() {
   const { id: routeId } = useParams();
   return (
     <ResourceDetail
+      policy="get_zone"
       title={(d) => d.name || d.id || routeId}
       breadcrumb={[t('Network'), { title: t('DNS Zones'), path: '/network/dns/zones' }]}
       backPath={({ isAdmin }) => zoneListPath(isAdmin)}
@@ -121,10 +124,17 @@ export default function ZoneDetail() {
         { label: t('Status'), value: d.status, render: () => zoneStatus()[d.status] || d.status || '-' },
         { label: t('Email'), value: d.email },
       ]}
-      tabs={(d, { isAdmin }) => [
-        { key: 'overview', label: t('Overview'), render: () => <ZoneOverview zone={d} /> },
-        { key: 'record_sets', label: t('Record Sets'), render: () => <RecordSets zone={d} isAdmin={isAdmin} /> },
-      ]}
+      tabs={(d, { isAdmin }) =>
+        policyTabs([
+          { key: 'overview', label: t('Overview'), render: () => <ZoneOverview zone={d} /> },
+          {
+            key: 'record_sets',
+            label: t('Record Sets'),
+            policy: 'get_recordsets', // legacy DNS/Zones/Detail/RecordSets
+            render: () => <RecordSets zone={d} isAdmin={isAdmin} />,
+          },
+        ])
+      }
       actions={zoneRowActions()}
     />
   );

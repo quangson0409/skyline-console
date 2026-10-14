@@ -11,6 +11,8 @@ const secretPayload = (d, name) => (d.secret_refs || []).find((it) => it.name ==
 export default function CertificateContainerDetail() {
   return (
     <ResourceDetail
+      policy="container:get"
+      aliasPolicy="barbican:container:get"
       breadcrumb={[t('Network'), { title: t('Certificates'), path: '/network/certificate?tab=SERVER' }]}
       backPath="/network/certificate?tab=SERVER"
       fetch={fetchCertificateContainer}

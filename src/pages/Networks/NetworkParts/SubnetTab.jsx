@@ -70,6 +70,7 @@ export function SubnetsEmbedded({ network }) {
   return (
     <ResourcePage
       embedded
+      policy="get_subnet"
       fetch={(ctx) => fetchNetworkSubnets(network, ctx)}
       deps={[network?.id, network?.subnet_ip_availability]}
       columns={(ctx) => subnetColumns(ctx)}

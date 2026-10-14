@@ -15,24 +15,14 @@ import {
 } from './helpers';
 import { portTabs } from './actions';
 import FormPageLayout, { useNeutronQuota } from './FormPageLayout';
+import { nameRule as sharedNameRule } from '@/components/form/rules';
+import { PolicyGuard } from '../common';
 
 /** legacy utils/validate nameRegex ("input-name" form item) */
-const nameRegex = /^[a-zA-Z一-龥][一-龥\w"'[\]^.:()_-]{0,127}$/;
-export const nameRule = () => ({
-  validator: (_, value) =>
-    !value || nameRegex.test(value)
-      ? Promise.resolve()
-      : Promise.reject(
-          new Error(
-            t(
-              'The name should start with upper letter, lower letter or chinese, and be a string of 1 to 128, characters can only contain "0-9, a-z, A-Z, "-\'_()[].:^".'
-            )
-          )
-        ),
-});
+export const nameRule = () => sharedNameRule();
 
 /** legacy Firewall/actions/Create.jsx (/network/firewall/create) */
-export default function FirewallCreate() {
+function FirewallCreatePage() {
   const navigate = useNavigate();
   const projectId = useAuthStore((s) => s.currentProject?.id);
   const [form] = Form.useForm();
@@ -128,5 +118,14 @@ export default function FirewallCreate() {
         </Form.Item>
       </Form>
     </FormPageLayout>
+  );
+}
+
+/** legacy Firewall/actions/Create static policy create_firewall_group */
+export default function FirewallCreate() {
+  return (
+    <PolicyGuard policy="create_firewall_group" name={t('Firewall')}>
+      <FirewallCreatePage />
+    </PolicyGuard>
   );
 }

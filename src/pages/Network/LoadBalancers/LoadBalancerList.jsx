@@ -68,6 +68,7 @@ export default function LoadBalancerList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="os_load-balancer_api:loadbalancer:get_all"
       title={t('Load Balancers')}
       breadcrumb={[t('Network'), t('Load Balancers')]}
       description={t('Octavia load balancers distribute traffic across back-end members through listeners and pools.')}

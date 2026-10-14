@@ -126,6 +126,7 @@ export default function FirewallPortDetail() {
   const firewallDetailPath = (isAdmin) => `/network/firewall${adminSuffix(isAdmin)}/detail/${firewallId}`;
   return (
     <ResourceDetail
+      policy="get_port"
       breadcrumb={[
         isAdminPage ? t('Administrator') : t('Network'),
         { title: t('Firewalls'), path: firewallTabPath(isAdminPage) },

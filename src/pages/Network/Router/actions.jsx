@@ -11,7 +11,8 @@ import { t } from '@/core/i18n';
 import { quotaItem, withQuota } from '@/components/Quota/utils';
 import { fetchNeutronQuota, neutronQuotaItems } from '@/components/Quota/services';
 import { useAuthStore } from '@/store/authStore';
-import { listAll, cidrRule, ipRule } from '../common';
+import { listAll, cidrRule, ipRule, withRefusalReason } from '../common';
+import { nameRule } from '@/components/form/rules';
 
 export const routerStatus = () => ({
   ACTIVE: t('Active'),
@@ -92,7 +93,7 @@ export const createRouterAction = () => ({
       (it) => it.state === 'available' && it.resource === 'router'
     );
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true },
+      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule({ withoutChinese: true })] },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
       {
         name: 'hints',
@@ -156,7 +157,14 @@ export const editRouterAction = () => ({
   allowed: (item) => item?.name !== 'Default Router',
   getDefaultValues: (item) => ({ name: item?.name, description: item?.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+    {
+      name: 'name',
+      label: t('Name'),
+      type: 'input',
+      required: true,
+      placeholder: t('Please input name'),
+      rules: [nameRule({ withoutChinese: true })],
+    },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => neutronApi.updateRouter(item.id, values),
@@ -208,6 +216,16 @@ export const deleteRouterAction = () => ({
     }
   },
 });
+
+/** legacy Router/actions/Delete performErrorMsg for the batch delete */
+export const deleteRouterBatchAction = () =>
+  withRefusalReason(deleteRouterAction(), (item) =>
+    item?.external_gateway_info
+      ? t('Unable to delete router "{ name }". External gateway is opened, please clear external gateway first.', {
+          name: item.name || item.id,
+        })
+      : t('You are not allowed to delete router "{ name }".', { name: item.name || item.id })
+  );
 
 /* ---------------- Gateway ---------------- */
 export const setGatewayAction = () => ({

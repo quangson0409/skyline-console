@@ -36,6 +36,7 @@ function DetailInfoTab({ detail: d }) {
 export default function RbacPolicyDetail() {
   return (
     <ResourceDetail
+      policy="get_rbac_policy"
       breadcrumb={[t('Network'), { title: t('RBAC Policies'), path: '/network/rbac-policies-admin' }]}
       backPath="/network/rbac-policies-admin"
       title={(d) => d.id}

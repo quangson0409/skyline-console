@@ -3,7 +3,7 @@ import { Form, Select, DatePicker } from 'antd';
 import { barbicanApi } from '@/api/barbican';
 import { t } from '@/core/i18n';
 import { downloadSecretPayload, toIso, disabledPastDate } from '../common';
-import { noChineseRule } from '@/components/form/rules';
+import { noChineseRule, nameRule } from '@/components/form/rules';
 
 /**
  * Port of legacy pages/barbican/containers/Secret/actions (Create / Delete),
@@ -153,6 +153,7 @@ export const createSecretAction = () => ({
       ),
       rules: [
         noChineseRule(),
+        nameRule({ withoutChinese: true }), // legacy 'input-name' withoutChinese
         ({ getFieldValue }) => ({
           validator: (_r, value) =>
             (getFieldValue('creationType') || 'direct') === 'direct' && !value
@@ -315,6 +316,10 @@ export const deleteSecretAction = () => ({
 export const downloadPayloadAction = () => ({
   id: 'download-payload',
   type: 'custom',
+  // reading the payload is barbican secret:decrypt (legacy Certificate showDetail used the same rule)
+  policy: 'secret:decrypt',
+  // only stored secrets have a payload (orders still PENDING / ERROR have none)
+  allowed: (item) => !item?.status || String(item.status).toUpperCase() === 'ACTIVE',
   title: t('Download Payload'),
   onExecute: (item) => downloadSecretPayload(item),
 });

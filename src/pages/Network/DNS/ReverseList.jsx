@@ -14,6 +14,7 @@ export const reverseRowActions = () => ({
 export default function ReverseList() {
   return (
     <ResourcePage
+      policy="get_images"
       title={t('Reverse DNS')}
       breadcrumb={[t('Network'), t('Reverse DNS')]}
       description={t('PTR records of floating IP addresses (Designate reverse DNS).')}

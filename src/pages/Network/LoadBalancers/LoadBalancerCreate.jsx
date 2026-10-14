@@ -41,6 +41,7 @@ import {
   selectRequiredRule,
   useLoader,
 } from './components';
+import { PolicyGuard } from '@/pages/Network/common';
 
 const PROVIDER_TIP = () =>
   t(
@@ -227,7 +228,7 @@ const vipRequiredRule = () => ({
       : Promise.reject(new Error(t('Missing Subnet'))),
 });
 
-export default function LoadBalancerCreate() {
+function LoadBalancerCreatePage() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const { currentProject, hasAdminRole } = useAuthStore();
@@ -668,5 +669,14 @@ export default function LoadBalancerCreate() {
         </div>
       </Card>
     </div>
+  );
+}
+
+/** legacy LoadBalancerInstance/actions/StepCreate static policy (opened by URL too) */
+export default function LoadBalancerCreate() {
+  return (
+    <PolicyGuard policy="os_load-balancer_api:loadbalancer:post" name={t('Load Balancer')}>
+      <LoadBalancerCreatePage />
+    </PolicyGuard>
   );
 }

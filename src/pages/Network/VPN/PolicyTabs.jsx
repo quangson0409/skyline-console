@@ -174,6 +174,7 @@ export function IkePoliciesTab() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy="get_ikepolicy"
       embedded
       title={t('IKE Policies')}
       fetch={(ctx) => vpnLists.ikePolicies(listParams(ctx))}
@@ -307,6 +308,7 @@ export function IpsecPoliciesTab() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy="get_ipsecpolicy"
       embedded
       title={t('IPsec Policies')}
       fetch={(ctx) => vpnLists.ipsecPolicies(listParams(ctx))}

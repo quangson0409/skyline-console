@@ -6,6 +6,7 @@
 import React from 'react';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
+import { withRefusalReason } from '../common';
 import {
   isDefaultFirewall,
   isDefaultPolicy,
@@ -286,17 +287,33 @@ export const deletePolicyAction = ({ isAdmin, projectId }) => ({
   onSubmit: (target) => runAll(target, (it) => neutronApi.deleteFirewallPolicy(it.id)),
 });
 
+/** legacy Policy/actions/Delete performErrorMsg (batch) */
+const policyRefusal = (item) =>
+  (item.firewalls || []).length
+    ? t('You are not allowed to delete policy "{ name }" used by firewalls: { firewalls }.', {
+        name: item.name,
+        firewalls: (item.firewalls || []).map((it) => it.name || it.id).join(', '),
+      })
+    : t('You are not allowed to delete policy "{ name }".', { name: item.name });
+
+/** legacy Rule/actions/Delete performErrorMsg (batch) */
+const ruleRefusal = (item) =>
+  (item.policies || []).length
+    ? t('You are not allowed to delete rule "{ name }" in use.', { name: item.name })
+    : t('You are not allowed to delete rule "{ name }".', { name: item.name });
+
 export const policyActions = (ctx) => {
   const del = deletePolicyAction(ctx);
+  const batchDel = withRefusalReason(del, policyRefusal);
   if (ctx.isAdmin) {
-    return { rowActions: { firstAction: del, moreActions: [] }, batchActions: [del], primaryActions: [] };
+    return { rowActions: { firstAction: del, moreActions: [] }, batchActions: [batchDel], primaryActions: [] };
   }
   return {
     rowActions: {
       firstAction: editPolicyAction(ctx),
       moreActions: [{ action: insertRuleAction(ctx) }, { action: removeRuleAction(ctx) }, { action: del }],
     },
-    batchActions: [del],
+    batchActions: [batchDel],
     primaryActions: [createPolicyAction(ctx.navigate)],
   };
 };
@@ -338,16 +355,17 @@ export const deleteRuleAction = ({ isAdmin, projectId }) => ({
 /** inDetail: rule list embedded in the policy detail (legacy actionConfigsInDetail / emptyActionConfig) */
 export const ruleActions = (ctx, inDetail = false) => {
   const del = deleteRuleAction(ctx);
+  const batchDel = withRefusalReason(del, ruleRefusal);
   if (ctx.isAdmin) {
     if (inDetail) return { rowActions: undefined, batchActions: [], primaryActions: [] };
-    return { rowActions: { firstAction: del, moreActions: [] }, batchActions: [del], primaryActions: [] };
+    return { rowActions: { firstAction: del, moreActions: [] }, batchActions: [batchDel], primaryActions: [] };
   }
   if (inDetail) {
     return { rowActions: { firstAction: editRuleAction(ctx), moreActions: [] }, batchActions: [], primaryActions: [] };
   }
   return {
     rowActions: { firstAction: editRuleAction(ctx), moreActions: [{ action: del }] },
-    batchActions: [del],
+    batchActions: [batchDel],
     primaryActions: [createRuleAction(ctx.navigate)],
   };
 };

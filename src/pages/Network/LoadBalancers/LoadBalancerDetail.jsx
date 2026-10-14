@@ -3,7 +3,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import ResourcePage, { nameColumn, statusColumn, formatTime } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { networkLink, portLink } from '@/pages/Network/common';
+import { networkLink, portLink, policyTabs } from '@/pages/Network/common';
 import {
   operatingStatus,
   provisioningStatus,
@@ -51,6 +51,7 @@ function Listeners({ lb, isAdmin, refetchDetail }) {
   const after = () => refetchDetail?.({ quiet: true });
   return (
     <ResourcePage
+      policy="os_load-balancer_api:listener:get_all"
       embedded
       deps={[lb.id, lb.provisioning_status]}
       fetch={() => fetchListeners(lb.id)}
@@ -71,6 +72,7 @@ export default function LoadBalancerDetail() {
   const projectMap = useProjectMap();
   return (
     <ResourceDetail
+      policy="os_load-balancer_api:loadbalancer:get_one"
       breadcrumb={[t('Network'), { title: t('Load Balancers'), path: '/network/load-balancers' }]}
       backPath={({ isAdmin }) => lbListPath(isAdmin)}
       fetch={fetchLoadBalancerDetail}
@@ -146,13 +148,14 @@ export default function LoadBalancerDetail() {
           { label: t('Updated At'), value: formatTime(d.updated_at) },
         ].filter(Boolean)
       }
-      tabs={(d, { isAdmin, refetch }) => [
+      tabs={(d, { isAdmin, refetch }) => policyTabs([
         {
           key: 'listener',
+          policy: 'os_load-balancer_api:listener:get_all', // legacy Listener container
           label: t('Listeners'),
           render: () => <Listeners lb={d} isAdmin={isAdmin} refetchDetail={refetch} />,
         },
-      ]}
+      ])}
       actions={(ctx) => lbRowActions(ctx)}
     />
   );

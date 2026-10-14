@@ -63,6 +63,7 @@ const advancedItems = (d = {}) => [
 export default function IpsecSiteConnectionDetail() {
   return (
     <ResourceDetail
+      policy="get_ipsec_site_connection"
       breadcrumb={[
         t('Network'),
         { title: t('VPN'), path: '/network/vpn?tab=ipsec_site_connections' },

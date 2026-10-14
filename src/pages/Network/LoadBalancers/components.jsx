@@ -6,7 +6,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Checkbox, Col, Input, InputNumber, Row, Select, Space, Table, Tooltip, Typography } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from '@ant-design/icons';
 import { NoFormStyle } from '@/components/form/NoFormStyle';
-import SelectTable from '@/components/SelectTable';
+import SelectTable, { filterRows } from '@/components/SelectTable';
+import MagicInput from '@/components/MagicInput';
 import { formatTime, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { isIP } from '@/components/network/ip';
@@ -157,24 +158,37 @@ function PortIpSelect({ port, selected, onSelect }) {
   );
 }
 
+/** legacy MemberAllocator filterParams (the "Same subnet with LB" option is the checkbox) */
+const memberFilterParams = () => [
+  { label: t('ID'), name: 'id' },
+  { label: t('Name'), name: 'name' },
+  { label: t('Binding Instance'), name: 'server_name' },
+  {
+    label: t('IP'),
+    name: 'fixed_ips',
+    filterFunc: (fixedIps, val) => (fixedIps || []).some((item) => String(item?.ip_address || '').includes(String(val))),
+  },
+];
+
 export function MemberAllocator({ value, onChange, ports = [], loading = false, lbSubnetId, maxNumber = 10, isAdmin = false }) {
   const list = Array.isArray(value) ? value : [];
   const [q, setQ] = useState('');
   const [sameSubnet, setSameSubnet] = useState(false);
+  const [filters, setFilters] = useState({});
   const [ipChoice, setIpChoice] = useState({});
 
   const update = (next) => onChange?.(next);
 
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return (ports || []).filter((p) => {
+    return filterRows(ports || [], filters, memberFilterParams()).filter((p) => {
       if (sameSubnet && !(p.fixed_ips || []).some((i) => i.subnet_id === lbSubnetId)) return false;
       if (!s) return true;
       return [p.id, p.name, p.server_name, p.instance_name, ...(p.fixed_ips || []).map((i) => i.ip_address)].some(
         (v) => v && String(v).toLowerCase().includes(s)
       );
     });
-  }, [ports, q, sameSubnet, lbSubnetId]);
+  }, [ports, q, sameSubnet, lbSubnetId, filters]);
 
   const chosen = (p) => {
     if (ipChoice[p.id]) return ipChoice[p.id];
@@ -207,6 +221,13 @@ export function MemberAllocator({ value, onChange, ports = [], loading = false, 
     <NoFormStyle status override>
     <div>
       <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('Select An Existing Port')}</div>
+      {/* legacy MemberAllocator SelectTable filters: ID / Name / Binding Instance / IP */}
+      <MagicInput
+        filterParams={memberFilterParams()}
+        value={filters}
+        onChange={(next) => setFilters(next || {})}
+        style={{ marginBottom: 8 }}
+      />
       <Space wrap style={{ marginBottom: 8 }}>
         <Input
           allowClear

@@ -101,8 +101,10 @@ export function executeConfirmAction({
           return result;
         }
       } catch (err) {
+        // legacy: the dialog closes and the error is reported; rethrowing here only produced an
+        // unhandled promise rejection
         if (onError) onError(err);
-        throw err;
+        return undefined;
       }
     },
   });

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, Radio, Select, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
-import { useAuthStore } from '@/store/authStore';
+import { checkPolicyRule, usePolicyStore } from '@/core/policy';
+import { PolicyGuard } from '../common';
 import { t } from '@/core/i18n';
 import { isIPv4, isIPv6, isCidr } from '@/components/network/ip';
 import { CheckGroup, firewallTabPath, protocolInfos, actionInfos, fetchRuleDetail } from './helpers';
@@ -26,11 +27,11 @@ const portRangeRule = () => ({
  * legacy Firewall/Rule/actions/Create.jsx (/network/firewall-rule/create)
  * and Edit.jsx (/network/firewall-rule/edit/:id).
  */
-export default function FirewallRuleForm() {
+function FirewallRuleFormPage() {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
-  const hasAdminRole = useAuthStore((s) => s.hasAdminRole);
+  usePolicyStore((st) => st.rules); // re-evaluate once /policies is loaded
   const [form] = Form.useForm();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(isEdit);
@@ -42,7 +43,7 @@ export default function FirewallRuleForm() {
   // legacy canChangeShared: policy rule update_firewall_rule:shared (admin_only) and,
   // when editing, the rule must not belong to a shared policy
   const canChangeShared =
-    !!hasAdminRole && (!isEdit || ((detail && detail.policies) || []).every((it) => !it.shared));
+    checkPolicyRule('update_firewall_rule:shared') && (!isEdit || ((detail && detail.policies) || []).every((it) => !it.shared));
 
   useEffect(() => {
     if (!isEdit) return undefined;
@@ -205,5 +206,15 @@ export default function FirewallRuleForm() {
         </Form.Item>
       </Form>
     </FormPageLayout>
+  );
+}
+
+/** legacy Rule Create (create_firewall_rule) / Edit (update_firewall_rule) static policy */
+export default function FirewallRuleForm() {
+  const { id } = useParams();
+  return (
+    <PolicyGuard policy={id ? 'update_firewall_rule' : 'create_firewall_rule'} name={t('Firewall Rule')}>
+      <FirewallRuleFormPage />
+    </PolicyGuard>
   );
 }

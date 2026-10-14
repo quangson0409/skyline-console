@@ -4,7 +4,8 @@
  * Page modules may add their own local helpers; keep this file generic.
  */
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button, Result } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import { t } from '@/core/i18n';
@@ -109,3 +110,61 @@ export const renderFixedIps = (fixedIps = []) =>
   );
 
 export const yesNoText = (v) => (v ? t('Yes') : t('No'));
+
+/* ---------------- page / tab policies (legacy TabDetail tab `get policy()`) ---------------- */
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+
+/**
+ * Legacy TabDetail hid the tabs whose component's `policy` / `aliasPolicy` was denied.
+ * Tabs declare `policy` / `aliasPolicy` like actions; denied tabs (and falsy entries) are dropped.
+ * ResourceDetail re-renders when the policy rules load, so this is evaluated with fresh rules.
+ */
+export const policyTabs = (tabs = []) =>
+  (tabs || []).filter(Boolean).filter((tab) => checkActionPolicy({ policy: tab.policy, aliasPolicy: tab.aliasPolicy }));
+
+/** `true` when the legacy list / detail / form `policy` is allowed (string, array = every, alias) */
+export const canAccess = (policy, aliasPolicy) => checkActionPolicy({ policy, aliasPolicy });
+
+/**
+ * Standalone pages (create wizards / form pages opened by URL) that legacy protected with the
+ * action's static `policy`: render the legacy "no access" notice instead of the page when denied.
+ */
+export function PolicyGuard({ policy, aliasPolicy, name, children }) {
+  usePolicyStore((st) => st.rules); // re-check once /policies is loaded
+  const navigate = useNavigate();
+  if (checkActionPolicy({ policy, aliasPolicy })) return children;
+  return (
+    <Result
+      status="403"
+      title={t("You don't have access to get {name}.", { name: name || '' })}
+      extra={<Button onClick={() => navigate(-1)}>{t('Back')}</Button>}
+    />
+  );
+}
+
+/**
+ * Legacy batch delete `performErrorMsg`: when a selected row is not allowed, legacy refused the
+ * whole batch with a reason ("... in use", "clear external gateway first") instead of silently
+ * skipping it. Returns a batch variant of `action` that keeps every selected row, shows the reason
+ * of the first refused row in the confirm dialog and refuses to submit.
+ *  reason(item) -> message for a refused row
+ */
+export const withRefusalReason = (action, reason) => {
+  if (!action) return action;
+  const refused = (items) => (items || []).find((it) => typeof action.allowed === 'function' && !action.allowed(it));
+  const listOf = (target) => (Array.isArray(target) ? target : target ? [target] : []);
+  return {
+    ...action,
+    allowed: undefined,
+    confirmText: (items) => {
+      const bad = refused(items);
+      if (bad) return reason(bad);
+      return typeof action.confirmText === 'function' ? action.confirmText(items) : action.confirmText;
+    },
+    onSubmit: async (target) => {
+      const bad = refused(listOf(target));
+      if (bad) throw new Error(reason(bad));
+      return action.onSubmit(target);
+    },
+  };
+};

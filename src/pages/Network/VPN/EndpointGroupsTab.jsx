@@ -176,6 +176,8 @@ export default function EndpointGroupsTab() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy="get_endpoint_group"
+      aliasPolicy="neutron:get_endpoint_group"
       embedded
       title={t('VPN Endpoint Groups')}
       fetch={(ctx) => vpnLists.endpointGroups(listParams(ctx))}

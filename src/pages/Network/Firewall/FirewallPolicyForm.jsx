@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
-import { useAuthStore } from '@/store/authStore';
+import { checkPolicyRule, usePolicyStore } from '@/core/policy';
+import { PolicyGuard } from '../common';
 import { t } from '@/core/i18n';
 import { CheckGroup, firewallTabPath } from './helpers';
 import FormPageLayout, { useNeutronQuota } from './FormPageLayout';
@@ -10,14 +11,14 @@ import FormPageLayout, { useNeutronQuota } from './FormPageLayout';
 /**
  * legacy Firewall/Policy/actions/Create.jsx (/network/firewall-policy/add)
  * and Edit.jsx (/network/firewall-policy/edit/:id).
- * checkPolicyRule('update_firewall_policy:shared') -> admin role (neutron default rule: admin_only).
+ * Shared checkbox: legacy checkPolicyRule('update_firewall_policy:shared').
  */
-export default function FirewallPolicyForm() {
+function FirewallPolicyFormPage() {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
-  const hasAdminRole = useAuthStore((s) => s.hasAdminRole);
-  const canChangeShared = !!hasAdminRole;
+  usePolicyStore((st) => st.rules); // re-evaluate once /policies is loaded
+  const canChangeShared = checkPolicyRule('update_firewall_policy:shared');
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(isEdit);
   const [submitting, setSubmitting] = useState(false);
@@ -101,5 +102,15 @@ export default function FirewallPolicyForm() {
         </Form.Item>
       </Form>
     </FormPageLayout>
+  );
+}
+
+/** legacy Policy Create (create_firewall_policy) / Edit (update_firewall_policy) static policy */
+export default function FirewallPolicyForm() {
+  const { id } = useParams();
+  return (
+    <PolicyGuard policy={id ? 'update_firewall_policy' : 'create_firewall_policy'} name={t('Firewall Policy')}>
+      <FirewallPolicyFormPage />
+    </PolicyGuard>
   );
 }

@@ -196,6 +196,7 @@ function NetworkTable({ tab, embedded, projectMap }) {
   return (
     <ResourcePage
       embedded={embedded}
+      policy="get_network"
       title={t('Networks')}
       breadcrumb={[t('Network'), t('Networks')]}
       description={t('Software-defined networks (SDN) powered by OpenStack Neutron.')}
@@ -205,7 +206,7 @@ function NetworkTable({ tab, embedded, projectMap }) {
       columns={(ctx) => networkColumns({ ...ctx, tab, projectMap })}
       filterParams={networkFilters(tab)}
       searchFields={['name', 'id', 'cidr']}
-      primaryActions={(ctx) => [createNetworkAction(ctx), !ctx.isAdmin && quickCreateNetworkAction(ctx)]}
+      primaryActions={(ctx) => [createNetworkAction(ctx), quickCreateNetworkAction(ctx)]}
       batchActions={(ctx) => [deleteNetworkAction(ctx)]}
       rowActions={(ctx) => ({
         firstAction: editNetworkAction(ctx),

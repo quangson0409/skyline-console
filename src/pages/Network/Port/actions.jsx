@@ -2,14 +2,19 @@
  * Port actions - port of legacy pages/network/containers/Port/actions/* and Detail/* actions.
  * Payloads are identical to the legacy onSubmit / store calls.
  */
+import { nameRule } from '@/components/form/rules';
+import { FixedIpSelectTable, FipSelectTable } from '../fipSelectTables';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
+import { KeysSelectTable } from '@/components/SelectTable';
+import { useAuthStore } from '@/store/authStore';
 import React from 'react';
 import { neutronApi } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
-import { deleteAction } from '@/components/ResourcePage';
+import { deleteAction, formatTime } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { quotaItem, withQuota } from '@/components/Quota/utils';
 import { fetchNeutronQuota, neutronQuotaItems } from '@/components/Quota/services';
-import { PORT_TYPES, MacAddressInput, macAddressRule, DependentSelect, checkIpOrCidr, loadQosPolicyOptions, qosEnabled, isPortError, currentProjectId } from './helpers';
+import { PORT_TYPES, MacAddressInput, macAddressRule, checkIpOrCidr, loadQosPolicyOptions, qosEnabled, isPortError, currentProjectId } from './helpers';
 import { NetworkIpDistributor, ipDistributorRule } from '@/components/network/IpDistributor';
 import { loadAssociateFipData } from '@/components/network/associateFip';
 
@@ -70,16 +75,24 @@ export const createPortAction = ({ networkId } = {}) => ({
       networkOptions.unshift({ value: networkId, label: networkId });
     }
     return [
-      { name: 'name', label: t('Port Name'), type: 'input', required: true },
+      { name: 'name', label: t('Port Name'), type: 'input', required: true, rules: [nameRule({ withoutChinese: true })] },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
-      {
-        name: 'network_id',
-        label: t('Network'),
-        type: 'select',
-        required: true,
-        disabled: Boolean(networkId),
-        options: networkOptions,
-      },
+      // legacy 'network-select-table' (project / shared / all tabs); a preset network stays a fixed select
+      networkId
+        ? {
+            name: 'network_id',
+            label: t('Network'),
+            type: 'select',
+            required: true,
+            disabled: true,
+            options: networkOptions,
+          }
+        : {
+            name: 'network_id',
+            label: t('Network'),
+            required: true,
+            render: () => <NetworkIdSelectTable />,
+          },
       {
         name: 'fixed_ips',
         label: t('Subnet'),
@@ -104,17 +117,21 @@ export const createPortAction = ({ networkId } = {}) => ({
       {
         name: 'security_groups',
         label: t('Security Group'),
-        type: 'select',
-        mode: 'multiple',
         required: true,
         visible: (v) => v.port_security_enabled !== false,
         tip: t(
           'The security group is similar to the firewall function for setting up network access control, or you can go to the console and create a new security group. (Note: The security group you selected will work on all virtual LANs on the instances.)'
         ),
-        options: securityGroups.map((sg) => ({
-          value: sg.id,
-          label: sg.description ? `${sg.name} (${sg.description})` : sg.name || sg.id,
-        })),
+        // legacy 'select-table' (multi, Name filter, Name / Description / Created At columns)
+        rules: [
+          {
+            validator: (_, v) =>
+              Array.isArray(v) && v.length
+                ? Promise.resolve()
+                : Promise.reject(new Error(`${t('Please select')} ${t('Security Group')}`)),
+          },
+        ],
+        render: () => <SecurityGroupKeysTable data={securityGroups} />,
       },
       { name: 'more', label: t('Advanced Options'), type: 'switch' },
       {
@@ -191,6 +208,37 @@ export const createPortAction = ({ networkId } = {}) => ({
   },
 });
 
+/** legacy network-select-table whose form value is the network id */
+function NetworkIdSelectTable({ value, onChange }) {
+  const hasAdmin = Boolean(useAuthStore.getState()?.hasAdminRole);
+  return (
+    <NetworkSelectTable
+      value={{ selectedRowKeys: value ? [value] : [], selectedRows: [] }}
+      onChange={(v) => onChange?.(v?.selectedRowKeys?.[0])}
+      hasAdminRole={hasAdmin}
+      disabledFunc={(n) => n.status === 'ERROR'}
+    />
+  );
+}
+
+/** legacy security group select-table (value = list of ids) */
+function SecurityGroupKeysTable({ value, onChange, data = [] }) {
+  return (
+    <KeysSelectTable
+      value={value}
+      onChange={onChange}
+      data={data.map((sg) => ({ ...sg, name: sg.name || sg.id }))}
+      multiple
+      filterParams={[{ label: t('Name'), name: 'name' }]}
+      columns={[
+        { title: t('Name'), dataIndex: 'name', key: 'name' },
+        { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
+        { title: t('Created At'), dataIndex: 'created_at', key: 'created_at', render: (v) => formatTime(v) },
+      ]}
+    />
+  );
+}
+
 /* ---------------- Edit ---------------- */
 export const editPortAction = () => ({
   id: 'edit-virtual-adapter',
@@ -206,7 +254,7 @@ export const editPortAction = () => ({
     more: false,
   }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true },
+    { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule({ withoutChinese: true })] },
     {
       name: 'mac_address',
       label: t('MAC Address'),
@@ -290,7 +338,7 @@ export const associateFipAction = ({ isAdmin } = {}) => ({
   type: 'modal',
   policy: 'update_floatingip',
   title: t('Associate Floating IP'),
-  width: 760,
+  width: 960,
   allowed: (item) =>
     !isAdmin &&
     !isPortError(item) &&
@@ -302,35 +350,19 @@ export const associateFipAction = ({ isAdmin } = {}) => ({
     const bySubnet = Object.fromEntries(interfaces.map((i) => [i.fixed_ip_address, i.subnet_id]));
     return [
       { name: 'virtualAdapter', label: t('Port'), type: 'label' },
+      // legacy Port/actions/AssociateFip select-tables (fixed IPs with reasons, reachable floating IPs)
       {
         name: 'fixed_ip',
         label: t('Instance IP'),
-        type: 'select',
         required: true,
-        options: interfaces.map((i) => ({
-          value: i.fixed_ip_address,
-          disabled: !i.available,
-          label: `${i.fixed_ip_address} | ${i.network_name || '-'} | ${i.subnet_id}${i.reason ? ` - ${i.reason}` : ''}`,
-        })),
+        render: () => <FixedIpSelectTable interfaces={interfaces} />,
       },
       {
         name: 'fip',
         label: t('Floating IP'),
         required: true,
         tip: t('The floating IP configured with port forwardings cannot be bound'),
-        render: ({ form }) => (
-          <DependentSelect
-            form={form}
-            depName="fixed_ip"
-            optionsFor={(ip) =>
-              fipsForSubnet(bySubnet[ip]).map((fip) => ({
-                value: fip.id,
-                label: `${fip.floating_ip_address} (${fip.network_name})`,
-                disabled: (fip.port_forwardings || []).length > 0,
-              }))
-            }
-          />
-        ),
+        render: ({ form }) => <FipSelectTable form={form} fipsFor={(ip) => fipsForSubnet(bySubnet[ip])} />,
       },
     ];
   },
@@ -352,18 +384,33 @@ export const disassociateFipAction = ({ isAdmin } = {}) => ({
   getDefaultValues: (item) => ({ virtualAdapter: portLabel(item) }),
   getFormItems: (item) => [
     { name: 'virtualAdapter', label: t('Port'), type: 'label' },
+    // legacy Port/actions/DisassociateFip select-table (Fixed IP / Floating IP columns)
     {
       name: 'floating_ip',
       label: t('Floating IP'),
-      type: 'select',
       required: true,
-      options: (item.associatedDetail || []).map((f) => ({
-        value: f.id,
-        label: `${f.floating_ip_address} (${t('Fixed IP')}: ${f.fixed_ip_address || '-'})`,
-      })),
+      rules: [
+        {
+          validator: (_, v) =>
+            (Array.isArray(v) ? v.length : v) ? Promise.resolve() : Promise.reject(new Error(`${t('Please select')} ${t('Floating IP')}`)),
+        },
+      ],
+      render: () => (
+        <KeysSelectTable
+          data={(item.associatedDetail || []).map((f) => ({ ...f, name: f.floating_ip_address }))}
+          searchKeys={['fixed_ip_address', 'floating_ip_address']}
+          columns={[
+            { title: t('Fixed IP'), dataIndex: 'fixed_ip_address', key: 'fixed_ip_address', render: (v) => v || '-' },
+            { title: t('Floating IP'), dataIndex: 'floating_ip_address', key: 'floating_ip_address' },
+          ]}
+        />
+      ),
     },
   ],
-  onSubmit: (values) => neutronApi.updateFloatingIp(values.floating_ip, { port_id: null }),
+  onSubmit: (values) => {
+    const id = Array.isArray(values.floating_ip) ? values.floating_ip[0] : values.floating_ip;
+    return neutronApi.updateFloatingIp(id, { port_id: null });
+  },
 });
 
 /* ---------------- Modify QoS ---------------- */
@@ -426,9 +473,10 @@ export const manageSecurityGroupAction = () => ({
   type: 'modal',
   policy: 'update_port:port_security_enabled',
   title: t('Manage Security Group'),
-  width: 720,
+  width: 860,
   allowed: (item) => {
-    const pairs = item?.origin_data?.allowed_address_pairs ?? [];
+    // list rows carry origin_data (skyline extension), the detail object is the plain neutron port
+    const pairs = item?.origin_data?.allowed_address_pairs ?? item?.allowed_address_pairs ?? [];
     return (Array.isArray(pairs) ? pairs : []).length === 0;
   },
   getDefaultValues: async (item) => {
@@ -447,18 +495,17 @@ export const manageSecurityGroupAction = () => ({
   },
   getFormItems: async (item) => {
     const list = await safeList(neutronApi.listSecurityGroups({ project_id: currentProjectId() }), 'security_groups');
-    const options = list.map((sg) => ({ value: sg.id, label: sg.name || sg.id }));
+    const rows = [...list];
     (Array.isArray(item.security_groups) ? item.security_groups : []).forEach((id) => {
-      if (!options.some((o) => o.value === id)) options.push({ value: id, label: id });
+      if (!rows.some((sg) => sg.id === id)) rows.push({ id, name: id });
     });
     return [
       { name: 'port_security_enabled', label: t('Port Security'), type: 'switch', required: true },
       {
         name: 'securityGroup',
         label: t('Security Group'),
-        type: 'select',
-        mode: 'multiple',
-        options,
+        // legacy ManageSecurityGroup select-table (multi)
+        render: () => <SecurityGroupKeysTable data={rows} />,
         tip: t(
           'The security group is similar to the firewall function for setting up network access control, or you can go to the console and create a new security group. (Note: The security group you selected will work on all virtual LANs on the instances.)'
         ),

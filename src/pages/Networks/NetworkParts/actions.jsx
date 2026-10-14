@@ -2,6 +2,7 @@
  * Network / Subnet actions (ports of legacy pages/network/containers/Network/actions/*,
  * containers/Subnet/actions/* and Overview/components/NetworkQuickStart).
  */
+import { nameRule as sharedNameRule } from '@/components/form/rules';
 import React, { useEffect } from 'react';
 import { Alert, Form, Input, InputNumber, Select } from 'antd';
 import { neutronApi } from '@/api/neutron';
@@ -39,18 +40,8 @@ import {
 } from './utils';
 
 /* ---------------- helpers ---------------- */
-const nameRule = () => ({
-  validator: (_, value) =>
-    !value || /^[a-zA-Z][a-zA-Z0-9_\-.'()[\]]{0,127}$/.test(value)
-      ? Promise.resolve()
-      : Promise.reject(
-          new Error(
-            t(
-              'The name should start with upper letter or lower letter, characters can only contain "0-9, a-z, A-Z, "-\'_()[]."".'
-            )
-          )
-        ),
-});
+// legacy 'input-name' with withoutChinese (CreateNetwork / CreateSubnet / Edit / NetworkQuickStart)
+const nameRule = () => sharedNameRule({ withoutChinese: true });
 
 const projectOptions = async () => {
   try {
@@ -386,6 +377,8 @@ export const quickCreateNetworkAction = ({ projectId }) => ({
   id: 'network-quick-start',
   type: 'modal',
   title: t('Quick Create'),
+  // legacy pages/base/containers/Overview/components/NetworkQuickStart static policy
+  policy: ['create_network', 'create_subnet', 'create_router'],
   width: 760,
   getDefaultValues: () => ({
     networkName: 'network-1',
@@ -695,7 +688,7 @@ export const editSubnetAction = (ctx) => ({
     const v4 = item?.ip_version !== 6;
     const more = (v) => Boolean(v.more);
     return [
-      { name: 'subnet_name', label: t('Subnet Name'), type: 'input', required: true, rules: [nameRule()] },
+      { name: 'subnet_name', label: t('Subnet Name'), type: 'input', required: true, rules: [sharedNameRule()] },
       {
         name: 'cidr',
         label: t('CIDR'),

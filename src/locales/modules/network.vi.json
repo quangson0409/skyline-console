@@ -1,0 +1,9 @@
+{
+  "Filter Instance Ports": "Lọc cổng của máy ảo",
+  "You are not allowed to delete policy \"{ name }\" used by firewalls: { firewalls }.": "Không thể xóa chính sách \"{ name }\" đang được tường lửa sử dụng: { firewalls }.",
+  "You are not allowed to delete policy \"{ name }\".": "Bạn không được phép xóa chính sách \"{ name }\".",
+  "You are not allowed to delete rule \"{ name }\" in use.": "Không thể xóa quy tắc \"{ name }\" đang được sử dụng.",
+  "You are not allowed to delete rule \"{ name }\".": "Bạn không được phép xóa quy tắc \"{ name }\".",
+  "Unable to delete router \"{ name }\". External gateway is opened, please clear external gateway first.": "Không thể xóa bộ định tuyến \"{ name }\". Cổng ra ngoài (external gateway) đang mở, vui lòng xóa cổng ra ngoài trước.",
+  "You are not allowed to delete router \"{ name }\".": "Bạn không được phép xóa bộ định tuyến \"{ name }\"."
+}

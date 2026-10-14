@@ -9,7 +9,8 @@ import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import { formatTime, useIsAdminPage } from '@/components/ResourcePage';
 import { PortsEmbedded } from '@/pages/Network/Port/PortList';
-import { networkStatus, yesNoText } from '@/pages/Network/common';
+import { networkStatus, yesNoText, policyTabs } from '@/pages/Network/common';
+import { hasEndpoint } from '@/api/endpoints';
 import { t } from '@/core/i18n';
 import { editNetworkAction, createSubnetAction, deleteNetworkAction } from './NetworkParts/actions';
 import { SubnetsEmbedded } from './NetworkParts/SubnetTab';
@@ -71,6 +72,7 @@ export default function NetworkDetail() {
   const listPath = isAdminPage ? '/network/networks-admin' : '/network/networks';
   return (
     <ResourceDetail
+      policy="get_network"
       breadcrumb={[t('Network'), { title: t('Networks'), path: listPath }]}
       backPath={listPath}
       fetch={fetchNetworkDetail}
@@ -91,7 +93,7 @@ export default function NetworkDetail() {
           { label: t('Description'), value: d.description },
         ].filter(Boolean)
       }
-      tabs={(d) => [
+      tabs={(d, { isAdmin }) => policyTabs([
         {
           key: 'detail',
           label: t('Detail'),
@@ -107,22 +109,26 @@ export default function NetworkDetail() {
                 { label: t('Provider Physical Network'), value: d['provider:physical_network'] || '-' },
                 { label: t('Segmentation ID'), value: d['provider:segmentation_id'] },
                 { label: t('Port Security'), value: yesNoText(d.port_security_enabled) },
-                { label: t('QoS Policy'), value: d.qos_policy_id || '-' },
-              ]}
+                // legacy Network/Detail/Detail.jsx: only with the neutron_qos endpoint
+                hasEndpoint('neutron_qos') && { label: t('QoS Policy'), value: d.qos_policy_id || '-' },
+              ].filter(Boolean)}
             />
           ),
         },
         {
           key: 'subnets',
           label: t('Subnets'),
+          policy: 'get_subnet', // legacy Subnet container
           render: () => <SubnetsEmbedded network={d} />,
         },
         {
           key: 'ports',
           label: t('Ports'),
-          render: () => <PortsEmbedded filters={{ network_id: d.id }} networkId={d.id} />,
+          policy: 'get_port', // legacy Port container
+          // legacy Port container in a project detail page: actionConfigs.noActions (admin keeps adminActions)
+          render: () => <PortsEmbedded filters={{ network_id: d.id }} networkId={d.id} readOnly={!isAdmin} />,
         },
-      ]}
+      ])}
       actions={(ctx) => networkActions(ctx)}
     />
   );
