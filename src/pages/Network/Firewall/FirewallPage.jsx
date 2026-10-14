@@ -1,5 +1,6 @@
 import React from 'react';
-import { Breadcrumb, Card, Tabs } from 'antd';
+import { Breadcrumb, Card, Result, Tabs } from 'antd';
+import { hasEndpoint } from '@/api/endpoints';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ResourcePage, { nameColumn, statusColumn, textColumn, projectColumn, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { useIsAdminPage } from '@/components/ResourcePage/helpers';
@@ -210,6 +211,10 @@ export default function FirewallPage() {
   const isAdmin = useIsAdminPage();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = TAB_KEYS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'firewalls';
+  // legacy checkEndpoint: the page requires the neutron_firewall endpoint
+  if (!hasEndpoint('neutron_firewall')) {
+    return <Result status="warning" title={t('Firewalls')} subTitle={t('The service is not available (no endpoint found).')} />;
+  }
 
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>

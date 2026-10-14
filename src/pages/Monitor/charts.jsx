@@ -12,6 +12,7 @@ import {
   getIntervals,
   getRange,
   handleResponses,
+  reportPrometheusError,
 } from './lib';
 
 /**
@@ -542,7 +543,10 @@ export function useMetric({ metricKey, requestType = 'current', params, format, 
         }
         if (alive) setState({ loading: false, data });
       })
-      .catch(() => alive && setState({ loading: false, data: undefined }));
+      .catch((err) => {
+        reportPrometheusError(err);
+        if (alive) setState({ loading: false, data: undefined });
+      });
     return () => {
       alive = false;
     };

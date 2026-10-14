@@ -1,5 +1,7 @@
 import { monitorApi } from '@/api/monitor';
+import { message } from 'antd';
 import { t } from '@/core/i18n';
+import { getErrorMessage } from '@/hooks/useResource';
 
 /**
  * Prometheus helpers for the Monitor Center - port of legacy
@@ -225,6 +227,12 @@ export function getRequestUrl(url, params = {}, finalFormatFunc = (d) => d, base
 
 const toSeconds = (v) => Math.floor(Number(v) / 1000);
 
+/** Surfaces a Prometheus failure once (same key) instead of silently showing empty / healthy data */
+export const reportPrometheusError = (err) => {
+  message.error({ key: 'prometheus-error', content: getErrorMessage(err, t('Failed to query Prometheus')) });
+  return {};
+};
+
 /** range = [startMs, endMs]; requestType 'current' | 'range' */
 export function fetchPrometheus(query, requestType = 'range', range = [], interval = 10) {
   if (requestType === 'current') return monitorApi.query(query);
@@ -240,7 +248,7 @@ export function fetchMetric(metricKey, { requestType = 'current', params = {}, r
       const finalFormatFunc = (q.finalFormatFunc || [])[idx] || ((d) => d);
       const baseParams = (q.baseParams || [])[idx] || {};
       return fetchPrometheus(getRequestUrl(u, params, finalFormatFunc, baseParams), requestType, range, interval).catch(
-        () => ({})
+        reportPrometheusError
       );
     })
   );
@@ -400,7 +408,7 @@ export const formatFullTime = (sec) => {
 /* ------------------------------------------------------------------ */
 const nodesFrom = async (metricPath) => {
   const url = getPath(METRICDICT, metricPath)?.url?.[0];
-  const res = await fetchPrometheus(url, 'current').catch(() => ({}));
+  const res = await fetchPrometheus(url, 'current').catch(reportPrometheusError);
   const list = resultOf(res)
     .map((r) => r?.metric?.instance)
     .filter((v) => v !== undefined);

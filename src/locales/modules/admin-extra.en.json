@@ -24,5 +24,18 @@
   "in the future": "in the future",
   "Valid JSON": "Valid JSON",
   "Invalid JSON": "Invalid JSON",
-  "{failed} of {total} failed": "{failed} of {total} failed"
+  "{failed} of {total} failed": "{failed} of {total} failed",
+  "{count} item(s) skipped because the action is not available for them": "{count} item(s) skipped because the action is not available for them",
+  "Failed to query Prometheus": "Failed to query Prometheus",
+  "Failed to load {name}": "Failed to load {name}",
+  "Failed to load settings": "Failed to load settings",
+  "Failed to load projects": "Failed to load projects",
+  "Failed to load domains": "Failed to load domains",
+  "Failed to load metadata definitions": "Failed to load metadata definitions",
+  "Failed to load volume types": "Failed to load volume types",
+  "Failed to load availability zones": "Failed to load availability zones",
+  "Failed to load compute hosts": "Failed to load compute hosts",
+  "QoS Policies": "QoS Policies",
+  "Firewalls": "Firewalls",
+  "The service is not available (no endpoint found).": "The service is not available (no endpoint found)."
 }

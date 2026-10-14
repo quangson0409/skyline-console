@@ -142,6 +142,8 @@ export const deleteFirewallAction = ({ isAdmin, projectId, projectMap = {} }) =>
   isDanger: true,
   allowed: (item) => {
     if (!item) return true;
+    // admin: wait for the project map before deciding (an empty map means it has not loaded yet)
+    if (isAdmin && Object.keys(projectMap || {}).length === 0) return false;
     const pid = getProjectId(item);
     const hasNoProject = !pid || !(item.project_name || projectMap[pid]);
     if (isAdmin && hasNoProject) return true;

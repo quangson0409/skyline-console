@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Breadcrumb, Alert, Result } from 'antd';
+import { Breadcrumb, Alert, Result, message } from 'antd';
 import { Link } from 'react-router-dom';
 import BaseTable from '@/components/Tables/BaseTable';
 import useActionRunner from '@/components/Action/useActionRunner';
@@ -163,18 +163,30 @@ export default function ResourcePage({
 
   const selectedRecords = list.filter((it) => selectedRowKeys.includes(it[rowKey]));
 
+  const filterAllowed = (action) =>
+    typeof action.allowed === 'function'
+      ? selectedRecords.filter((it) => {
+          try {
+            return action.allowed(it);
+          } catch {
+            return false;
+          }
+        })
+      : selectedRecords;
+
   const batchButtons = batch.map((action) => ({
     ...action,
+    // disabled when no selected row can take the action
+    disabled: filterAllowed(action).length === 0,
     onClick: () => {
-      const allowedItems = typeof action.allowed === 'function'
-        ? selectedRecords.filter((it) => {
-            try {
-              return action.allowed(it);
-            } catch {
-              return false;
-            }
-          })
-        : selectedRecords;
+      const allowedItems = filterAllowed(action);
+      if (allowedItems.length === 0) return;
+      const skipped = selectedRecords.length - allowedItems.length;
+      if (skipped > 0) {
+        message.warning(
+          t('{count} item(s) skipped because the action is not available for them', { count: skipped })
+        );
+      }
       handleAction(action, allowedItems);
     },
   }));

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Breadcrumb, Card, Tabs } from 'antd';
+import { Breadcrumb, Card, Result, Tabs } from 'antd';
+import { hasEndpoint } from '@/api/endpoints';
 import { useSearchParams } from 'react-router-dom';
 import ResourcePage, { useIsAdminPage } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
@@ -57,6 +58,11 @@ export default function QosPolicyList() {
   const isAdmin = useIsAdminPage();
   const { hasAdminRole } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // legacy checkEndpoint: the page requires the neutron_qos endpoint
+  if (!hasEndpoint('neutron_qos')) {
+    return <Result status="warning" title={t('QoS Policies')} subTitle={t('The service is not available (no endpoint found).')} />;
+  }
 
   if (isAdmin) {
     return <QosPolicyTable />;

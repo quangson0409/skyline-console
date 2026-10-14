@@ -13,6 +13,7 @@ import {
   getSuitableValue,
   handleResponses,
   resultOf,
+  reportPrometheusError,
 } from './lib';
 
 /** Legacy pages/monitor/containers/StorageCluster (+ RenderTabs pools / OSDs) */
@@ -44,9 +45,9 @@ async function loadTabData() {
         else if (metric.__name__) row[metric.__name__] = value[1];
       });
     });
-  const poolRets = await Promise.all(METRICDICT.storageCluster.poolTab.url.map((u) => fetchPrometheus(u, 'current').catch(() => ({}))));
+  const poolRets = await Promise.all(METRICDICT.storageCluster.poolTab.url.map((u) => fetchPrometheus(u, 'current').catch(reportPrometheusError)));
   merge(poolRets, 'pool_id');
-  const osdRets = await Promise.all(METRICDICT.storageCluster.osdTab.url.map((u) => fetchPrometheus(u, 'current').catch(() => ({}))));
+  const osdRets = await Promise.all(METRICDICT.storageCluster.osdTab.url.map((u) => fetchPrometheus(u, 'current').catch(reportPrometheusError)));
   merge(osdRets, 'ceph_daemon');
   return rows;
 }
@@ -63,7 +64,7 @@ function PoolOsdTabs() {
     setLoading(true);
     loadTabData()
       .then((r) => alive && setRows(r))
-      .catch(() => alive && setRows([]))
+      .catch((err) => { reportPrometheusError(err); if (alive) setRows([]); })
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;

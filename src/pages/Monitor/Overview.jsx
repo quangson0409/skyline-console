@@ -11,6 +11,7 @@ import {
   getSuitableValue,
   handleResponse,
   resultOf,
+  reportPrometheusError,
 } from './lib';
 
 /** Legacy pages/monitor/containers/Overview (+ components AlertInfo, Tops) */
@@ -59,7 +60,10 @@ function AlertInfo() {
       setMemCount(last.mem || 0);
       setWeek(results.map((r) => ({ x: Math.floor(r.day / 1000), y: r.total, type: t('Alarm') })));
       setLoading(false);
-    })().catch(() => alive && setLoading(false));
+    })().catch((err) => {
+      reportPrometheusError(err);
+      if (alive) setLoading(false);
+    });
     return () => {
       alive = false;
     };

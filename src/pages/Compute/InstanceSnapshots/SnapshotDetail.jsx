@@ -4,6 +4,7 @@ import { novaApi } from '@/api/nova';
 import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import { t } from '@/core/i18n';
+import { useIsAdminPage } from '@/components/ResourcePage/helpers';
 import { ImageDetailCards, imageHeaderInfo, fetchRawImage } from '@/pages/Compute/Images/ImageDetail';
 import { fetchSnapshotVolumeInfo, snapshotRowActions } from './SnapshotList';
 
@@ -39,6 +40,7 @@ export const fetchSnapshotDetail = async (id) => {
 };
 
 const InstanceCard = ({ detail }) => {
+  const isAdminPage = useIsAdminPage();
   const { server_id: serverId, server_name: serverName } = detail.instance || {};
   return (
     <DetailCard
@@ -49,7 +51,7 @@ const InstanceCard = ({ detail }) => {
           value: serverId,
           render: () => {
             if (!serverId) return '-';
-            if (serverName) return <Link to={`/compute/instance/detail/${serverId}?tab=snapshots`}>{serverName}</Link>;
+            if (serverName) return <Link to={`/compute/instance${isAdminPage ? '-admin' : ''}/detail/${serverId}?tab=snapshots`}>{serverName}</Link>;
             return serverId;
           },
         },

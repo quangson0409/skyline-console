@@ -7,6 +7,7 @@ import { glanceApi } from '@/api/glance';
 import { keystoneApi } from '@/api/keystone';
 import { nameColumn, textColumn, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { notifyLoadError } from '@/hooks/useResource';
 import { MetadataPicker } from '@/components/MetadataEditor/MetadataTransfer';
 
 /* ------------------------------------------------------------------ */
@@ -202,7 +203,8 @@ export const fetchSkylineSettings = async () => {
     const res = await apiClient.get('/openstack/skyline/api/v1/settings');
     const list = Array.isArray(res?.settings) ? res.settings : Array.isArray(res) ? res : [];
     return list.filter((it) => it && !it.hidden);
-  } catch {
+  } catch (err) {
+    notifyLoadError(err, t('Failed to load settings'));
     return [];
   }
 };
@@ -241,8 +243,14 @@ export const fetchFlavorDetail = async (id) => {
 /** Legacy ProjectStore.fetchProjectsWithDomain */
 export const fetchProjectsWithDomain = async () => {
   const [pRes, dRes] = await Promise.all([
-    keystoneApi.listProjects().catch(() => ({})),
-    keystoneApi.listDomains().catch(() => ({})),
+    keystoneApi.listProjects().catch((err) => {
+      notifyLoadError(err, t('Failed to load projects'));
+      return {};
+    }),
+    keystoneApi.listDomains().catch((err) => {
+      notifyLoadError(err, t('Failed to load domains'));
+      return {};
+    }),
   ]);
   const domains = dRes?.domains || [];
   return (pRes?.projects || []).map((p) => ({
@@ -281,7 +289,8 @@ export const fetchFlavorMetadefs = async () => {
   try {
     const res = await glanceApi.listNamespaces({ resource_types: resourceType });
     namespaces = (res?.namespaces || []).filter((it) => it?.namespace);
-  } catch {
+  } catch (err) {
+    notifyLoadError(err, t('Failed to load metadata definitions'));
     return [];
   }
   const details = await Promise.all(

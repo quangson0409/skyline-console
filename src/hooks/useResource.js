@@ -15,6 +15,11 @@ export const getErrorMessage = (err, fallback = 'Request failed') => {
   return err?.message || fallback;
 };
 
+/** Toast a loader failure (deduplicated by key) so empty fallback data is not mistaken for real data */
+export const notifyLoadError = (err, fallback, key) => {
+  message.error({ key: key || fallback, content: getErrorMessage(err, fallback) });
+};
+
 /**
  * Generic async resource loader.
  * fetcher: async () => any   (re-created when deps change)

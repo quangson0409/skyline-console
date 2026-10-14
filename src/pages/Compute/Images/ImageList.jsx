@@ -4,6 +4,7 @@ import { Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { glanceApi } from '@/api/glance';
 import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize, IdNameCell } from '@/components/ResourcePage';
+import { useIsAdminPage } from '@/components/ResourcePage/helpers';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
@@ -118,6 +119,7 @@ export default function ImageList() {
   const navigate = useNavigate();
   const projectMap = useProjectMap();
   const { hasAdminRole } = useAuthStore();
+  const isAdminPage = useIsAdminPage();
   // legacy TabList: the active tab follows ?tab=
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -142,6 +144,8 @@ export default function ImageList() {
       ? []
       : [{ name: 'visibility', label: t('Visibility'), options: toFilterOptions(imageVisibility()) }]),
     { name: 'disk_format', label: t('Disk Format'), options: toFilterOptions(imageFormats()) },
+    // legacy adminPageHasProjectFilter (projectFilterKey = owner)
+    ...(isAdminPage ? [{ name: 'owner', label: t('Project ID') }] : []),
   ];
 
   return (

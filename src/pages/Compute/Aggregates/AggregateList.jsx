@@ -36,7 +36,8 @@ const fetchZoneNames = async () => {
   try {
     const res = await novaApi.listAvailabilityZonesV();
     return (res?.availabilityZoneInfo || []).map((z) => z.zoneName);
-  } catch {
+  } catch (err) {
+    message.error(getErrorMessage(err, t('Failed to load availability zones')));
     return [];
   }
 };
@@ -227,7 +228,10 @@ export const manageHostAction = () => ({
   description: t('Add hosts to the aggregate or remove hosts from it. Hosts can be in multiple aggregates.'),
   getDefaultValues: (item) => ({ name: item.name, hosts: item.hosts || [] }),
   getFormItems: async () => {
-    const hosts = await fetchComputeHosts().catch(() => []);
+    const hosts = await fetchComputeHosts().catch((err) => {
+      message.error(getErrorMessage(err, t('Failed to load compute hosts')));
+      return [];
+    });
     return [
       { name: 'name', label: t('Name'), type: 'label' },
       { name: 'hosts', label: t('Hosts'), render: () => <HostSelectTable hosts={hosts} /> },
@@ -345,17 +349,6 @@ export function AggregateTab() {
                 {hosts.map((h) => (
                   <Tag
                     key={h}
-                    closable
-                    onClose={async (e) => {
-                      e.preventDefault();
-                      try {
-                        await novaApi.aggregateActionV(record.id, { remove_host: { host: h } });
-                        message.success(t('Host removed from aggregate'));
-                        refetch();
-                      } catch (err) {
-                        message.error(getErrorMessage(err, t('Failed to remove host')));
-                      }
-                    }}
                     style={{ borderRadius: 6, fontSize: 11 }}
                   >
                     {h}

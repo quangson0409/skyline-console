@@ -33,6 +33,8 @@ export function useActionRunner({ onRefresh } = {}) {
       const isMultiple = Array.isArray(target);
       const item = isMultiple ? null : target;
       const items = isMultiple ? target : item ? [item] : [];
+      // never run an action on an empty batch selection
+      if (isMultiple && items.length === 0) return;
 
       // 1. Custom action
       if (action.type === 'custom' || typeof action.onExecute === 'function') {

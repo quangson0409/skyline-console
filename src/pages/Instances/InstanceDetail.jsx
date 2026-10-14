@@ -239,6 +239,11 @@ export default function InstanceDetail() {
         setInstance(null);
         return;
       }
+      // legacy Instance/Detail: a soft-deleted server is shown in the recycle bin detail
+      if (!isRecycleBinDetail && String(srv.status).toLowerCase() === 'soft_deleted') {
+        navigate(`/management/recycle-bin${isAdminPage ? '-admin' : ''}/detail/${srv.id || id}`, { replace: true });
+        return;
+      }
 
       const instanceProjectId = srv.tenant_id || srv.project_id || currentProject?.id;
 
@@ -416,7 +421,7 @@ export default function InstanceDetail() {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [id, t, canView]);
+  }, [id, t, canView, isRecycleBinDetail, isAdminPage, navigate]);
 
   const { handleAction, actionModal } = useActionRunner({ onRefresh: () => fetchServerDetail({ quiet: true }) });
 
@@ -1574,7 +1579,7 @@ export default function InstanceDetail() {
                       </div>
                     </div>
                     <Space wrap>
-                      {allow('os_compute_api:os-security-groups:add') && (
+                      {!isAdminPage && allow('os_compute_api:os-security-groups:add') && (
                       <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -1665,7 +1670,7 @@ export default function InstanceDetail() {
                               )}
                             </Space>
                             <Space size={8} wrap>
-                              {allow('create_security_group_rule') && (
+                              {!isAdminPage && allow('create_security_group_rule') && (
                               <Button
                                 type="primary"
                                 ghost
@@ -1704,7 +1709,7 @@ export default function InstanceDetail() {
                                   </Button>
                                 )
                               ) : (
-                                allow('os_compute_api:os-security-groups:remove') && (
+                                !isAdminPage && allow('os_compute_api:os-security-groups:remove') && (
                                 <Button
                                   size="small"
                                   danger
@@ -1816,7 +1821,8 @@ export default function InstanceDetail() {
                                 key: 'description',
                                 render: (desc) => <span style={{ color: '#64748b', fontSize: 12 }}>{desc}</span>,
                               },
-                              {
+                              // legacy: rule actions only on project pages
+                              ...(isAdminPage ? [] : [{
                                 title: t('Action'),
                                 key: 'action',
                                 width: 160,
@@ -1846,7 +1852,7 @@ export default function InstanceDetail() {
                                     </Button>
                                   </Space>
                                 ),
-                              },
+                              }]),
                             ]}
                           />
                         ) : (

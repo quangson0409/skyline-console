@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { Badge, Form, Select, Table, Tag, Tooltip } from 'antd';
+import { Badge, Form, message, Select, Table, Tag, Tooltip } from 'antd';
 import { Link } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import { skylineApi } from '@/api/skyline';
 import { IdNameCell } from '@/components/ResourcePage';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import { getErrorMessage } from '@/hooks/useResource';
 import { checkActionPolicy, usePolicyStore } from '@/core/policy';
 
 /**
@@ -148,7 +149,9 @@ export const safeList = async (promise, key) => {
   try {
     const res = await promise;
     return res?.[key] || [];
-  } catch {
+  } catch (err) {
+    // surface the failure instead of silently presenting an empty list
+    message.error({ key: `safe-list-${key}`, content: getErrorMessage(err, t('Failed to load {name}', { name: key })) });
     return [];
   }
 };

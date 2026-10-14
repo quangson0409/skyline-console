@@ -68,6 +68,12 @@ export default function BaseTable({
   const [hiddenColumns, setHiddenColumns] = useState(() => loadHiddenColumns(storageTableKey, columns));
   const [page, setPage] = useState({ current: 1, pageSize: pagination?.pageSize || 10 });
   const isDark = currentTheme === THEMES.DARK_OPS;
+  // rows lacking the configured key (partial payloads) fall back to id / uuid / name so React keys stay defined
+  const tableRowKey = (record, index) => {
+    if (typeof rowKey === 'function') return rowKey(record, index);
+    const v = record?.[rowKey] ?? record?.id ?? record?.uuid ?? record?.name;
+    return v !== undefined && v !== null && v !== '' ? String(v) : `row-${index}`;
+  };
 
   // Handle filter change for MagicInput
   const handleFilterChange = (newFilters) => {
@@ -286,6 +292,7 @@ export default function BaseTable({
                   danger={Boolean(action.danger || action.isDanger)}
                   type={['primary', 'dashed', 'link', 'text'].includes(action.type) ? action.type : 'default'}
                   icon={action.icon}
+                  disabled={Boolean(action.disabled)}
                   onClick={() => action.onClick ? action.onClick(selectedRowKeys) : onActionClick && onActionClick(action, selectedRowKeys)}
                   style={{ borderRadius: 6 }}
                 >
@@ -346,7 +353,7 @@ export default function BaseTable({
           columns={shownColumns}
           dataSource={filteredData}
           loading={loading}
-          rowKey={rowKey}
+          rowKey={tableRowKey}
           rowSelection={rowSelection}
           onChange={
             remote

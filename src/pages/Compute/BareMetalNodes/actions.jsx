@@ -77,7 +77,8 @@ export const manageStateAction = () => ({
           realTarget = 'manage';
           break;
         default:
-          realTarget = 'delete';
+          // Ironic provision target for tearing down an active node is 'deleted'
+          realTarget = 'deleted';
       }
     }
     return ironicApi.setProvisionState(uuid, { target: realTarget });

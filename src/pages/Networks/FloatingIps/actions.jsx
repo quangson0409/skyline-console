@@ -223,7 +223,9 @@ export const allocateAction = () => {
       if (batch_allocate) {
         data.floating_ip_address = null;
         const promises = [];
-        for (let i = 0; i < count; i++) promises.push(neutronApi.createFloatingIp(data));
+        // batch: also create in the chosen project (not the token project)
+        const batchData = { ...data, project_id: project_id || currentProjectId() };
+        for (let i = 0; i < count; i++) promises.push(neutronApi.createFloatingIp(batchData));
         return Promise.all(promises);
       }
       return neutronApi.createFloatingIp({ ...data, project_id: project_id || currentProjectId() });

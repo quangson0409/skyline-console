@@ -5,6 +5,7 @@ import { cinderApi } from '@/api/cinder';
 import { useAuthStore } from '@/store/authStore';
 import { currentProjectId } from '@/api/endpoints';
 import { t } from '@/core/i18n';
+import { notifyLoadError } from '@/hooks/useResource';
 
 /* ---------- port of legacy resources/glance/image.jsx ---------- */
 
@@ -171,7 +172,8 @@ export const fetchProjectOptions = async () => {
   try {
     const res = await keystoneApi.listProjects();
     return (res?.projects || []).map((p) => ({ value: p.id, label: `${p.name} (${p.id})` }));
-  } catch {
+  } catch (err) {
+    notifyLoadError(err, t('Failed to load projects'));
     const { projects = [] } = useAuthStore.getState();
     return projects.map((p) => ({ value: p.id, label: `${p.name} (${p.id})` }));
   }
@@ -212,7 +214,10 @@ export const ProjectSelect = ({ value, onChange, multiple = false, placeholder }
 /* ---------- cinder helpers for "Create Volume" ---------- */
 
 export const fetchVolumeTypeOptions = async () => {
-  const res = await cinderApi.listVolumeTypes().catch(() => ({}));
+  const res = await cinderApi.listVolumeTypes().catch((err) => {
+    notifyLoadError(err, t('Failed to load volume types'));
+    return {};
+  });
   return (res?.volume_types || []).map((vt) => ({ value: vt.id, label: vt.name }));
 };
 
