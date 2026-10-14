@@ -2,7 +2,14 @@ import { useCallback } from 'react';
 import { create } from 'zustand';
 import locales from '@/locales';
 
-export const SUPPORT_LOCALES = [
+/**
+ * Languages offered in the UI. Vietnamese and Chinese are temporarily switched off
+ * (their dictionaries stay in src/locales) - add 'vi' / 'zh' back here to re-enable them.
+ */
+export const ENABLED_LOCALES = ['en'];
+export const DEFAULT_LOCALE = 'en';
+
+const ALL_LOCALES = [
   {
     name: 'Tiếng Việt',
     value: 'vi',
@@ -26,26 +33,28 @@ export const SUPPORT_LOCALES = [
   },
 ];
 
+export const SUPPORT_LOCALES = ALL_LOCALES.filter((l) => ENABLED_LOCALES.includes(l.value));
+
 const STORAGE_KEY = 'skyline_locale';
 
 // Get initial locale from localStorage or browser
 const getInitialLocale = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && locales[saved]) {
+    if (saved && locales[saved] && ENABLED_LOCALES.includes(saved)) {
       return saved;
     }
   } catch (e) {
     // ignore
   }
-  return 'vi'; // Default to Vietnamese
+  return DEFAULT_LOCALE;
 };
 
 // Global Zustand store for locale
 export const useLocaleStore = create((set, get) => ({
   locale: getInitialLocale(),
   setLocale: (newLocale) => {
-    if (!locales[newLocale]) return;
+    if (!locales[newLocale] || !ENABLED_LOCALES.includes(newLocale)) return;
     try {
       localStorage.setItem(STORAGE_KEY, newLocale);
     } catch (e) {
@@ -62,7 +71,7 @@ export const useLocaleStore = create((set, get) => ({
 export const t = (key, variables = {}) => {
   if (!key) return '';
   const currentLocale = useLocaleStore.getState().locale;
-  const dict = locales[currentLocale] || locales.vi || locales.en;
+  const dict = locales[currentLocale] || locales.en;
 
   let message = dict[key] !== undefined ? dict[key] : (locales.en[key] !== undefined ? locales.en[key] : key);
 
@@ -84,7 +93,7 @@ export const useTranslation = () => {
   const translate = useCallback(
     (key, variables) => {
       if (!key) return '';
-      const dict = locales[locale] || locales.vi || locales.en;
+      const dict = locales[locale] || locales.en;
       let message = dict[key] !== undefined ? dict[key] : (locales.en[key] !== undefined ? locales.en[key] : key);
 
       if (variables && typeof variables === 'object') {

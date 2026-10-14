@@ -53,7 +53,7 @@ export default function MainLayout() {
   const { locale, t } = useTranslation();
 
   const themeConfig = getAntdThemeConfig();
-  const antdLocale = antdLocales[locale] || viVN;
+  const antdLocale = antdLocales[locale] || enUS;
 
   const isDark = currentTheme === THEMES.DARK_OPS;
   const contentBg = isDark ? '#090d16' : '#f8fafc';

@@ -1,14 +1,14 @@
 import React from 'react';
 import { Dropdown, Space, Tooltip } from 'antd';
 import { GlobalOutlined, CheckOutlined, DownOutlined } from '@ant-design/icons';
-import { useTranslation } from '@/core/i18n';
+import { useTranslation, ENABLED_LOCALES } from '@/core/i18n';
 import { useThemeStore, THEMES } from '@/store/themeStore';
 
 const LANGS = [
   { key: 'vi', code: 'VI', label: 'Tiếng Việt', flag: '🇻🇳' },
   { key: 'en', code: 'EN', label: 'English', flag: '🇬🇧' },
   { key: 'zh', code: 'ZH', label: '简体中文', flag: '🇨🇳' },
-];
+].filter((l) => ENABLED_LOCALES.includes(l.key));
 
 export default function SelectLang({ compact = false }) {
   const { locale, setLocale, t } = useTranslation();
@@ -16,6 +16,8 @@ export default function SelectLang({ compact = false }) {
   const isDark = currentTheme === THEMES.DARK_OPS;
 
   const current = LANGS.find((l) => l.key === locale) || LANGS[0];
+  // a single enabled language: nothing to choose
+  if (LANGS.length <= 1) return null;
 
   const menuItems = LANGS.map((item) => {
     const isSelected = item.key === locale;

@@ -204,9 +204,10 @@ export const CALLING_CODES = {
 
 const LOCALE_TAGS = { vi: 'vi', en: 'en', zh: 'zh-Hans' };
 /** default calling code for a new number (legacy defaulted to +86) */
-const DEFAULT_PREFIX = { vi: '+84', zh: '+86', en: '+86' };
+// Vietnamese deployment: +84 regardless of UI language (legacy always used +86)
+const DEFAULT_PREFIX = { vi: '+84', zh: '+86', en: '+84' };
 
-export const defaultPhonePrefix = () => DEFAULT_PREFIX[useLocaleStore.getState().locale] || '+86';
+export const defaultPhonePrefix = () => DEFAULT_PREFIX[useLocaleStore.getState().locale] || '+84';
 
 const regionNamer = (locale) => {
   try {
