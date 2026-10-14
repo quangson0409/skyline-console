@@ -13,9 +13,9 @@ import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/hooks/useResource';
 import { IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import SelectTable, { col, yesNoCol } from '@/pages/Instances/Create/components/SelectTable';
-import NetworkSelectTable from '@/pages/Instances/Create/components/NetworkSelectTable';
-import { IpDistributor, ipDistributorRule } from '@/pages/Network/Port/helpers';
+import SelectTable, { col, yesNoCol } from '@/components/SelectTable';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
+import { IpDistributor, ipDistributorRule } from '@/components/network/IpDistributor';
 import {
   nameRule,
   urlPathRule,

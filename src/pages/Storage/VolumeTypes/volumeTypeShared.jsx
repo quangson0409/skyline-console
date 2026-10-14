@@ -3,7 +3,8 @@ import { cinderApi } from '@/api/cinder';
 import { keystoneApi } from '@/api/keystone';
 import { nameColumn, IdNameCell, textColumn, boolColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { selectTableField, renderSpecs } from '../shared';
+import { renderSpecs } from '../shared';
+import { selectTableField } from '@/components/SelectTable';
 
 /* ------------------------------------------------------------------ resources/cinder/volume-type */
 export const consumerTypes = () => ({

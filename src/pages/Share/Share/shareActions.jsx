@@ -14,6 +14,8 @@ import ResourcePage, {
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import { withQuota } from '@/components/Quota/utils';
+import { fetchManilaQuota, shareQuotaItems } from '@/components/Quota/services';
 import {
   shareStatus,
   shareProtocol,
@@ -24,7 +26,6 @@ import {
   checkShareTypeSupportServer,
   shareTypeTip,
   fetchShareQuota,
-  QuotaInfo,
   keyValueField,
   kvToObj,
   selectTableField,
@@ -139,11 +140,6 @@ function ShareGroupPicker({ value, onChange, form, groups }) {
   );
 }
 
-function CreateQuota({ form, quota }) {
-  const size = Form.useWatch('size', form);
-  return <QuotaInfo quota={quota} keys={['shares', 'gigabytes']} wishes={[1, Number(size) || 1]} />;
-}
-
 export const createShareAction = () => {
   let ctx = { quota: {}, types: [] };
   const getLimits = () => {
@@ -159,6 +155,11 @@ export const createShareAction = () => {
     policy: 'share:create',
     title: t('Create Share'),
     width: 960,
+    // legacy Share/actions/Create showQuota: 1 share + its capacity (getWishes: [1, size || 1])
+    quota: withQuota(
+      () => fetchManilaQuota(),
+      (quota, values) => shareQuotaItems(quota, ['shares', 'gigabytes'], [1, Number(values.size) || 1])
+    ),
     getFormItems: async () => {
       const [quota, typeRes, networks, groups, zoneRes] = await Promise.all([
         fetchShareQuota(),
@@ -180,7 +181,6 @@ export const createShareAction = () => {
         return Boolean(type) && checkShareTypeSupportServer(type);
       };
       return [
-        { name: '__quota', label: t('Quota'), render: ({ form }) => <CreateQuota form={form} quota={quota} /> },
         { name: 'project', label: t('Project'), type: 'label' },
         {
           name: 'availability_zone',
@@ -331,6 +331,12 @@ export const extendShareAction = () => {
     title: t('Extend Share'),
     description: t('After the share is expanded, the share cannot be reduced.'),
     allowed: (item) => item.isMine,
+    // share capacity quota (added size = new size - current size)
+    quota: withQuota(
+      () => fetchManilaQuota(),
+      (q, values, item) =>
+        shareQuotaItems(q, ['gigabytes'], [Math.max((Number(values.new_size) || 0) - (item?.size || 0), 0)])
+    ),
     getFormItems: async (item) => {
       quota = await fetchShareQuota();
       const { isQuotaLimited, leftSize, maxSize } = info(item);

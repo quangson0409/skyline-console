@@ -5,8 +5,9 @@ import { novaApi } from '@/api/nova';
 import ResourcePage, { deleteAction, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
-import { KpiCards, sinceTime } from '../_shared';
-import MetadataEditor, { fetchMetadefs, metadataWithRemovals } from '../_shared/MetadataEditor';
+import { sinceTime } from '../_shared';
+import { KpiCards } from '@/components/MetricCards';
+import MetadataEditor, { fetchMetadefs, metadataWithRemovals } from '@/components/MetadataEditor';
 import { fetchComputeHosts, serviceState, serviceStatus } from '../Hypervisors/HypervisorList';
 
 /* ------------------------------------------------------------------ */

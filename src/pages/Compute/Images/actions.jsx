@@ -4,6 +4,8 @@ import { cinderApi } from '@/api/cinder';
 import { hasEndpoint } from '@/api/endpoints';
 import { deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { withQuota } from '@/components/Quota/utils';
+import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems } from '@/components/Quota/services';
 import {
   NoSetValue,
   imageOS,
@@ -16,9 +18,8 @@ import {
   canImageCreateIronicInstance,
   ProjectSelect,
   fetchVolumeTypeOptions,
-  fetchVolumeQuotaText,
 } from './helpers';
-import { KeyValueList, MetadataTransfer, loadMetadefProperties } from './MetadataEditor';
+import { KeyValueList, MetadataTransfer, loadMetadefProperties } from '@/components/MetadataEditor/MetadataTransfer';
 
 const has = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
 const origin = (item) => item?.originData || item || {};
@@ -194,11 +195,23 @@ export const createVolumeFromImageAction = ({ isAdmin } = {}) => ({
   title: t('Create Volume'),
   allowed: () => hasEndpoint('cinder') && !isAdmin,
   getDefaultValues: (item) => ({ image: item.name || item.id, size: imageMinSize(item) }),
+  // legacy Image/actions/CreateVolume showQuota: volume / capacity / volume-type quota
+  quota: withQuota(
+    async () => {
+      const [quota, types] = await Promise.all([fetchCinderQuotaData(), fetchVolumeTypeOptions()]);
+      return { quota, types };
+    },
+    ({ quota, types }, values) =>
+      volumeQuotaItems(quota, {
+        count: 1,
+        size: values.size,
+        typeName: types.find((it) => it.value === values.volume_type)?.label,
+      })
+  ),
   getFormItems: async (item) => {
     const minSize = imageMinSize(item);
-    const [types, quota] = await Promise.all([fetchVolumeTypeOptions(), fetchVolumeQuotaText()]);
+    const types = await fetchVolumeTypeOptions();
     return [
-      quota && { name: 'quota', type: 'alert', message: quota },
       { name: 'image', label: t('Image'), type: 'label' },
       { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name') },
       {

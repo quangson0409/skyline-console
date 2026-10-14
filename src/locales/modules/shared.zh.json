@@ -1,0 +1,3 @@
+{
+  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "配额：{ name } 配额不足，无法创建资源，请进行资源数量或配额的调整（剩余{ left }，输入{ input }）。"
+}

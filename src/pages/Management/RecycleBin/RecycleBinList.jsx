@@ -6,7 +6,7 @@ import { serviceBase, versionHeaders } from '@/api/endpoints';
 import ResourcePage, { nameColumn, projectColumn, IdNameCell, formatTime, useIsAdminPage } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { sinceTime } from '@/pages/Configuration/shared';
+import { sinceTime } from '@/components/ResourcePage/helpers';
 
 /** Legacy pages/management/containers/RecycleBin (soft-deleted instances, tenant + administrator) */
 

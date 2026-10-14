@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Breadcrumb, Button, Card, Col, Progress, Row, Space, Spin, Typography } from 'antd';
+import { Alert, Breadcrumb, Button, Card, Col, Row, Space, Spin } from 'antd';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import QuotaPanel from '@/components/Quota/QuotaPanel';
+import { quotaItem, quotaError } from '@/components/Quota/utils';
 import { fetchNeutronQuotaItem, quotaExceeded } from './helpers';
-
-const { Text } = Typography;
 
 /** Neutron quota of one resource for the current project (legacy fetchNeutronQuota/getQuotaInfo) */
 export function useNeutronQuota(key, enabled = true) {
@@ -23,18 +23,16 @@ export function useNeutronQuota(key, enabled = true) {
   return { quota, exceeded: enabled && quotaExceeded(quota, 1) };
 }
 
+/** Legacy FormAction right-top quota chart (shared QuotaPanel: used / new / available) */
 function QuotaCard({ title, quota }) {
   if (!quota) return null;
-  const unlimited = quota.limit === -1;
-  const percent = unlimited || !quota.limit ? 0 : Math.min(100, Math.round(((quota.used + 1) / quota.limit) * 100));
+  const lines = [quotaItem({ limit: quota.limit, used: quota.used, reserved: 0 }, { name: 'quota', title, add: 1 })];
+  const error = quotaError(lines);
   return (
-    <Card variant="borderless" title={t('Project Quota')} style={{ borderRadius: 8 }}>
-      <div style={{ marginBottom: 4, fontWeight: 600 }}>{title}</div>
-      <Progress percent={percent} status={quotaExceeded(quota, 1) ? 'exception' : 'normal'} showInfo={false} />
-      <Text type="secondary" style={{ fontSize: 12 }}>
-        {t('Used')}: {quota.used} / {t('Add')}: 1 / {t('Quota')}: {unlimited ? t('Unlimited') : quota.limit}
-      </Text>
-    </Card>
+    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+      <QuotaPanel quotas={lines} />
+      {error ? <Alert type="error" showIcon message={error} style={{ maxWidth: 280 }} /> : null}
+    </Space>
   );
 }
 

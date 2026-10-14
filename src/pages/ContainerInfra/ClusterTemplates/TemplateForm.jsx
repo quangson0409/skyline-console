@@ -6,23 +6,11 @@ import { neutronApi } from '@/api/neutron';
 import { glanceApi } from '@/api/glance';
 import { currentProjectId } from '@/api/endpoints';
 import { useAuthStore } from '@/store/authStore';
-import SelectTable from '@/pages/Instances/Create/components/SelectTable';
+import SelectTable from '@/components/SelectTable';
 import { t } from '@/core/i18n';
-import StepWizard, { selectRequired, selection, firstKey } from '../StepWizard';
-import {
-  fetchFlavors,
-  fetchKeypairs,
-  findRef,
-  flavorColumns,
-  keypairColumns,
-  networkColumns,
-  subnetColumns,
-  imageColumns,
-  KeyValueList,
-  labelsToList,
-  listToLabels,
-  settled,
-} from '../common';
+import StepWizard, { selectRequired, selection, firstKey } from '@/components/Wizard/StepWizard';
+import { fetchFlavors, fetchKeypairs, findRef, flavorColumns, keypairColumns, networkColumns, subnetColumns, imageColumns, labelsToList, listToLabels, settled } from '../common';
+import KeyValueList from '@/components/form/KeyValueList';
 import { fetchTemplateDetail } from './TemplateDetail';
 
 const ACCEPTED_IMAGE_OS = ['ubuntu'];

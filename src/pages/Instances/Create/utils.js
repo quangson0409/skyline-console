@@ -393,48 +393,8 @@ export const ipTypeOptions = () => [
 /* Quota helpers (stores/keystone/project)                             */
 /* ------------------------------------------------------------------ */
 
-export const getGiBValue = (input) => {
-  if (typeof input !== 'number' || Number.isNaN(input) || !input) return 0;
-  return parseFloat(Number(input / 1024).toFixed(2));
-};
-
-const getLeftQuotaData = ({ used = 0, limit = 0, reserved = 0 } = {}) => (limit === -1 ? -1 : limit - used - reserved);
-
-export const updateQuotaData = (quota) => {
-  const newData = JSON.parse(JSON.stringify(quota || {}));
-  Object.keys(newData).forEach((it) => {
-    if (newData[it] && typeof newData[it] === 'object') {
-      if (newData[it].in_use !== undefined) newData[it].used = newData[it].in_use;
-      newData[it].left = getLeftQuotaData(newData[it]);
-    }
-  });
-  return newData;
-};
-
-export const updateNovaQuota = (quota = {}) => {
-  const { ram: { limit = 0, in_use = 0, reserved = 0 } = {} } = quota || {};
-  return {
-    ...quota,
-    ram: {
-      in_use: getGiBValue(in_use),
-      limit: limit === -1 ? limit : getGiBValue(limit),
-      reserved: getGiBValue(reserved),
-    },
-  };
-};
-
-export const getQuotaMessage = (value, quota, name) => {
-  const { left = 0 } = quota || {};
-  if (left === -1) return '';
-  if (value > left) {
-    return tt('Insufficient {name} quota to create resources (left { quota }, input { input }).', {
-      name,
-      quota: left,
-      input: value,
-    });
-  }
-  return '';
-};
+/* Quota helpers moved to src/components/Quota (re-exported for existing imports) */
+export { getGiBValue, updateQuotaData, updateNovaQuota, getQuotaMessage } from '@/components/Quota/utils';
 
 /* ------------------------------------------------------------------ */
 /* Payload builders                                                    */

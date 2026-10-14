@@ -5,7 +5,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import { formatTime } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { JsonBlock } from '../shared';
+import { JsonBlock } from '@/components/CodeBlock';
 import { mapNamespace, metadataRowActions } from './MetadataList';
 
 /** Legacy pages/configuration/containers/Metadata/Detail */

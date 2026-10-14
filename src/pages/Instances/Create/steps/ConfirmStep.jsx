@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Descriptions, Divider, Form, theme } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 import { t } from '@/core/i18n';
-import { LabelValue } from '../components/fields';
+import { LabelValue } from '@/components/form/fields';
 import { getAllDataDisks, physicalNodeTypes } from '../utils';
 
 /** Legacy FormItem/Descriptions: titled block (click to go back to the step) with label/value pairs */

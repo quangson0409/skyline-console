@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Modal,
   Form,
@@ -17,6 +17,8 @@ import {
 } from 'antd';
 import { useTranslation } from '@/core/i18n';
 import { getErrorMessage } from '@/hooks/useResource';
+import ModalQuota from '@/components/Quota/ModalQuota';
+import { quotaError } from '@/components/Quota/utils';
 
 /**
  * ActionModal - Generic UI Adapter for OpenStack ModalActions (Ant Design 5)
@@ -37,10 +39,61 @@ export default function ActionModal({
   okText,
   cancelText,
   confirmLoading = false,
+  quota,
 }) {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+
+  /*
+   * Legacy ModalAction showQuota / quotaInfo / disableSubmit:
+   * `quota(item, values, cache)` returns [{ name, title, used, add, limit, reserved }] (see
+   * components/Quota/utils quotaItem / withQuota). The chart is shown above the form, recomputed on
+   * every form change, and OK is blocked while a line does not fit.
+   */
+  const [quotaState, setQuotaState] = useState({ loading: false, items: [] });
+  const quotaCache = useRef({});
+  const quotaSeq = useRef(0);
+  const quotaTimer = useRef(null);
+  const watchedValues = Form.useWatch((values) => values, { form, preserve: true });
+
+  const computeQuota = useCallback(
+    async (values) => {
+      if (typeof quota !== 'function') return [];
+      const seq = ++quotaSeq.current;
+      setQuotaState((prev) => ({ ...prev, loading: true }));
+      let items = [];
+      try {
+        items = (await quota(item, { ...(initialValues || {}), ...(values || {}) }, quotaCache.current)) || [];
+      } catch {
+        items = [];
+      }
+      if (seq === quotaSeq.current) setQuotaState({ loading: false, items: items.filter(Boolean) });
+      return items;
+    },
+    [quota, item, initialValues]
+  );
+
+  useEffect(() => {
+    if (!open || typeof quota !== 'function') {
+      setQuotaState({ loading: false, items: [] });
+      return;
+    }
+    quotaCache.current = {};
+    setQuotaState({ loading: true, items: [] });
+    computeQuota(initialValues || {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, quota]);
+
+  useEffect(() => {
+    if (!open || typeof quota !== 'function' || !watchedValues) return undefined;
+    clearTimeout(quotaTimer.current);
+    quotaTimer.current = setTimeout(() => computeQuota(form.getFieldsValue(true)), 250);
+    return () => clearTimeout(quotaTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedValues]);
+
+  const quotaMessage = typeof quota === 'function' ? quotaError(quotaState.items) : '';
 
   useEffect(() => {
     if (open) {
@@ -54,6 +107,14 @@ export default function ActionModal({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+      if (typeof quota === 'function') {
+        const fresh = await computeQuota(form.getFieldsValue(true));
+        const msg = quotaError(fresh);
+        if (msg) {
+          message.error(msg);
+          return;
+        }
+      }
       setSubmitting(true);
       if (onSubmit) {
         const result = await onSubmit(values, item);
@@ -183,6 +244,7 @@ export default function ActionModal({
       okText={okText || t('Confirm')}
       cancelText={cancelText || t('Cancel')}
       confirmLoading={submitting || confirmLoading}
+      okButtonProps={quotaMessage ? { disabled: true, title: quotaMessage } : undefined}
       destroyOnHidden
       width={width}
       maskClosable={false}
@@ -206,6 +268,12 @@ export default function ActionModal({
           }}
         />
       )}
+
+      {typeof quota === 'function' && (quotaState.loading || quotaState.items.length) ? (
+        <div style={{ marginTop: description ? 0 : 12 }}>
+          <ModalQuota quotas={quotaState.items} loading={quotaState.loading} />
+        </div>
+      ) : null}
 
       <Form
         form={form}

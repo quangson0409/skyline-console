@@ -4,7 +4,7 @@ import ResourcePage from '@/components/ResourcePage';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { MetricCards } from '@/pages/Storage/shared';
+import { MetricCards } from '@/components/MetricCards';
 import { manilaIsTransition } from '../shareShared';
 import { fetchShares, shareColumns, shareFilters, shareActionConfigs, createShareAction } from './shareActions';
 

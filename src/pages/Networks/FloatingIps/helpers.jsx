@@ -10,7 +10,8 @@ import apiClient from '@/api/client';
 import { serviceBase, hasEndpoint, currentProjectId } from '@/api/endpoints';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
-import { isIPv4, listAll } from '@/pages/Network/common';
+import { listAll } from '@/pages/Network/common';
+import { isIPv4 } from '@/components/network/ip';
 import { IdNameCell, ShortId } from '@/components/ResourcePage/helpers';
 
 export const floatingIpStatus = () => ({

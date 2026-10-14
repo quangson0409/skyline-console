@@ -8,6 +8,8 @@ import { Form, Select, Tag, Space } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import { deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
+import { fetchNeutronQuota, neutronQuotaItems } from '@/components/Quota/services';
 import { useAuthStore } from '@/store/authStore';
 import { listAll, cidrRule, ipRule } from '../common';
 
@@ -76,28 +78,20 @@ export const createRouterAction = () => ({
   title: t('Create Router'),
   width: 800,
   getDefaultValues: () => ({ openExternalNetwork: false, hints: [] }),
+  // legacy Router/actions/Create showQuota: neutron router quota
+  quota: withQuota(
+    () => fetchNeutronQuota(),
+    (quota) => neutronQuotaItems(quota, ['router'], [1])
+  ),
   getFormItems: async () => {
-    const [zones, extNets, quotaRes] = await Promise.all([
+    const [zones, extNets] = await Promise.all([
       neutronApi.listAvailabilityZones().catch(() => ({})),
       fetchExternalNetworkOptions(),
-      neutronApi.getQuota(currentProjectId()).catch(() => ({})),
     ]);
     const aZones = (zones?.availability_zones || []).filter(
       (it) => it.state === 'available' && it.resource === 'router'
     );
-    const quota = quotaRes?.quota?.router;
-    const left = quotaLeft(quota);
     return [
-      quota
-        ? {
-            name: 'quota-alert',
-            type: 'alert',
-            alertType: left === 0 ? 'warning' : 'info',
-            message: `${t('Router')} ${t('Quota')}: ${t('Used')} ${quota.used ?? 0} / ${
-              Number(quota.limit) === -1 ? t('Unlimited') : quota.limit
-            }${left === 0 ? ` - ${t('Quota exceeded')}` : ''}`,
-          }
-        : null,
       { name: 'name', label: t('Name'), type: 'input', required: true },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
       {

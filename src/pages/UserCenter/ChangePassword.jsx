@@ -5,7 +5,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
-import { getProfile, passwordRule, confirmPasswordRule } from '@/pages/Identity/common';
+import { getProfile } from '@/pages/Identity/common';
+import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 
 /**
  * Key used to hand the expired-password context from the login page to this page

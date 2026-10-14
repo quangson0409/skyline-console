@@ -12,7 +12,7 @@ import { glanceApi } from '@/api/glance';
 import { currentProjectId } from '@/api/endpoints';
 import { IdNameCell, formatSize } from '@/components/ResourcePage/helpers';
 import { t } from '@/core/i18n';
-import SelectTable, { col, mapCol, unitCol, timeCol } from '@/pages/Instances/Create/components/SelectTable';
+import SelectTable, { col, mapCol, unitCol, timeCol } from '@/components/SelectTable';
 import { getImageColumns } from '@/pages/Instances/Create/steps/BaseStep';
 import {
   canImageCreateInstance,
@@ -25,7 +25,8 @@ import {
 } from '@/pages/Instances/Create/utils';
 import { fetchHypervisors, cpuRender, memoryRender } from '@/pages/Compute/Hypervisors/HypervisorList';
 import { getInterfaceWithReason, getPortsAndReasons } from '@/pages/Networks/FloatingIps/helpers';
-import { isIPv4, isIPv6, listAll } from '@/pages/Network/common';
+import { listAll } from '@/pages/Network/common';
+import { isIPv4, isIPv6 } from '@/components/network/ip';
 import { portStatus } from '@/pages/Network/Port/helpers';
 import { volumeStatus } from '@/pages/Storage/Volumes/volumeShared';
 

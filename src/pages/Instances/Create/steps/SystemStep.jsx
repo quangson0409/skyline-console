@@ -8,9 +8,9 @@ import { t } from '@/core/i18n';
 import { createKeypairAction, mapKeypair } from '@/pages/Compute/Keypairs/KeypairList';
 import { fetchHypervisors, cpuRender, memoryRender } from '@/pages/Compute/Hypervisors/HypervisorList';
 import { policyType } from '@/pages/Compute/ServerGroups/ServerGroupList';
-import { TextareaFromFile } from '@/pages/Compute/_shared';
-import SelectTable, { col, mapCol } from '../components/SelectTable';
-import { WrappedRadio, FormDivider, selectTableRule, narrowWrapper, tableWrapper, textWrapper } from '../components/fields';
+import TextareaFromFile from '@/components/form/TextareaFromFile';
+import SelectTable, { col, mapCol } from '@/components/SelectTable';
+import { WrappedRadio, FormDivider, selectTableRule, narrowWrapper, tableWrapper, textWrapper } from '@/components/form/fields';
 import { asciiValidator, instanceNameValidator, instancePasswordRule, isWindowsImage, physicalNodeTypes } from '../utils';
 
 

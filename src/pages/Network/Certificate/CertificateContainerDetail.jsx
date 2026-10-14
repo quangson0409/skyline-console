@@ -2,7 +2,7 @@ import React from 'react';
 import { Row, Col, Card } from 'antd';
 import ResourceDetail from '@/components/ResourceDetail';
 import { t } from '@/core/i18n';
-import { PayloadViewer } from '@/pages/KeyManager/common';
+import { PayloadViewer } from '@/components/CodeBlock';
 import { certificateInfo, fetchCertificateContainer } from './common';
 import { certificateRowActions } from './CertificateList';
 

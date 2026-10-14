@@ -8,7 +8,9 @@ import DetailCard from '@/components/DetailCard';
 import ResourcePage, { formatTime, nameColumn, statusColumn, projectColumn, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { JsonBlock, SelectTable, selectTableRequired, sinceTime } from '../shared';
+import { sinceTime } from '../shared';
+import { JsonBlock } from '@/components/CodeBlock';
+import { SearchSelectTable as SelectTable, selectTableRequired } from '@/components/SelectTable';
 import { agentRowActions, agentStateText, agentStatusText } from './SystemInfo';
 
 /** Legacy pages/configuration/containers/SystemInfo/NeutronAgent/Detail (+ Network / Router tabs) */

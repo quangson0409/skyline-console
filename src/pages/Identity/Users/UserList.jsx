@@ -3,21 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import ResourcePage, { nameColumn, textColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import {
-  detailPath,
-  enabledColumn,
-  domainColumn,
-  yesNoFilterOptions,
-  IdNameLink,
-  listDomains,
-  listRoles,
-  listAllProjects,
-  safeList,
-  passwordRule,
-  confirmPasswordRule,
-  emailRule,
-  phoneRule,
-} from '../common';
+import { detailPath, enabledColumn, domainColumn, yesNoFilterOptions, IdNameLink, listDomains, listRoles, listAllProjects, safeList, emailRule, phoneRule } from '../common';
+import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 
 /* ------------------------------ Data ------------------------------ */
 

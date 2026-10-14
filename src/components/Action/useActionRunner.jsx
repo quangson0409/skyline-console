@@ -105,6 +105,7 @@ export function useActionRunner({ onRefresh } = {}) {
       initialValues={modalConfig.initialValues}
       width={modalConfig.action?.width}
       okText={modalConfig.action?.okText}
+      quota={modalConfig.action?.quota}
       onSubmit={async (values, item) => {
         if (modalConfig.action && typeof modalConfig.action.onSubmit === 'function') {
           return modalConfig.action.onSubmit(values, item);

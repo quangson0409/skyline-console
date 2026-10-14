@@ -5,9 +5,9 @@ import apiClient from '@/api/client';
 import { serviceBase } from '@/api/endpoints';
 import { glanceApi } from '@/api/glance';
 import ResourcePage, { boolColumn, textColumn, timeColumn } from '@/components/ResourcePage';
-import { TextareaFromFile } from '@/pages/Compute/_shared';
+import TextareaFromFile from '@/components/form/TextareaFromFile';
 import { t } from '@/core/i18n';
-import { jsonRule } from '../shared';
+import { jsonRule } from '@/components/form/rules';
 
 /** Legacy pages/configuration/containers/Metadata (glance metadefs namespaces) */
 

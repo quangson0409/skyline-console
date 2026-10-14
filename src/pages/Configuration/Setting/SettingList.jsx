@@ -4,7 +4,8 @@ import { QuestionCircleOutlined } from '@ant-design/icons';
 import { skylineApi } from '@/api/skyline';
 import ResourcePage, { textColumn } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { JsonBlock, jsonRule } from '../shared';
+import { JsonBlock } from '@/components/CodeBlock';
+import { jsonRule } from '@/components/form/rules';
 
 /** Legacy pages/configuration/containers/Setting (skyline settings: flavor_families, gpu_models, usb_models...) */
 

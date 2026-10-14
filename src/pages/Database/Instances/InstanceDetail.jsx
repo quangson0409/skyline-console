@@ -6,7 +6,7 @@ import { novaApi } from '@/api/nova';
 import ResourceDetail from '@/components/ResourceDetail';
 import ResourcePage, { formatTime, textColumn, timeColumn, statusColumn, yesNo, deleteAction, nameColumn } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
-import { passwordRule, confirmPasswordRule } from '@/pages/Identity/common';
+import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 import { t } from '@/core/i18n';
 import {
   instanceStatus,

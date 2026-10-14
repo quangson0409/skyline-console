@@ -3,7 +3,7 @@ import { Progress } from 'antd';
 import { zunApi } from '@/api/zun';
 import ResourcePage, { nameColumn } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { getGiBValue } from '@/pages/ContainerInfra/common';
+import { getGiBValue } from '@/components/Quota/utils';
 
 /** Legacy stores/zun/hosts.js mapper */
 export const mapHost = (data) => {

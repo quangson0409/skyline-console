@@ -9,21 +9,15 @@ import { novaApi } from '@/api/nova';
 import { cinderApi } from '@/api/cinder';
 import { currentProjectId } from '@/api/endpoints';
 import { useAuthStore } from '@/store/authStore';
-import SelectTable from '@/pages/Instances/Create/components/SelectTable';
-import NetworkSelectTable from '@/pages/Instances/Create/components/NetworkSelectTable';
-import QuotaPanel from '@/pages/Instances/Create/components/QuotaPanel';
+import SelectTable from '@/components/SelectTable';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
+import QuotaPanel from '@/components/Quota/QuotaPanel';
 import { IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import StepWizard, { selectRequired, firstKey } from '@/pages/ContainerInfra/StepWizard';
-import {
-  KeyValueList,
-  keyValueRule,
-  listToLabels,
-  imageColumns,
-  updateQuotaData,
-  getQuotaMessage,
-  settled,
-} from '@/pages/ContainerInfra/common';
+import StepWizard, { selectRequired, firstKey } from '@/components/Wizard/StepWizard';
+import { listToLabels, imageColumns, settled } from '@/pages/ContainerInfra/common';
+import KeyValueList, { keyValueRule } from '@/components/form/KeyValueList';
+import { updateQuotaData, getQuotaMessage } from '@/components/Quota/utils';
 import { imageDrivers, exitPolicies } from '../common';
 
 const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/;

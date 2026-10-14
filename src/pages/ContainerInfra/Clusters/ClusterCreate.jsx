@@ -5,27 +5,13 @@ import { magnumApi } from '@/api/magnum';
 import { neutronApi } from '@/api/neutron';
 import { quotaApi } from '@/api/quota';
 import { currentProjectId, hasEndpoint } from '@/api/endpoints';
-import SelectTable from '@/pages/Instances/Create/components/SelectTable';
-import QuotaPanel from '@/pages/Instances/Create/components/QuotaPanel';
+import SelectTable from '@/components/SelectTable';
+import QuotaPanel from '@/components/Quota/QuotaPanel';
 import { t } from '@/core/i18n';
-import StepWizard, { selectRequired, selection, firstKey } from '../StepWizard';
-import {
-  defaultTip,
-  fetchFlavors,
-  fetchKeypairs,
-  findRef,
-  flavorColumns,
-  keypairColumns,
-  networkColumns,
-  subnetColumns,
-  KeyValueList,
-  labelsToList,
-  listToLabels,
-  getGiBValue,
-  updateQuotaData,
-  getQuotaMessage,
-  settled,
-} from '../common';
+import StepWizard, { selectRequired, selection, firstKey } from '@/components/Wizard/StepWizard';
+import { defaultTip, fetchFlavors, fetchKeypairs, findRef, flavorColumns, keypairColumns, networkColumns, subnetColumns, labelsToList, listToLabels, settled } from '../common';
+import KeyValueList from '@/components/form/KeyValueList';
+import { getGiBValue, updateQuotaData, getQuotaMessage } from '@/components/Quota/utils';
 import { templateColumns, fetchTemplates } from '../ClusterTemplates/TemplateList';
 
 const NAME_RE = /^[a-zA-Z][a-zA-Z0-9_.-]*$/;

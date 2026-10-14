@@ -7,20 +7,11 @@ import { neutronApi } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import { deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import {
-  PORT_TYPES,
-  MacAddressInput,
-  macAddressRule,
-  NetworkIpDistributor,
-  ipDistributorRule,
-  DependentSelect,
-  checkIpOrCidr,
-  loadQosPolicyOptions,
-  loadAssociateFipData,
-  qosEnabled,
-  isPortError,
-  currentProjectId,
-} from './helpers';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
+import { fetchNeutronQuota, neutronQuotaItems } from '@/components/Quota/services';
+import { PORT_TYPES, MacAddressInput, macAddressRule, DependentSelect, checkIpOrCidr, loadQosPolicyOptions, qosEnabled, isPortError, currentProjectId } from './helpers';
+import { NetworkIpDistributor, ipDistributorRule } from '@/components/network/IpDistributor';
+import { loadAssociateFipData } from '@/components/network/associateFip';
 
 const safeList = async (promise, key) => {
   try {
@@ -57,19 +48,18 @@ export const createPortAction = ({ networkId } = {}) => ({
     enableQosPolicy: false,
     network_id: networkId,
   }),
+  // legacy Port/actions/Create showQuota: disabled when used >= limit (reserved ignored like legacy)
+  quota: withQuota(
+    () => fetchNeutronQuota(),
+    (quota) => [quotaItem(quota.port && { ...quota.port, reserved: 0 }, { name: 'port', title: t('Ports'), add: 1 })]
+  ),
   getFormItems: async () => {
     const projectId = currentProjectId();
-    const [networks, securityGroups, qosOptions, quota] = await Promise.all([
+    const [networks, securityGroups, qosOptions] = await Promise.all([
       safeList(neutronApi.listNetworks(), 'networks'),
       safeList(neutronApi.listSecurityGroups({ project_id: projectId }), 'security_groups'),
       qosEnabled() ? loadQosPolicyOptions() : Promise.resolve([]),
-      projectId ? neutronApi.getQuota(projectId).catch(() => undefined) : Promise.resolve(undefined),
     ]);
-    const portQuota = quota?.quota?.port;
-    const quotaText = portQuota
-      ? `${t('Ports')}: ${t('Used')} ${portQuota.used ?? 0} / ${t('Quota')} ${portQuota.limit === -1 ? t('Unlimited') : portQuota.limit}`
-      : null;
-    const quotaFull = portQuota && portQuota.limit !== -1 && (portQuota.used || 0) >= portQuota.limit;
     const networkOptions = networks
       .filter((n) => n.status !== 'ERROR' || n.id === networkId)
       .map((n) => ({
@@ -80,12 +70,6 @@ export const createPortAction = ({ networkId } = {}) => ({
       networkOptions.unshift({ value: networkId, label: networkId });
     }
     return [
-      quotaText && {
-        type: 'alert',
-        name: 'quota',
-        alertType: quotaFull ? 'error' : 'info',
-        message: quotaFull ? `${quotaText} - ${t('Quota exceeded')}` : quotaText,
-      },
       { name: 'name', label: t('Port Name'), type: 'input', required: true },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
       {

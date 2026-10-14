@@ -4,21 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
-import {
-  statusTypes,
-  fetchDomainOptions,
-  listDomains,
-  listRoles,
-  listAllProjects,
-  listAllGroups,
-  withDomainName,
-  MemberRoleSelector,
-  DomainSelect,
-  passwordRule,
-  confirmPasswordRule,
-  emailRule,
-  phoneRule,
-} from '../common';
+import { statusTypes, fetchDomainOptions, listDomains, listRoles, listAllProjects, listAllGroups, withDomainName, MemberRoleSelector, DomainSelect, emailRule, phoneRule } from '../common';
+import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 import { userNameRule } from './UserList';
 
 /** legacy identity/containers/User/actions/Create (FormAction page at /identity/user-admin/create) */

@@ -5,6 +5,7 @@ import { quotaApi } from '@/api/quota';
 import { hasEndpoint, loadEndpoints } from '@/api/endpoints';
 import { t } from '@/core/i18n';
 import { hasAdminOnlyRole } from '../common';
+import { updateQuotaData } from '@/components/Quota/utils';
 
 /* Port of legacy stores/keystone/project.js quota logic + QuotaOverview card definitions */
 
@@ -129,19 +130,6 @@ const getGiBValue = (input) => {
   const n = Number(input);
   if (!input || Number.isNaN(n)) return 0;
   return parseFloat((n / 1024).toFixed(2));
-};
-
-const leftOf = ({ used = 0, limit = 0, reserved = 0 }) => (limit === -1 ? -1 : limit - used - reserved);
-
-const updateQuotaData = (quota) => {
-  const data = JSON.parse(JSON.stringify(quota || {}));
-  Object.keys(data).forEach((k) => {
-    if (data[k] && typeof data[k] === 'object') {
-      if (data[k].in_use !== undefined) data[k].used = data[k].in_use;
-      data[k].left = leftOf(data[k]);
-    }
-  });
-  return data;
 };
 
 /** legacy fetchProjectVolumeTypes: public types + private types this project can access */

@@ -4,7 +4,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import { formatTime } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { JsonBlock } from '@/pages/Configuration/shared';
+import { JsonBlock } from '@/components/CodeBlock';
 import { mapNotification, notificationStatus } from './NotificationList';
 
 /** Legacy pages/ha/containers/Notifications/Detail */

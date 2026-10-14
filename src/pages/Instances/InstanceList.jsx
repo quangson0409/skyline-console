@@ -12,7 +12,7 @@ import { useTranslation } from '@/core/i18n';
 import { useAutoRefresh } from '@/hooks/useAutoRefresh';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { useIsAdminPage, nameColumn, IdNameCell, formatTime } from '@/components/ResourcePage/helpers';
-import { sinceTime } from '@/pages/Compute/_shared';
+import { sinceTimeClamp as sinceTime } from '@/components/ResourcePage/helpers';
 import { getInstanceActions } from './actions';
 import {
   instanceStatusText,

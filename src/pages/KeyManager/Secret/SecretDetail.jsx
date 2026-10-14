@@ -5,7 +5,8 @@ import { getErrorMessage } from '@/hooks/useResource';
 import ResourceDetail from '@/components/ResourceDetail';
 import { formatTime } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { mapSecret, ExpirationStatus, PayloadViewer, fetchDecodedPayload } from '../common';
+import { mapSecret, ExpirationStatus, fetchDecodedPayload } from '../common';
+import { PayloadViewer } from '@/components/CodeBlock';
 import { secretRowActions } from './SecretList';
 
 export const fetchSecretDetail = async (id) => {

@@ -1,7 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Input, Space } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { novaApi } from '@/api/nova';
 import { neutronApi } from '@/api/neutron';
 import { glanceApi } from '@/api/glance';
@@ -82,44 +80,8 @@ export const listToLabels = (list) =>
     return acc;
   }, {});
 
-export function KeyValueList({ value, onChange, addText, keyPlaceholder, valuePlaceholder }) {
-  const list = Array.isArray(value) ? value : [];
-  const update = (idx, patch) => onChange?.(list.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
-  return (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      {list.map((it, idx) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Input
-            placeholder={keyPlaceholder || t('Key')}
-            value={it.key}
-            onChange={(e) => update(idx, { key: e.target.value })}
-            style={{ flex: '1 1 160px', maxWidth: 280 }}
-          />
-          <span>=</span>
-          <Input
-            placeholder={valuePlaceholder || t('Value')}
-            value={it.value}
-            onChange={(e) => update(idx, { value: e.target.value })}
-            style={{ flex: '1 1 160px', maxWidth: 280 }}
-          />
-          <Button type="text" danger icon={<DeleteOutlined />} onClick={() => onChange?.(list.filter((_, i) => i !== idx))} />
-        </div>
-      ))}
-      <Button type="dashed" icon={<PlusOutlined />} onClick={() => onChange?.([...list, { key: '', value: '' }])}>
-        {addText || t('Add')}
-      </Button>
-    </Space>
-  );
-}
-
-/** Legacy keyValueValidator: every row needs key and value */
-export const keyValueRule = () => ({
-  validator: (_, value) =>
-    (value || []).some((it) => !it?.key || !it?.value)
-      ? Promise.reject(new Error(t('Please input key and value')))
-      : Promise.resolve(),
-});
+/* Key / value list moved to src/components/form (re-exported for existing imports) */
+export { default as KeyValueList, keyValueRule } from '@/components/form/KeyValueList';
 
 /* ------------------------------------------------------------------ */
 /* Column sets (legacy resources/magnum/template.js)                  */
@@ -301,35 +263,5 @@ export const resolveImage = async (ref) => {
   return res?.images?.[0] || null;
 };
 
-/** Legacy getGiBValue (MiB -> GiB) */
-export const getGiBValue = (input) => {
-  if (typeof input !== 'number' || Number.isNaN(input) || !input) return 0;
-  return parseFloat(Number(input / 1024).toFixed(2));
-};
-
-/** Legacy updateQuotaData: in_use -> used, left = limit - used - reserved */
-export const updateQuotaData = (quota) => {
-  const data = JSON.parse(JSON.stringify(quota || {}));
-  Object.keys(data).forEach((key) => {
-    const it = data[key];
-    if (it && typeof it === 'object') {
-      if (it.in_use !== undefined) it.used = it.in_use;
-      const { used = 0, limit = 0, reserved = 0 } = it;
-      it.left = limit === -1 ? -1 : limit - used - (reserved || 0);
-    }
-  });
-  return data;
-};
-
-export const getQuotaMessage = (value, quota, name) => {
-  const { left = 0 } = quota || {};
-  if (left === -1) return '';
-  if (value > left) {
-    return t('Insufficient {name} quota to create resources (left { quota }, input { input }).', {
-      name,
-      quota: left,
-      input: value,
-    });
-  }
-  return '';
-};
+/* Quota helpers moved to src/components/Quota (re-exported for existing imports) */
+export { getGiBValue, updateQuotaData, getQuotaMessage } from '@/components/Quota/utils';

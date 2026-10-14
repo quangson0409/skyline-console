@@ -4,7 +4,7 @@ import ResourcePage from '@/components/ResourcePage';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { MetricCards } from '../shared';
+import { MetricCards } from '@/components/MetricCards';
 import { fetchVolumes, volumeColumns, volumeFilters, volumeActionConfigs, createVolumeAction } from './volumeShared';
 
 /** Route storage/volume/create (legacy step-form page): opens the create modal on top of the list */

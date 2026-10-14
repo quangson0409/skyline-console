@@ -3,9 +3,11 @@ import { magnumApi } from '@/api/magnum';
 import { quotaApi } from '@/api/quota';
 import { currentProjectId } from '@/api/endpoints';
 import { deleteAction } from '@/components/ResourcePage';
-import SelectTable from '@/pages/Instances/Create/components/SelectTable';
+import SelectTable from '@/components/SelectTable';
 import { t } from '@/core/i18n';
-import { updateQuotaData } from '../common';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
+import { fetchNovaQuota } from '@/components/Quota/services';
+import { updateQuotaData } from '@/components/Quota/utils';
 import { templateColumns, fetchTemplates } from '../ClusterTemplates/TemplateList';
 
 export const createClusterAction = (navigate) => ({
@@ -48,6 +50,17 @@ export const resizeClusterAction = () => ({
     current_node_count: item.node_count ?? 0,
     changed_node_count: (item.node_count || 0) + 1,
   }),
+  // legacy Clusters/actions/Resize showQuota: added nodes against the nova instances quota
+  quota: withQuota(
+    () => fetchNovaQuota(),
+    (quota, values, item) => [
+      quotaItem(quota.instances, {
+        name: 'instance',
+        title: t('Instance'),
+        add: Math.max((Number(values.changed_node_count) || 0) - (item?.node_count || 0), 0),
+      }),
+    ]
+  ),
   getFormItems: async (item) => {
     const nodeCount = item.node_count || 0;
     let instances = null;
@@ -60,14 +73,6 @@ export const resizeClusterAction = () => ({
     const left = instances ? instances.left : -1;
     const maxSize = left === -1 ? undefined : left + nodeCount;
     return [
-      instances && {
-        name: 'quota',
-        type: 'alert',
-        alertType: 'info',
-        message: `${t('Instance')} - ${t('Quota')}: ${t('Used')} ${instances.used ?? 0} / ${
-          instances.limit === -1 ? t('Unlimit') : instances.limit
-        }, ${t('Available')}: ${left === -1 ? t('Unlimit') : left}`,
-      },
       { name: 'current_master_node_count', label: t('Current Master Node Count'), type: 'label' },
       { name: 'current_node_count', label: t('Current Node Count'), type: 'label' },
       {

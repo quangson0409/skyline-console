@@ -1,6 +1,6 @@
 import React from 'react';
-import { Badge, Button, Input, Space, Typography, message } from 'antd';
-import { CopyOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { Badge } from 'antd';
+import BaseTextareaFromFile from '@/components/form/TextareaFromFile';
 import { barbicanApi, refId, decodePayload } from '@/api/barbican';
 import { t } from '@/core/i18n';
 
@@ -99,80 +99,22 @@ export const downloadText = (text, filename) => {
   saveBlob(new Blob([text || ''], { type: 'text/plain' }), filename);
 };
 
-/** <pre> payload viewer with copy & download (legacy contentCard with copyable) */
-export function PayloadViewer({ value, filename, error }) {
-  if (error) return <Typography.Text type="danger">{error}</Typography.Text>;
-  if (value === undefined || value === null || value === '') return <Typography.Text type="secondary">-</Typography.Text>;
-  return (
-    <div>
-      <Space style={{ marginBottom: 8 }}>
-        <Button
-          size="small"
-          icon={<CopyOutlined />}
-          onClick={() => {
-            navigator.clipboard?.writeText(String(value));
-            message.success(t('Copied'));
-          }}
-        >
-          {t('Copy')}
-        </Button>
-        {filename ? (
-          <Button size="small" icon={<DownloadOutlined />} onClick={() => downloadText(String(value), filename)}>
-            {t('Download')}
-          </Button>
-        ) : null}
-      </Space>
-      <pre
-        style={{
-          margin: 0,
-          padding: 12,
-          maxHeight: 420,
-          overflow: 'auto',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-          fontSize: 12,
-          background: 'rgba(148,163,184,0.12)',
-          borderRadius: 6,
-        }}
-      >
-        {String(value)}
-      </pre>
-    </div>
-  );
-}
+/* Shared building blocks moved to src/components (re-exported for existing imports) */
+export { PayloadViewer } from '@/components/CodeBlock';
+export { noChineseRule } from '@/components/form/rules';
 
 /**
- * Textarea that can be filled from a local file (legacy form type "textarea-from-file").
- * Controlled by antd Form.Item (value / onChange).
+ * Textarea that can be filled from a local file (legacy form type "textarea-from-file"),
+ * KeyManager layout: textarea first, small "Upload File" button below.
  */
-export function TextareaFromFile({ value, onChange, accept, placeholder, rows = 6 }) {
-  const inputRef = React.useRef(null);
+export function TextareaFromFile(props) {
   return (
-    <div>
-      <Input.TextArea
-        rows={rows}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange?.(e.target.value)}
-      />
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = () => onChange?.(String(reader.result || ''));
-          reader.readAsText(file);
-          e.target.value = '';
-        }}
-      />
-      <Button size="small" icon={<UploadOutlined />} style={{ marginTop: 8 }} onClick={() => inputRef.current?.click()}>
-        {t('Upload File')}
-      </Button>
-    </div>
+    <BaseTextareaFromFile
+      buttonPosition="bottom"
+      buttonText={t('Upload File')}
+      buttonProps={{ size: 'small', style: { marginTop: 8 } }}
+      {...props}
+    />
   );
 }
 
@@ -189,11 +131,3 @@ export const disabledPastDate = (current) => {
   end.setHours(23, 59, 59, 999);
   return current.valueOf() <= end.getTime();
 };
-
-/** legacy "input-name" withoutChinese */
-export const noChineseRule = () => ({
-  validator: (_r, value) =>
-    value && /[一-龥]/.test(value)
-      ? Promise.reject(new Error(t('The name cannot contain Chinese characters.')))
-      : Promise.resolve(),
-});

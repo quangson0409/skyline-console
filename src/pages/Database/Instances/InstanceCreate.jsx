@@ -5,10 +5,10 @@ import { troveApi } from '@/api/trove';
 import { novaApi } from '@/api/nova';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
-import WizardShell, { listCrumb } from '@/pages/Instances/Create/components/WizardShell';
-import QuotaPanel from '@/pages/Instances/Create/components/QuotaPanel';
-import FlavorSelectTable from '@/pages/Instances/Create/components/FlavorSelectTable';
-import NetworkSelectTable from '@/pages/Instances/Create/components/NetworkSelectTable';
+import WizardShell, { listCrumb } from '@/components/Wizard/WizardShell';
+import QuotaPanel from '@/components/Quota/QuotaPanel';
+import FlavorSelectTable from '@/components/compute/FlavorSelectTable';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
 import {
   formLayout,
   mobileFormLayout,
@@ -16,8 +16,8 @@ import {
   selectTableRule,
   narrowWrapper,
   tableWrapper,
-} from '@/pages/Instances/Create/components/fields';
-import { passwordRule, confirmPasswordRule } from '@/pages/Identity/common';
+} from '@/components/form/fields';
+import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 import {
   fetchDatastores,
   datastoreOptions,

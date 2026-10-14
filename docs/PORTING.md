@@ -37,6 +37,17 @@ and form field of a legacy container must exist in the ported page (labels may b
 - Form field types (`ActionModal`): `input, textarea, number, select (mode), tags, radio, checkbox, switch, slider, password, label, alert`,
   plus `visible: (values) => bool` for conditional fields and `render: ({ form, item, field }) => node` for anything custom
   (e.g. a select-table, rule editor). Keep payloads identical to the legacy `onSubmit`.
+- Quota (legacy `showQuota` / `quotaInfo` / `disableSubmit`): give a modal action
+  `quota: async (item, values, cache) => [{ name, title, used, add, limit, reserved }]`. ActionModal shows the chart
+  above the form, recomputes it on every form change and disables OK with the legacy "Quota: Insufficient ..." message
+  while a line does not fit. Helpers in `src/components/Quota`: `quotaItem`, `withQuota(load, compute)`,
+  `withProjectQuota(load, getProjectId, compute)`, the `fetch*Quota` loaders and `volumeQuotaItems` / `backupQuotaItems` /
+  `neutronQuotaItems` / `shareQuotaItems`. Wizards use `QuotaPanel`.
+- Shared building blocks live in `src/components` (never import another module's page folder for them):
+  `SelectTable` (+ `KeysSelectTable`, `SearchSelectTable`, `selectTableField`, `selectRequired`), `Wizard` (`WizardShell`,
+  `StepWizard`), `form/*` (fields, rules incl. password rules, `TextareaFromFile`, `FileInput`, `KeyValueList`, `NoFormStyle`),
+  `network/*` (ip validators, `IpDistributor`, `NetworkSelectTable`, `loadAssociateFipData`), `compute/FlavorSelectTable`,
+  `MetricCards` / `KpiCards`, `MetadataEditor`, `CodeBlock` (`JsonBlock`, `PayloadViewer`).
 - i18n: `import { t } from '@/core/i18n'` (or `useTranslation`). Every user-visible string goes through `t('English key')` (same keys as legacy).
   Do not edit `src/locales/{vi,en,zh}.json`; ship the module's strings in `src/locales/modules/<module>.vi.json` / `.en.json` / `.zh.json`
   (keys = English source strings; vi must be complete — the default UI language is Vietnamese; zh from legacy zh-hans.json when available).

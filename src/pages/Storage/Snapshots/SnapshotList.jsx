@@ -3,7 +3,9 @@ import { cinderApi } from '@/api/cinder';
 import ResourcePage, { nameColumn, IdNameCell, statusColumn, timeColumn, textColumn, deleteAction } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { MetricCards } from '../shared';
+import { withQuota } from '@/components/Quota/utils';
+import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems } from '@/components/Quota/services';
+import { MetricCards } from '@/components/MetricCards';
 import { volumeStatus, fetchVolumeTypeList, fetchCinderQuota } from '../Volumes/volumeShared';
 
 /* ------------------------------------------------------------------ resources/cinder/snapshot */
@@ -100,14 +102,24 @@ export const createVolumeFromSnapshotAction = () => ({
     item.__volumeTypeId = typeId;
     return { snapshot: item.name || item.id, size: item.size, volume_type: typeId, more: false };
   },
+  // legacy Snapshot/actions/CreateVolume showQuota: volume / capacity / volume-type quota
+  quota: withQuota(
+    async () => {
+      const [quota, types] = await Promise.all([fetchCinderQuotaData(), fetchVolumeTypeList()]);
+      return { quota, types };
+    },
+    ({ quota, types }, values, item) =>
+      volumeQuotaItems(quota, {
+        count: 1,
+        size: values.size,
+        typeName: types.find((tp) => tp.id === ((values.more && values.volume_type) || item?.__volumeTypeId))?.name,
+      })
+  ),
   getFormItems: async (item) => {
     const [types, quota] = await Promise.all([fetchVolumeTypeList(), fetchCinderQuota()]);
     const g = quota.gigabytes;
     const left = !g || g.limit === -1 ? null : Math.max(0, g.limit - (g.in_use || 0) - (g.reserved || 0));
     return [
-      left !== null
-        ? { type: 'alert', name: 'quota', message: `${t('Quota')} (${t('Left')}) - ${t('Volume Capacity (GiB)')}: ${left}` }
-        : null,
       { name: 'snapshot', label: t('Volume Snapshot'), type: 'label' },
       { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name') },
       {

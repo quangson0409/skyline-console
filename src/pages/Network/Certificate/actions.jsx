@@ -2,7 +2,8 @@ import React from 'react';
 import { DatePicker } from 'antd';
 import { barbicanApi, refId } from '@/api/barbican';
 import { t } from '@/core/i18n';
-import { TextareaFromFile, toIso, disabledPastDate, noChineseRule } from '@/pages/KeyManager/common';
+import { TextareaFromFile, toIso, disabledPastDate } from '@/pages/KeyManager/common';
+import { noChineseRule } from '@/components/form/rules';
 import { certificateMode } from './common';
 
 /** Port of legacy pages/network/containers/Certificate/actions */

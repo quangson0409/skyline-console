@@ -2,7 +2,8 @@ import React from 'react';
 import { Form, Select, DatePicker } from 'antd';
 import { barbicanApi } from '@/api/barbican';
 import { t } from '@/core/i18n';
-import { downloadSecretPayload, toIso, disabledPastDate, noChineseRule } from '../common';
+import { downloadSecretPayload, toIso, disabledPastDate } from '../common';
+import { noChineseRule } from '@/components/form/rules';
 
 /**
  * Port of legacy pages/barbican/containers/Secret/actions (Create / Delete),

@@ -4,11 +4,11 @@ import { Link } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
 import { currentProjectId } from '@/api/endpoints';
 import { t } from '@/core/i18n';
-import SelectTable, { col, mapCol, timeCol } from '../components/SelectTable';
-import NetworkSelectTable from '../components/NetworkSelectTable';
+import SelectTable, { col, mapCol, timeCol } from '@/components/SelectTable';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
 import NetworkSelect, { buildNetworkValue } from '../components/NetworkSelect';
 import AddSelect from '../components/AddSelect';
-import { FormDivider, selectTableRule, tableWrapper } from '../components/fields';
+import { FormDivider, selectTableRule, tableWrapper } from '@/components/form/fields';
 import { isIPv4, isIpv6 } from '../utils';
 
 

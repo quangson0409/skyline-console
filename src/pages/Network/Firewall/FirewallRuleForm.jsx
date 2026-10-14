@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
-import { isIPv4, isIPv6, isCidr } from '../common';
+import { isIPv4, isIPv6, isCidr } from '@/components/network/ip';
 import { CheckGroup, firewallTabPath, protocolInfos, actionInfos, fetchRuleDetail } from './helpers';
 import FormPageLayout, { useNeutronQuota } from './FormPageLayout';
 

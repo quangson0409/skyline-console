@@ -11,7 +11,8 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { detailPath, isIPv4, isIPv6 } from '../common';
+import { detailPath } from '../common';
+import { isIPv4, isIPv6 } from '@/components/network/ip';
 import {
   vpnStatus,
   vpnStatusOptions,

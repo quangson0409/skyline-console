@@ -1,6 +1,7 @@
 import { troveApi } from '@/api/trove';
 import { deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
 import { checkStatus, fetchTroveQuota } from '../shared';
 import { createBackupAction } from '../Backups/BackupList';
 
@@ -99,6 +100,20 @@ export const resizeVolumeAction = () => ({
     const current = item?.volume?.size ?? item?.size ?? 0;
     return { instance: item.name || item.id, oldSize: current, size: (item?.volume?.size || 1) + 1 };
   },
+  // legacy ResizeVolume showQuota: added disk (new size - current size) against the trove volumes quota
+  quota: withQuota(
+    () => fetchTroveQuota(),
+    (quota, values, item) => {
+      const current = item?.volume?.size ?? item?.size ?? 0;
+      return [
+        quotaItem(quota.volumes, {
+          name: 'volumeSize',
+          title: t('Database Disk (GiB)'),
+          add: Math.max((Number(values.size) || 0) - current, 0),
+        }),
+      ];
+    }
+  ),
   getFormItems: async (item) => {
     let volumes = {};
     try {

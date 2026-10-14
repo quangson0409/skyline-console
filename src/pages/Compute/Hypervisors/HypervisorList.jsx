@@ -4,7 +4,8 @@ import { novaApi } from '@/api/nova';
 import { placementApi } from '@/api/placement';
 import ResourcePage, { nameColumn, statusColumn } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { KpiCards, getGiBValue, sinceTime } from '../_shared';
+import { getGiBValue, sinceTime } from '../_shared';
+import { KpiCards } from '@/components/MetricCards';
 
 /* ------------------------------------------------------------------ */
 /* helpers (legacy resources/nova/service.js + stores/nova/hypervisor) */

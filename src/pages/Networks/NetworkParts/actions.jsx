@@ -7,8 +7,11 @@ import { Alert, Form, Input, InputNumber, Select } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import { keystoneApi } from '@/api/keystone';
 import { deleteAction } from '@/components/ResourcePage';
-import { listAll, isCidr, isIPv4, isIPv6 } from '@/pages/Network/common';
+import { listAll } from '@/pages/Network/common';
+import { isCidr, isIPv4, isIPv6 } from '@/components/network/ip';
 import { t } from '@/core/i18n';
+import { withProjectQuota } from '@/components/Quota/utils';
+import { fetchNeutronQuota as fetchNeutronQuotaData, neutronQuotaItems } from '@/components/Quota/services';
 import {
   physicalNetworkArray,
   segmentationNetworkArray,
@@ -29,7 +32,6 @@ import {
   buildSubnetBody,
   createSubnetRequest,
   fetchNeutronQuota,
-  quotaText,
   getFirstIpFromCidr,
   checkAllocationPools,
   checkDNS,
@@ -194,23 +196,23 @@ export const createNetworkAction = ({ isAdmin, projectId, hasAdminRole }) => ({
   title: t('Create Network'),
   width: isAdmin ? 860 : 680,
   getDefaultValues: () => createNetworkDefaults(isAdmin, projectId),
+  // legacy CreateNetwork showQuota: 1 network (+ 1 subnet when "Create Subnet" is on)
+  quota: withProjectQuota(
+    (pid) => fetchNeutronQuotaData(pid),
+    (values) => (isAdmin ? values.project_id || projectId : projectId),
+    (quota, values) => neutronQuotaItems(quota, ['network', 'subnet'], [1, values.create_subnet ? 1 : 0])
+  ),
   getFormItems: async () => {
-    const [zonesRes, projects, quota] = await Promise.all([
+    const [zonesRes, projects] = await Promise.all([
       neutronApi.listAvailabilityZones().catch(() => ({})),
       isAdmin ? projectOptions() : Promise.resolve([]),
-      fetchNeutronQuota(projectId),
     ]);
     const zones = (zonesRes?.availability_zones || [])
       .filter((it) => it.state === 'available' && it.resource === 'network')
       .map((it) => ({ value: it.name, label: it.name }));
-    const qText = quotaText(quota, [
-      ['network', t('Network')],
-      ['subnet', t('Subnet')],
-    ]);
     const withSubnet = (v) => Boolean(v.create_subnet);
     const sf = subnetFields(withSubnet);
     return [
-      qText && { type: 'alert', name: 'quota', message: `${t('Quota')}: ${qText}` },
       { name: 'name', label: t('Network Name'), type: 'input', required: true, rules: [nameRule()] },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
       { name: 'availableZone', label: t('Availability Zone'), type: 'select', placeholder: t('Please select'), options: zones },
@@ -550,17 +552,21 @@ export const createSubnetAction = (ctx, network) => ({
     return Boolean(ctx.hasAdminRole) || (net.project_id || net.tenant_id) === ctx.projectId;
   },
   getDefaultValues: () => createSubnetDefaults(ctx.hasAdminRole, ctx.projectId),
+  // legacy CreateSubnet showQuota: neutron subnet quota of the target project
+  quota: withProjectQuota(
+    (pid) => fetchNeutronQuotaData(pid),
+    (values) => values.project_id || ctx.projectId,
+    (quota) => neutronQuotaItems(quota, ['subnet'], [1])
+  ),
   getFormItems: async (item) => {
     const net = network || item || {};
-    const [projects, pools, quota] = await Promise.all([
+    const [projects, pools] = await Promise.all([
       ctx.hasAdminRole ? projectOptions() : Promise.resolve([]),
       neutronApi
         .listSubnetPools()
         .then((r) => r?.subnetpools || [])
         .catch(() => []),
-      fetchNeutronQuota(ctx.projectId),
     ]);
-    const qText = quotaText(quota, [['subnet', t('Subnet')]]);
     const poolOption = (pool) => ({
       label: `${pool.name} (${(pool.prefixes || []).join(', ')})${
         pool.default_prefixlen ? ` - Default: /${pool.default_prefixlen}` : ''
@@ -571,7 +577,6 @@ export const createSubnetAction = (ctx, network) => ({
     const sf = subnetFields();
     const poolsFor = (v) => pools.filter((p) => p.ip_version === (v.ip_version === 'ipv6' ? 6 : 4));
     return [
-      qText && { type: 'alert', name: 'quota', message: `${t('Quota')}: ${qText}` },
       { name: 'subnet_name', label: t('Subnet Name'), type: 'input', required: true, rules: [nameRule()] },
       ctx.hasAdminRole && {
         name: 'project_id',

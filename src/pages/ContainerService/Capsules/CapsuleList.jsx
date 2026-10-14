@@ -1,42 +1,22 @@
-import React, { useRef } from 'react';
-import { Button, Input, Space } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
+import React from 'react';
 import { zunApi } from '@/api/zun';
 import ResourcePage, { nameColumn, statusColumn, timeColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { capsuleStatus, parseYaml } from '../common';
+import BaseTextareaFromFile from '@/components/form/TextareaFromFile';
 
 const toOptions = (map) => Object.entries(map).map(([key, label]) => ({ key, label }));
 
-/** Legacy FormItem "textarea-from-file": textarea + load from a local file */
-function TextareaFromFile({ value, onChange, accept = '.yaml,.yml,.json', rows = 10 }) {
-  const ref = useRef(null);
+/** Legacy FormItem "textarea-from-file": load button above a monospace textarea */
+function TextareaFromFile({ accept = '.yaml,.yml,.json', rows = 10, ...rest }) {
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Button icon={<UploadOutlined />} onClick={() => ref.current?.click()}>
-        {t('Load Template from a file')}
-      </Button>
-      <input
-        ref={ref}
-        type="file"
-        accept={accept}
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
-          reader.onload = () => onChange?.(String(reader.result || ''));
-          reader.readAsText(file);
-          e.target.value = '';
-        }}
-      />
-      <Input.TextArea
-        rows={rows}
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
-      />
-    </Space>
+    <BaseTextareaFromFile
+      accept={accept}
+      rows={rows}
+      buttonText={t('Load Template from a file')}
+      textareaStyle={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+      {...rest}
+    />
   );
 }
 

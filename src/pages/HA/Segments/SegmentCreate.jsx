@@ -5,7 +5,7 @@ import { masakariApi } from '@/api/masakari';
 import { getErrorMessage } from '@/hooks/useResource';
 import { formatTime } from '@/components/ResourcePage';
 import { useTranslation } from '@/core/i18n';
-import { SelectTable } from '@/pages/Configuration/shared';
+import { SearchSelectTable as SelectTable } from '@/components/SelectTable';
 import { recoveryMethodOptions, fetchAvailableComputeHosts } from './SegmentList';
 
 const LIST_URL = '/ha/segments-admin';

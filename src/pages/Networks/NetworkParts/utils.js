@@ -4,7 +4,7 @@
  * NetworkStore.createSubnet payload builder.
  */
 import { neutronApi } from '@/api/neutron';
-import { isIPv4, isIPv6, isCidr } from '@/pages/Network/common';
+import { isIPv4, isIPv6, isCidr } from '@/components/network/ip';
 import { t } from '@/core/i18n';
 
 export const physicalNetworkArray = ['vlan', 'flat'];

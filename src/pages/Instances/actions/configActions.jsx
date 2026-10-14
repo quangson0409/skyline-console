@@ -6,7 +6,9 @@ import React from 'react';
 import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
 import { useAuthStore } from '@/store/authStore';
-import FlavorSelectTable from '@/pages/Instances/Create/components/FlavorSelectTable';
+import FlavorSelectTable from '@/components/compute/FlavorSelectTable';
+import { getGiBValue, quotaItem, withQuota } from '@/components/Quota/utils';
+import { fetchCinderQuota as fetchCinderQuotaData, fetchNovaQuota as fetchNovaQuotaData } from '@/components/Quota/services';
 import { instancePasswordRule, instanceNameValidator } from '@/pages/Instances/Create/utils';
 import {
   checkStatus,
@@ -64,6 +66,29 @@ export function buildConfigActions(isAdminPage = false) {
     width: 720,
     policy: 'os_compute_api:servers:create_image',
     allowed: (item) => checkStatus(['active', 'shutoff', 'suspended'], item) && !isIronicInstance(item),
+    // legacy CreateSnapshot showQuota (boot from volume only): one volume snapshot per attached volume,
+    // total and per volume type
+    quota: withQuota(
+      async (item) => {
+        if (!isBootFromVolume(item)) return { volumes: [] };
+        const [volumes, quota] = await Promise.all([loadServerVolumes(item), fetchCinderQuotaData()]);
+        return { volumes, quota };
+      },
+      ({ volumes = [], quota }) => {
+        if (!quota || !volumes.length) return [];
+        const types = volumes.reduce((acc, v) => ({ ...acc, [v.volume_type]: (acc[v.volume_type] || 0) + 1 }), {});
+        return [
+          quotaItem(quota.snapshots, { name: 'snapshot', title: t('Volume Snapshot'), add: volumes.length }),
+          ...Object.entries(types).map(([type, count]) =>
+            quotaItem(quota[`snapshots_${type}`], {
+              name: `snapshots_${type}`,
+              title: t('{name} type snapshots', { name: type }),
+              add: count,
+            })
+          ),
+        ];
+      }
+    ),
     getFormItems: async (item) => {
       const bfv = isBootFromVolume(item);
       let quotaError = '';
@@ -88,7 +113,6 @@ export function buildConfigActions(isAdminPage = false) {
             'A snapshot is an image which preserves the disk state of a running instance and can be used to start a new instance. An instance that boots from a volume will create snapshots for each mounted volume.'
           )
         ),
-        quotaError ? tipsAlert(`${t('Quota exceeded')}: ${quotaError}`, 'error') : null,
         instanceLabel(),
         {
           name: 'snapshot',
@@ -146,6 +170,20 @@ export function buildConfigActions(isAdminPage = false) {
     width: 1100,
     policy: 'os_compute_api:servers:resize',
     allowed: (item) => checkStatus(['active', 'shutoff'], item, false) && notLockedOrAdmin(item) && !isIronicInstance(item),
+    // legacy Resize showQuota: added vCPU / memory (GiB) of the new flavor against the nova quota
+    quota: withQuota(
+      () => fetchNovaQuotaData(),
+      (quota, values, item) => {
+        const flavor = values.newFlavor?.selectedRows?.[0];
+        const current = item?.flavor_info || {};
+        const vcpuAdd = flavor ? (flavor.vcpus || 0) - (current.vcpus || 0) : 0;
+        const ramAdd = flavor ? getGiBValue((flavor.ram || 0) - (current.ram || 0)) : 0;
+        return [
+          quotaItem(quota.cores, { name: 'cpu', title: t('CPU'), add: vcpuAdd }),
+          quotaItem(quota.ram, { name: 'ram', title: t('Memory (GiB)'), add: ramAdd }),
+        ];
+      }
+    ),
     getFormItems: async (item) => {
       const [quota, flavorRes] = await Promise.all([fetchNovaQuota(), novaApi.listFlavorsV().catch(() => ({}))]);
       const current = item.flavor_info || {};
@@ -155,13 +193,6 @@ export function buildConfigActions(isAdminPage = false) {
         .map((f) => f.id);
       const coresLeft = quotaLeft(quota?.cores);
       const ramLeft = quotaLeft(quota?.ram);
-      const limitText = (q, div = 1) =>
-        q?.limit === -1 ? t('Unlimited') : Number(((q?.limit || 0) / div).toFixed(2));
-      const quotaText = quota
-        ? `${t('CPU')}: ${quota.cores?.in_use ?? 0} / ${limitText(quota.cores)} · ${t('Memory (GiB)')}: ${Number(
-            ((quota.ram?.in_use || 0) / 1024).toFixed(2)
-          )} / ${limitText(quota.ram, 1024)}`
-        : null;
       return [
         tipsAlert(
           <div>
@@ -177,7 +208,6 @@ export function buildConfigActions(isAdminPage = false) {
           </div>,
           'warning'
         ),
-        quotaText ? tipsAlert(`${t('Quota')}: ${quotaText}`) : null,
         instanceLabel(),
         { name: 'flavor', label: t('Current Flavor'), type: 'label' },
         {

@@ -3,17 +3,14 @@
  * stores/neutron/fixed-ip.js and the custom form items used by port actions
  * (mac-address, ip-distributor).
  */
-import React, { useEffect, useState } from 'react';
-import { Button, Col, Form, Input, Row, Select, Space, Typography } from 'antd';
-import { MinusCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import React from 'react';
+import { Col, Form, Input, Row, Select } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import { hasEndpoint } from '@/api/endpoints';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
-import { isIP, isIPv4, isIPv6, isCidr } from '../common';
-
-const { Text } = Typography;
+import { isIPv4, isIPv6, isCidr } from '../common';
 
 /* ---------------- resources/neutron/port.jsx ---------------- */
 export const portStatus = () => ({
@@ -324,121 +321,8 @@ export const macAddressRule = () => ({
   },
 });
 
-/** Legacy `ip-distributor` form item: value [{ subnet, ip_address: { type, ip } }] */
-export function IpDistributor({ value, onChange, subnets = [], maxNumber = 10 }) {
-  const list = Array.isArray(value) ? value : [];
-  const update = (next) => onChange?.(next);
-  if (!subnets.length) {
-    return <Text type="secondary">{t('The selected network has no subnet')}</Text>;
-  }
-  return (
-    <div>
-      {list.map((entry, idx) => {
-        const used = list.filter((e, i) => i !== idx && e?.subnet).map((e) => e.subnet);
-        const subnet = subnets.find((s) => s.id === entry?.subnet);
-        const ipType = entry?.ip_address?.type || 'auto';
-        const setEntry = (patch) => update(list.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
-        return (
-          // eslint-disable-next-line react/no-array-index-key
-          <Row key={idx} gutter={[12, 8]} style={{ marginBottom: 8 }} align="top">
-            <Col span={9}>
-              <Select
-                placeholder={t('Please select')}
-                value={entry?.subnet}
-                style={{ width: '100%' }}
-                options={subnets
-                  .filter((s) => !used.includes(s.id))
-                  .map((s) => ({ value: s.id, label: s.name || s.id }))}
-                onChange={(sid) => setEntry({ subnet: sid, ip_address: { type: 'auto' } })}
-              />
-              {subnet ? (
-                <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>{`${t('CIDR')}: ${subnet.cidr || '-'}`}</div>
-              ) : null}
-            </Col>
-            {subnet ? (
-              <Col span={13}>
-                <Space.Compact style={{ width: '100%' }}>
-                  <Select
-                    value={ipType}
-                    style={{ width: '50%' }}
-                    options={[
-                      { label: t('Automatically Assigned Address'), value: 'auto' },
-                      { label: t('Manual input'), value: 'manual' },
-                    ]}
-                    onChange={(type) => setEntry({ ip_address: { type, ip: entry?.ip_address?.ip } })}
-                  />
-                  {ipType === 'manual' ? (
-                    <Input
-                      style={{ width: '50%' }}
-                      value={entry?.ip_address?.ip}
-                      placeholder={subnet.ip_version === 6 ? '2001:db8::10' : '192.168.0.10'}
-                      onChange={(e) => setEntry({ ip_address: { type: 'manual', ip: e.target.value } })}
-                    />
-                  ) : null}
-                </Space.Compact>
-              </Col>
-            ) : (
-              <Col span={13} />
-            )}
-            <Col span={2}>
-              <MinusCircleOutlined
-                style={{ marginTop: 9, cursor: 'pointer' }}
-                onClick={() => update(list.filter((_, i) => i !== idx))}
-              />
-            </Col>
-          </Row>
-        );
-      })}
-      {list.length < Math.min(maxNumber, subnets.length) ? (
-        <Button type="dashed" block icon={<PlusOutlined />} onClick={() => update([...list, {}])}>
-          {t('Add IP')}
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-export const ipDistributorRule = () => ({
-  validator: (_, value) => {
-    const list = Array.isArray(value) ? value : [];
-    for (const it of list) {
-      if (!it || !it.subnet) return Promise.reject(new Error(t('Missing Subnet')));
-      if (it.ip_address?.type === 'manual') {
-        const ip = it.ip_address.ip;
-        if (!ip) return Promise.reject(new Error(t('Missing IP Address')));
-        if (!isIP(ip)) return Promise.reject(new Error(t('Invalid: Please input a valid IP')));
-      }
-    }
-    return Promise.resolve();
-  },
-});
-
-/** Subnet loader for the network chosen in the same form (legacy handleOwnedNetworkChange) */
-export function NetworkIpDistributor({ value, onChange, form, networkField = 'network_id', networkId }) {
-  const watched = Form.useWatch(networkField, form);
-  const nid = networkId || watched;
-  const [subnets, setSubnets] = useState([]);
-  useEffect(() => {
-    let alive = true;
-    if (!nid) {
-      setSubnets([]);
-      return undefined;
-    }
-    safeList(neutronApi.listSubnets({ network_id: nid }), 'subnets').then((list) => {
-      if (alive) setSubnets(list);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [nid]);
-  useEffect(() => {
-    // Reset owned subnets after changing the network
-    if (!networkId && watched !== undefined) onChange?.(undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watched]);
-  if (!nid) return <Text type="secondary">{t('Please select a network first')}</Text>;
-  return <IpDistributor value={value} onChange={onChange} subnets={subnets} />;
-}
+/* ip-distributor moved to src/components/network (re-exported for existing imports) */
+export { IpDistributor, ipDistributorRule, NetworkIpDistributor } from '@/components/network/IpDistributor';
 
 /** Select whose options depend on another field value of the same form */
 export function DependentSelect({ value, onChange, form, depName, optionsFor, placeholder }) {
@@ -491,101 +375,5 @@ export const loadQosPolicyOptions = async ({ disabledId } = {}) => {
   return groups.filter((g) => g.options.length);
 };
 
-/* ---------------- floating IP helpers (legacy resources/neutron/floatingip + router) ---------------- */
-const ROUTER_INTERFACE_OWNERS = [
-  'network:router_interface_distributed',
-  'network:router_interface',
-  'network:ha_router_replicated_interface',
-];
-
-/** Builds the data needed by "Associate Floating IP": fixed IPs with reason + candidate FIPs per subnet */
-export const loadAssociateFipData = async (port) => {
-  const projectId = currentProjectId();
-  const fixedIps = Array.isArray(port?.fixed_ips) ? port.fixed_ips : [];
-  const [routers, routerPorts, externalNetworks, network, fipsOfPort] = await Promise.all([
-    safeList(neutronApi.listRouters({ fields: ['id', 'external_gateway_info'], project_id: projectId }), 'routers'),
-    safeList(neutronApi.listPorts({ device_owner: ROUTER_INTERFACE_OWNERS, fields: ['fixed_ips', 'device_id', 'device_owner'] }), 'ports'),
-    safeList(neutronApi.listNetworks({ 'router:external': true }), 'networks'),
-    port?.network_id
-      ? neutronApi
-          .getNetwork(port.network_id)
-          .then((r) => r?.network)
-          .catch(() => undefined)
-      : undefined,
-    Promise.all(
-      fixedIps.map((f) =>
-        isIPv4(f.ip_address)
-          ? safeList(neutronApi.listFloatingIps({ fixed_ip_address: f.ip_address }), 'floatingips')
-          : Promise.resolve([])
-      )
-    ),
-  ]);
-  // subnet -> router (routers with external gateway)
-  const canReach = [];
-  routerPorts.forEach((rp) => {
-    const router = routers.find((r) => r.external_gateway_info && r.id === rp.device_id);
-    if (router) (rp.fixed_ips || []).forEach((f) => canReach.push({ subnet_id: f.subnet_id, router_id: rp.device_id }));
-  });
-  const interfaces = fixedIps.map((f, idx) => {
-    const isExternal = externalNetworks.some((n) => (n.subnets || []).includes(f.subnet_id));
-    const bound = fipsOfPort[idx]?.[0];
-    const floatingIP = (bound && bound.port_id === port.id && bound.floating_ip_address) || '';
-    let available = true;
-    let reason = '';
-    if (!isIPv4(f.ip_address)) {
-      reason = t('It is IPv6 type.');
-      available = false;
-    } else if (isExternal) {
-      reason = t('Is external network port');
-      available = false;
-    } else if (floatingIP) {
-      reason = `${t('Is associate to floating IP: ')} ${floatingIP}`;
-      available = false;
-    } else if (!canReach.some((c) => c.subnet_id === f.subnet_id)) {
-      reason = t('It is unreachable for all floating IPs.');
-      available = false;
-    }
-    return {
-      fixed_ip_address: f.ip_address,
-      subnet_id: f.subnet_id,
-      mac_address: port.mac_address,
-      network_name: network?.name || port.network_name || '',
-      available,
-      reason,
-    };
-  });
-  // candidate FIPs per subnet (legacy getFipsFromRouterId)
-  const extNetIds = Array.from(
-    new Set(
-      canReach
-        .map((c) => routers.find((r) => r.id === c.router_id)?.external_gateway_info?.network_id)
-        .filter(Boolean)
-    )
-  );
-  const fipsByNet = {};
-  await Promise.all(
-    extNetIds.map(async (nid) => {
-      const fips = await safeList(
-        neutronApi.listFloatingIps({ floating_network_id: nid, status: 'DOWN', project_id: projectId }),
-        'floatingips'
-      );
-      const netName = externalNetworks.find((n) => n.id === nid)?.name || nid;
-      fipsByNet[nid] = fips
-        .filter((fip) => !fip.fixed_ip_address && !fip.port_details)
-        .map((fip) => ({ ...fip, network_name: netName }));
-    })
-  );
-  const fipsForSubnet = (subnetId) => {
-    const map = {};
-    canReach
-      .filter((c) => c.subnet_id === subnetId)
-      .forEach((c) => {
-        const nid = routers.find((r) => r.id === c.router_id)?.external_gateway_info?.network_id;
-        (fipsByNet[nid] || []).forEach((fip) => {
-          map[fip.id] = fip;
-        });
-      });
-    return Object.values(map);
-  };
-  return { interfaces, fipsForSubnet };
-};
+/* Associate floating IP data loader moved to src/components/network (re-exported for existing imports) */
+export { loadAssociateFipData } from '@/components/network/associateFip';

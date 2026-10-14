@@ -8,7 +8,7 @@ import { Form, Input, Select, Typography } from 'antd';
 import { octaviaApi } from '@/api/octavia';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
-import { loadAssociateFipData } from '@/pages/Network/Port/helpers';
+import { loadAssociateFipData } from '@/components/network/associateFip';
 import {
   nameRule,
   urlPathRule,

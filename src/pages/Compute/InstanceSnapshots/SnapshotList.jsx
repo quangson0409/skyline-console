@@ -7,7 +7,9 @@ import { serviceBase, currentProjectId, versionHeaders } from '@/api/endpoints';
 import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { KpiCards } from '@/pages/Compute/_shared';
+import { withQuota } from '@/components/Quota/utils';
+import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems } from '@/components/Quota/services';
+import { KpiCards } from '@/components/MetricCards';
 import {
   imageStatus,
   imageFormats,
@@ -15,7 +17,6 @@ import {
   parseBdm,
   canSnapshotCreateInstance,
   fetchVolumeTypeOptions,
-  fetchVolumeQuotaText,
 } from '@/pages/Compute/Images/helpers';
 import { buildPatch } from '@/pages/Compute/Images/actions';
 
@@ -124,14 +125,26 @@ export const createVolumeFromSnapshotAction = () => {
     policy: 'volume:create_from_image',
     title: t('Create Volume'),
     description: t('Snapshots can be converted into volume and used to create an instance from the volume.'),
+    // legacy InstanceSnapshot/actions/CreateVolume showQuota: volume / capacity / volume-type quota
+    quota: withQuota(
+      async () => {
+        const [quota, types] = await Promise.all([fetchCinderQuotaData(), fetchVolumeTypeOptions()]);
+        return { quota, types };
+      },
+      ({ quota, types }, values) =>
+        volumeQuotaItems(quota, {
+          count: 1,
+          size: values.size,
+          typeName: types.find((it) => it.value === ((values.more && values.volume_type) || defaultType))?.label,
+        })
+    ),
     getFormItems: async (item) => {
-      const [types, quota] = await Promise.all([fetchVolumeTypeOptions(), fetchVolumeQuotaText()]);
+      const types = await fetchVolumeTypeOptions();
       const { volumeDetail, snapshotDetail } = await fetchSnapshotVolumeInfo(item);
       defaultType = types.find((it) => it.label === volumeDetail?.volume_type)?.value;
       const minSize = snapshotMinSize(item, snapshotDetail);
       minSizeCache = minSize;
       return [
-        quota && { name: 'quota', type: 'alert', message: quota },
         { name: 'snapshot', label: t('Volume Snapshot'), type: 'label' },
         { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name') },
         {

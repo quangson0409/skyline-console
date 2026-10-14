@@ -198,45 +198,12 @@ export const applyRoleDiff = (oldMap = {}, newMap = {}, assign, remove) => {
 
 /* ------------------------------ Validators ------------------------------ */
 
-const passwordRegex =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\\[\]`~!@#$%^&*><()_\-+=?:"{}|,.\\/;'])[A-Za-z\d\\[\]`~!@#$%^&*><()_\-+=?:"{}|,.\\/;']{8,32}$/;
 const emailRegex = /^[A-Za-z\d]+([._+-][A-Za-z\d]+)*@([A-Za-z\d]+[.-])+[A-Za-z\d]{2,63}$/;
 const phoneRegex = /^\+?[\d\s()-]{5,24}$/;
 export const nameRegexWithoutChinese = /^[a-zA-Z][\w"'[\]^.:()_-]{0,127}$/;
 
-/** legacy getPasswordOtherRule('password', type) */
-export const passwordRule = ({ oldPasswordField, withoutPrefix } = {}) => ({ getFieldValue }) => ({
-  validator(_, value) {
-    const prefix = withoutPrefix ? '' : t('Invalid: ');
-    if (!value) return Promise.resolve();
-    if (!passwordRegex.test(value)) {
-      return Promise.reject(
-        new Error(
-          prefix +
-            t('8 to 32 characters, at least one uppercase letter, one lowercase letter, one number and one special character.')
-        )
-      );
-    }
-    const old = oldPasswordField ? getFieldValue(oldPasswordField) : undefined;
-    if (old && value === old) {
-      return Promise.reject(new Error(prefix + t('The new password cannot be identical to the current password.')));
-    }
-    return Promise.resolve();
-  },
-});
-
-/** legacy getPasswordOtherRule('confirmPassword') */
-export const confirmPasswordRule = ({ withoutPrefix } = {}) => ({ getFieldValue }) => ({
-  validator(_, value) {
-    const password = getFieldValue('password');
-    if (password && value !== password) {
-      return Promise.reject(
-        new Error((withoutPrefix ? '' : t('Invalid: ')) + t('Password must be the same with confirm password.'))
-      );
-    }
-    return Promise.resolve();
-  },
-});
+/** Password rules moved to src/components/form/rules (re-exported for existing imports) */
+export { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 
 export const emailRule = () => ({
   validator(_, value) {

@@ -3,7 +3,7 @@ import { Tabs } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ResourcePage from '@/components/ResourcePage';
-import { KpiCards } from '@/pages/Compute/_shared';
+import { KpiCards } from '@/components/MetricCards';
 import { t } from '@/core/i18n';
 import {
   fetchFlavors,

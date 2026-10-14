@@ -3,15 +3,16 @@
  * and Detail/PortForwarding/actions/*.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Checkbox, Form, Radio, Select, Space, Typography } from 'antd';
+import { Checkbox, Form, Radio, Select } from 'antd';
 import { IdNameCell } from '@/components/ResourcePage/helpers';
 import { neutronApi, neutronResources } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import { keystoneApi } from '@/api/keystone';
-import { quotaApi } from '@/api/quota';
 import { currentProjectId } from '@/api/endpoints';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import { quotaItem } from '@/components/Quota/utils';
+import { fetchNeutronQuota } from '@/components/Quota/services';
 import { ipRule, listAll, subnetLabel } from '@/pages/Network/common';
 import {
   SelectTable,
@@ -29,7 +30,6 @@ import {
   qosEnabled,
 } from './helpers';
 
-const { Text } = Typography;
 
 const clean = (obj) => Object.fromEntries(Object.entries(obj).filter(([k, v]) => v !== undefined && !k.startsWith('_')));
 
@@ -63,45 +63,6 @@ const quotaLeft = (q = {}) => {
   return Math.max(0, limit - used - reserved);
 };
 
-function FloatingIpQuota({ form }) {
-  const watched = Form.useWatch('project_id', form);
-  const pid = watched || currentProjectId();
-  const [quota, setQuota] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    if (!pid) return undefined;
-    quotaApi
-      .getNeutronQuota(pid)
-      .then((res) => {
-        if (!alive) return;
-        const q = res?.quota?.floatingip || null;
-        quotaState.left = quotaLeft(q || {});
-        setQuota(q);
-      })
-      .catch(() => alive && setQuota(null));
-    return () => {
-      alive = false;
-    };
-  }, [pid]);
-  if (!quota) return <Text type="secondary">-</Text>;
-  const left = quotaLeft(quota);
-  return (
-    <Space size={16} wrap>
-      <span>
-        {t('Quota')}: {quota.limit === -1 ? t('Unlimited') : quota.limit}
-      </span>
-      <span>
-        {t('Used')}: {quota.used ?? 0}
-      </span>
-      <span>
-        {t('Reserved')}: {quota.reserved ?? 0}
-      </span>
-      <span style={{ color: left === 0 ? '#ef4444' : undefined }}>
-        {t('Left')}: {left === Infinity ? t('Unlimited') : left}
-      </span>
-    </Space>
-  );
-}
 
 function SubnetSelect({ form, value, onChange }) {
   const networkId = Form.useWatch('floating_network_id', form);
@@ -163,6 +124,20 @@ export const allocateAction = () => {
     title: t('Allocate IP'),
     buttonText: t('Allocate IP'),
     width: qosEnabled() || isAdminPath() ? 820 : 600,
+    // legacy FloatingIp/actions/Allocate showQuota: 1 (or the batch count) floating IP of the chosen project
+    quota: async (item, values, qcache) => {
+      const pid = values.project_id || currentProjectId();
+      if (!pid) return [];
+      if (qcache.pid !== pid) {
+        qcache.pid = pid;
+        qcache.promise = fetchNeutronQuota(pid).catch(() => null);
+      }
+      const quota = await qcache.promise;
+      if (!quota?.floatingip) return [];
+      quotaState.left = quotaLeft(quota.floatingip);
+      const add = values.batch_allocate ? Number(values.count) || 0 : 1;
+      return [quotaItem(quota.floatingip, { name: 'floatingip', title: t('Floating IP'), add })];
+    },
     getFormItems: async () => {
       const isAdmin = isAdminPath();
       const [networks, qos, projects] = await Promise.all([
@@ -177,11 +152,6 @@ export const allocateAction = () => {
       ]);
       cache.networks = networks;
       return [
-        {
-          name: '_quota',
-          label: t('Floating IP'),
-          render: ({ form }) => <FloatingIpQuota form={form} />,
-        },
         {
           name: 'floating_network_id',
           label: t('Network'),

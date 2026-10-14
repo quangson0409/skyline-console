@@ -28,6 +28,30 @@ export const formatTime = (value) => {
   )}:${pad(date.getSeconds())}`;
 };
 
+/**
+ * Legacy valueRender 'sinceTime' ("x minutes ago"). Numeric values are epoch milliseconds.
+ * `clampFuture` reads future dates (clock skew) as "a few seconds ago" instead of "in the future".
+ */
+export const sinceTime = (value, opts) => {
+  const clampFuture = !!(opts && opts.clampFuture === true);
+  if (!value) return '-';
+  const str = String(value);
+  const date = /^\d+$/.test(str)
+    ? new Date(Number(str))
+    : new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(str) ? str : `${str}Z`);
+  if (Number.isNaN(date.getTime())) return str;
+  let diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 0 && clampFuture) diff = 0;
+  if (diff < 0) return t('in the future');
+  if (diff < 60) return t('a few seconds ago');
+  if (diff < 3600) return `${Math.floor(diff / 60)} ${t('minutes ago')}`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ${t('hours ago')}`;
+  return `${Math.floor(diff / 86400)} ${t('days ago')}`;
+};
+
+/** sinceTime reading future dates (clock skew) as "a few seconds ago" (Compute lists) */
+export const sinceTimeClamp = (value) => sinceTime(value, { clampFuture: true });
+
 export const formatSize = (bytes, digits = 2) => {
   if (bytes === undefined || bytes === null || bytes === '') return '-';
   const num = Number(bytes);

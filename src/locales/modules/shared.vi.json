@@ -1,0 +1,3 @@
+{
+  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "Hạn mức: Không đủ hạn mức { name } để tạo tài nguyên, vui lòng điều chỉnh số lượng tài nguyên hoặc hạn mức (còn lại { left }, nhập { input })."
+}

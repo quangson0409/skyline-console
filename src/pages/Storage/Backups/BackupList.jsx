@@ -10,6 +10,8 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
+import { withQuota } from '@/components/Quota/utils';
+import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems, backupQuotaItems } from '@/components/Quota/services';
 
 export const backupStatus = () => ({
   available: t('Available'),
@@ -32,6 +34,7 @@ const fetchVolumeOptions = async () => {
     .filter((v) => ['available', 'in-use'].includes(v.status))
     .map((v) => ({
       value: v.id,
+      size: v.size,
       label: `${v.name || v.id} (${v.size} GiB, ${v.status})`,
       status: v.status,
     }));
@@ -47,6 +50,14 @@ export const createBackupAction = ({ volumeId } = {}) => ({
     'When you do online backup of the volume that has been bound, you need to pay attention to the following points:'
   ),
   getDefaultValues: () => ({ incremental: false, volume_id: volumeId }),
+  // legacy Backup/actions/Create showQuota: backups + backup capacity of the chosen volume
+  quota: withQuota(
+    async () => {
+      const [quota, volumes] = await Promise.all([fetchCinderQuotaData(), fetchVolumeOptions()]);
+      return { quota, volumes };
+    },
+    ({ quota, volumes }, values) => backupQuotaItems(quota, volumes.find((v) => v.value === values.volume_id)?.size || 0)
+  ),
   getFormItems: async () => {
     const volumes = await fetchVolumeOptions();
     return [
@@ -123,6 +134,10 @@ export const createVolumeFromBackupAction = () => ({
   title: t('Create Volume'),
   allowed: (item) => item.status === 'available',
   getDefaultValues: (item) => ({ backupName: item.name || item.id, size: item.size, availability_zone: 'noSelect' }),
+  // legacy Backup/actions/CreateVolume showQuota: volume / capacity / volume-type quota
+  quota: withQuota(fetchCinderQuotaData, (quota, values) =>
+    volumeQuotaItems(quota, { count: 1, size: values.size, typeName: values.volume_type })
+  ),
   getFormItems: async (item) => {
     const [types, zones] = await Promise.all([
       cinderApi.listVolumeTypes().catch(() => ({})),

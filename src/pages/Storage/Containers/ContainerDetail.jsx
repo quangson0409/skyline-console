@@ -6,7 +6,8 @@ import { create } from 'zustand';
 import { swiftApi, getPublicObjectUrl } from '@/api/swift';
 import ResourcePage, { formatSize, formatTime } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { FileInput, downloadBlob, copyToClipboard } from '../shared';
+import { downloadBlob, copyToClipboard } from '../shared';
+import FileInput from '@/components/form/FileInput';
 import { swiftNameRule, timestampToStr, containerDetailPath } from './ContainerList';
 
 /* ------------------------------------------------------------------ resources/swift/container */

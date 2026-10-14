@@ -6,24 +6,15 @@ import { quotaApi } from '@/api/quota';
 import { currentProjectId, hasEndpoint } from '@/api/endpoints';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
-import WizardShell, { listCrumb } from './components/WizardShell';
-import QuotaPanel from './components/QuotaPanel';
-import { formLayout, mobileFormLayout } from './components/fields';
+import WizardShell, { listCrumb } from '@/components/Wizard/WizardShell';
+import QuotaPanel from '@/components/Quota/QuotaPanel';
+import { formLayout, mobileFormLayout } from '@/components/form/fields';
 import BaseStep, { getBaseDefaults } from './steps/BaseStep';
 import NetworkStep from './steps/NetworkStep';
 import SystemStep, { getSystemDefaults } from './steps/SystemStep';
 import ConfirmStep from './steps/ConfirmStep';
-import {
-  buildServerBody,
-  getAllDataDisks,
-  getErrorDetail,
-  getGiBValue,
-  getInstanceNames,
-  getListUrl,
-  getQuotaMessage,
-  updateNovaQuota,
-  updateQuotaData,
-} from './utils';
+import { buildServerBody, getAllDataDisks, getErrorDetail, getInstanceNames, getListUrl } from './utils';
+import { getGiBValue, getQuotaMessage, updateNovaQuota, updateQuotaData } from '@/components/Quota/utils';
 
 export const usePresets = () => {
   const [searchParams] = useSearchParams();

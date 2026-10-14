@@ -5,11 +5,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Checkbox, Col, Input, InputNumber, Row, Select, Space, Table, Tooltip, Typography } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from '@ant-design/icons';
-import { NoFormStyle } from 'antd/es/form/context';
-import SelectTable from '@/pages/Instances/Create/components/SelectTable';
+import { NoFormStyle } from '@/components/form/NoFormStyle';
+import SelectTable from '@/components/SelectTable';
 import { formatTime, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { isIP } from '@/pages/Network/common';
+import { isIP } from '@/components/network/ip';
 import {
   INSERT_HEADER_KEYS,
   insertHeaderTips,

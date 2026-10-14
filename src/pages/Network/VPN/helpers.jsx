@@ -8,7 +8,8 @@ import { neutronApi } from '@/api/neutron';
 import Status from '@/components/Status';
 import { CopyText, formatTime, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { listAll, isCidr } from '../common';
+import { listAll } from '../common';
+import { isCidr } from '@/components/network/ip';
 
 /* ---------------- status / option maps (resources/neutron/vpn.js) ---------------- */
 export const vpnStatus = () => ({

@@ -10,7 +10,8 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { KpiCards } from '../_shared';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
+import { KpiCards } from '@/components/MetricCards';
 
 /** legacy resources/nova/server-group.js */
 export const policyType = () => ({
@@ -84,26 +85,13 @@ export const createServerGroupAction = ({ projectId } = {}) => ({
   policy: 'os_compute_api:os-server-groups:create',
   title: t('Create Server Group'),
   getDefaultValues: () => ({ policy: 'anti-affinity' }),
+  // legacy ServerGroup/actions/Create showQuota: nova server_groups quota
+  quota: withQuota(
+    async () => (projectId ? (await novaApi.getQuotaSet(projectId))?.quota_set?.server_groups || null : null),
+    (quota) => [quotaItem(quota, { name: 'server_groups', title: t('Server Group'), add: 1 })]
+  ),
   getFormItems: async () => {
-    let quota = null;
-    if (projectId) {
-      try {
-        const res = await novaApi.getQuotaSet(projectId);
-        quota = res?.quota_set?.server_groups || null;
-      } catch {
-        quota = null;
-      }
-    }
-    const limit = quota?.limit;
-    const used = quota?.in_use ?? 0;
-    const left = limit === -1 || limit === undefined ? Infinity : limit - used - (quota?.reserved || 0);
     return [
-      quota && {
-        type: 'alert',
-        name: 'quota',
-        alertType: left <= 0 ? 'warning' : 'info',
-        message: `${t('Server Group')}: ${t('Used')} ${used} / ${t('Quota')} ${limit === -1 ? t('Unlimit') : limit}`,
-      },
       { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
       {
         name: 'policy',

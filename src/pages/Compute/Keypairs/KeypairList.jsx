@@ -3,7 +3,10 @@ import { Tag, message } from 'antd';
 import { novaApi } from '@/api/nova';
 import ResourcePage, { nameColumn, deleteAction, CopyText } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { KpiCards, TextareaFromFile, downloadText } from '../_shared';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
+import { downloadText } from '../_shared';
+import { KpiCards } from '@/components/MetricCards';
+import TextareaFromFile from '@/components/form/TextareaFromFile';
 
 export const keypairNameRegex = /^[a-zA-Z][\w_-]{0,127}$/;
 export const keypairNameMessage = () =>
@@ -41,17 +44,13 @@ export const createKeypairAction = ({ projectId, used = 0 } = {}) => ({
   title: t('Create Keypair'),
   description: t('Quota of key pairs means: the number of allowed key pairs for each user.'),
   getDefaultValues: () => ({ type: 'create' }),
+  // legacy Keypair/actions/Create showQuota: used = number of key pairs of the user (nova key_pairs quota)
+  quota: withQuota(
+    () => fetchKeypairQuota(projectId),
+    (quota) => [quotaItem({ ...quota, used, in_use: used, reserved: 0 }, { name: 'key_pair', title: t('Key Pair'), add: 1 })]
+  ),
   getFormItems: async () => {
-    const quota = await fetchKeypairQuota(projectId);
-    const limit = quota?.limit;
-    const full = limit !== undefined && limit !== -1 && used >= limit;
     return [
-      quota && {
-        type: 'alert',
-        name: 'quota',
-        alertType: full ? 'warning' : 'info',
-        message: `${t('Key Pair')}: ${t('Used')} ${used} / ${t('Quota')} ${limit === -1 ? t('Unlimit') : limit}`,
-      },
       {
         name: 'type',
         label: t('Create Type'),

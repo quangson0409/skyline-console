@@ -3,15 +3,18 @@
  * pages/network/containers/SecurityGroup/actions/*, Detail/Rule/** and
  * resources/neutron/security-group-rule.jsx.
  */
-import React, { useEffect, useState } from 'react';
-import { AutoComplete, Form, Input, Space } from 'antd';
+import React from 'react';
+import { AutoComplete, Form, Input } from 'antd';
 import { IdNameCell } from '@/components/ResourcePage/helpers';
 import { neutronApi, neutronResources } from '@/api/neutron';
 import { quotaApi } from '@/api/quota';
 import { currentProjectId } from '@/api/endpoints';
 import ResourcePage from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { detailPath, isCidr } from '@/pages/Network/common';
+import { withQuota } from '@/components/Quota/utils';
+import { fetchNeutronQuota as fetchNeutronQuotaData, neutronQuotaItems } from '@/components/Quota/services';
+import { detailPath } from '@/pages/Network/common';
+import { isCidr } from '@/components/network/ip';
 
 /* ---------------- resources/neutron/security-group-rule ---------------- */
 export const ipProtocols = () => [
@@ -141,46 +144,6 @@ const quotaLeft = (q) => {
   return Math.max(0, q.limit - (q.used || 0) - (q.reserved || 0));
 };
 
-function QuotaLine({ names }) {
-  const [quota, setQuota] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    const pid = currentProjectId();
-    if (!pid) return undefined;
-    quotaApi
-      .getNeutronQuota(pid)
-      .then((res) => alive && setQuota(res?.quota || null))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-  if (!quota) return <span style={{ color: '#94a3b8' }}>-</span>;
-  return (
-    <div>
-      {names.map(([key, label]) => {
-        const q = quota[key] || {};
-        const left = quotaLeft(q);
-        return (
-          <div key={key}>
-            <Space size={16} wrap>
-              <strong>{label}</strong>
-              <span>
-                {t('Quota')}: {q.limit === -1 ? t('Unlimited') : q.limit ?? '-'}
-              </span>
-              <span>
-                {t('Used')}: {q.used ?? 0}
-              </span>
-              <span style={{ color: left === 0 ? '#ef4444' : undefined }}>
-                {t('Left')}: {left === Infinity ? t('Unlimited') : left ?? '-'}
-              </span>
-            </Space>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 const fetchQuota = async () => {
   try {
@@ -217,19 +180,12 @@ export const createSecurityGroupAction = () => ({
   description: t(
     'This operation creates a security group with default security group rules for the IPv4 and IPv6 ether types.'
   ),
+  // legacy SecurityGroup/actions/Create showQuota: 1 group + its 2 default rules
+  quota: withQuota(
+    () => fetchNeutronQuotaData(),
+    (quota) => neutronQuotaItems(quota, ['security_group', 'security_group_rule'], [1, DEFAULT_RULE_COUNT])
+  ),
   formItems: [
-    {
-      name: '_quota',
-      label: t('Quota'),
-      render: () => (
-        <QuotaLine
-          names={[
-            ['security_group', t('Security Group')],
-            ['security_group_rule', t('Security Group Rule')],
-          ]}
-        />
-      ),
-    },
     {
       name: 'name',
       label: t('Name'),
@@ -350,6 +306,11 @@ export const createRuleAction = ({ securityGroupId } = {}) => ({
   title: t('Create Rule'),
   buttonText: t('Create Rule'),
   width: 720,
+  // legacy SecurityGroup/Detail/Rule/actions/Create showQuota: 1 security group rule
+  quota: withQuota(
+    () => fetchNeutronQuotaData(),
+    (quota) => neutronQuotaItems(quota, ['security_group_rule'], [1])
+  ),
   getFormItems: async () => {
     const groups = await neutronApi
       .listSecurityGroups()
@@ -357,11 +318,6 @@ export const createRuleAction = ({ securityGroupId } = {}) => ({
       .catch(() => []);
     const rules = defaultRules();
     return [
-      {
-        name: '_quota',
-        label: t('Quota'),
-        render: () => <QuotaLine names={[['security_group_rule', t('Security Group Rule')]]} />,
-      },
       {
         name: 'protocol',
         label: t('Protocol'),

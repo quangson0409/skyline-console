@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Input, Space, Popover, Table, Spin, Progress, Tag } from 'antd';
+import { Button, Input, Space, Popover, Table, Spin, Tag } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { manilaApi } from '@/api/manila';
 import { keystoneApi } from '@/api/keystone';
@@ -15,9 +15,12 @@ import ResourcePage, {
   deleteAction,
 } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { selectTableField } from '@/pages/Storage/shared';
+import { KeysSelectTable as SelectTable, selectTableField } from '@/components/SelectTable';
+import { updateQuotaData } from '@/components/Quota/utils';
+import ModalQuota from '@/components/Quota/ModalQuota';
+import { shareQuotaItems } from '@/components/Quota/services';
 
-export { SelectTable, selectTableField } from '@/pages/Storage/shared';
+export { SelectTable, selectTableField };
 
 /* ================================================================== resources/manila/share */
 export const shareStatus = () => ({
@@ -142,19 +145,8 @@ export const manilaIsTransition = (item = {}) => {
 };
 
 /* ================================================================== quota helpers */
-/** stores/keystone/project updateQuotaData: adds used / left (-1 = unlimited) */
-export const updateQuotaData = (quota = {}) => {
-  const data = JSON.parse(JSON.stringify(quota || {}));
-  Object.keys(data).forEach((key) => {
-    const it = data[key];
-    if (it && typeof it === 'object') {
-      if (it.in_use !== undefined) it.used = it.in_use;
-      const { limit, used = 0, reserved = 0 } = it;
-      it.left = limit === -1 ? -1 : (Number(limit) || 0) - (Number(used) || 0) - (Number(reserved) || 0);
-    }
-  });
-  return data;
-};
+/** stores/keystone/project updateQuotaData (shared implementation in src/components/Quota) */
+export { updateQuotaData };
 
 export const fetchShareQuota = async () => {
   try {
@@ -165,47 +157,11 @@ export const fetchShareQuota = async () => {
   }
 };
 
-const quotaTitle = () => ({
-  shares: t('Share'),
-  gigabytes: t('Share Capacity (GiB)'),
-  share_networks: t('Share Network'),
-  share_groups: t('Share Group'),
-});
-
-/** Quota usage panel (legacy FormAction quota side bar) */
+/** Quota usage panel (legacy FormAction quota side bar) - shared quota chart */
 export function QuotaInfo({ quota = {}, keys = ['shares', 'gigabytes'], wishes = [1, 1] }) {
-  const items = keys.filter((k) => quota[k]);
-  if (!items.length) return null;
-  return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: 12,
-        padding: 12,
-        border: '1px solid #e2e8f0',
-        borderRadius: 8,
-      }}
-    >
-      {items.map((key, idx) => {
-        const { limit, used = 0, reserved = 0, left } = quota[key];
-        const unlimited = limit === -1;
-        const wish = Number(wishes[idx]) || 0;
-        const percent = unlimited || !limit ? 0 : Math.min(100, Math.round(((used + reserved + wish) / limit) * 100));
-        const exceeded = !unlimited && left < wish;
-        return (
-          <div key={key}>
-            <div style={{ fontSize: 12, color: '#64748b' }}>{quotaTitle()[key] || key}</div>
-            <Progress percent={percent} size="small" status={exceeded ? 'exception' : 'normal'} showInfo={!unlimited} />
-            <div style={{ fontSize: 12 }}>
-              {t('Used')}: {used} · {t('Reserved')}: {reserved} · {t('Add')}: {wish} · {t('Quota')}:{' '}
-              {unlimited ? t('Unlimited') : limit}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+  const present = keys.filter((k) => quota[k]);
+  if (!present.length) return null;
+  return <ModalQuota quotas={shareQuotaItems(quota, present, present.map((k) => wishes[keys.indexOf(k)]))} />;
 }
 
 /* ================================================================== key / value list */

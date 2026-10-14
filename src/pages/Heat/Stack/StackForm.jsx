@@ -19,14 +19,13 @@ import {
   Skeleton,
   Space,
   Steps,
-  Upload,
   message,
 } from 'antd';
-import { UploadOutlined } from '@ant-design/icons';
 import { heatApi } from '@/api/heat';
 import { useIsAdminPage } from '@/components/ResourcePage';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
+import BaseTextareaFromFile from '@/components/form/TextareaFromFile';
 import {
   yamlTip,
   paramTip,
@@ -56,44 +55,23 @@ const stackNameMessage = () =>
 
 const HIDDEN_VALUE = '******';
 
-const readFileText = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ''));
-    reader.onerror = reject;
-    reader.readAsText(file);
-  });
-
-/** legacy components/FormItem/TextareaFromFile */
-function TextareaFromFile({ value, onChange, rows = 6, placeholder, accept, ...rest }) {
+/** legacy components/FormItem/TextareaFromFile (textarea first, link button below) */
+function TextareaFromFile({ value, onChange, rows = 6, placeholder, accept, id, ...rest }) {
   return (
-    <div>
-      <Input.TextArea
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-        rows={rows}
-        placeholder={placeholder || t('Please input')}
-        style={{ fontFamily: MONO, fontSize: 12.5 }}
-        spellCheck={false}
-        {...rest}
-      />
-      <Upload
-        accept={accept}
-        showUploadList={false}
-        beforeUpload={async (file) => {
-          try {
-            onChange?.(await readFileText(file));
-          } catch {
-            message.error(t('Failed to read the file'));
-          }
-          return false;
-        }}
-      >
-        <Button type="link" icon={<UploadOutlined />} style={{ paddingLeft: 0 }}>
-          {t('Load from local files')}
-        </Button>
-      </Upload>
-    </div>
+    <BaseTextareaFromFile
+      id={id}
+      value={value}
+      onChange={onChange}
+      rows={rows}
+      accept={accept}
+      placeholder={placeholder || t('Please input')}
+      buttonPosition="bottom"
+      buttonText={t('Load from local files')}
+      buttonProps={{ type: 'link', style: { paddingLeft: 0 } }}
+      textareaStyle={{ fontFamily: MONO, fontSize: 12.5 }}
+      textareaProps={{ spellCheck: false, ...rest }}
+      readErrorMessage={t('Failed to read the file')}
+    />
   );
 }
 

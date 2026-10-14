@@ -7,7 +7,7 @@ import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
 import { neutronApi } from '@/api/neutron';
 import { hasEndpoint } from '@/api/endpoints';
-import NetworkSelectTable from '@/pages/Instances/Create/components/NetworkSelectTable';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
 import { isIpInRangeAll, isIPv4, isIpv6, ipTypeOptions } from '@/pages/Instances/Create/utils';
 import { isOsDisk } from '@/pages/Storage/Volumes/volumeShared';
 import {

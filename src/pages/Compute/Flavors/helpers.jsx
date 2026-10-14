@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Input, InputNumber, Select, Space, Switch, Table, Tag, Tooltip, Empty } from 'antd';
+import { Button, Input, InputNumber, Space, Table, Tag } from 'antd';
 import { DeleteOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import apiClient from '@/api/client';
 import { novaApi } from '@/api/nova';
@@ -7,6 +7,7 @@ import { glanceApi } from '@/api/glance';
 import { keystoneApi } from '@/api/keystone';
 import { nameColumn, textColumn, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { MetadataPicker } from '@/components/MetadataEditor/MetadataTransfer';
 
 /* ------------------------------------------------------------------ */
 /* Port of legacy src/resources/nova/flavor.js                         */
@@ -454,95 +455,8 @@ export function NumaNodesInput({ value, onChange, maxCount = 8, minCount = 1 }) 
   );
 }
 
-const PropertyValueInput = ({ schema = {}, value, onChange }) => {
-  if (Array.isArray(schema.enum) && schema.enum.length) {
-    return (
-      <Select
-        style={{ width: 240 }}
-        value={value}
-        onChange={onChange}
-        options={schema.enum.map((e) => ({ value: String(e), label: String(e) }))}
-      />
-    );
-  }
-  if (schema.type === 'boolean') {
-    return <Switch checked={String(value) === 'true'} onChange={(v) => onChange(v ? 'true' : 'false')} />;
-  }
-  if (schema.type === 'integer' || schema.type === 'number') {
-    return (
-      <InputNumber
-        style={{ width: 240 }}
-        min={schema.minimum}
-        max={schema.maximum}
-        value={value === undefined || value === '' ? undefined : Number(value)}
-        onChange={(v) => onChange(v === null || v === undefined ? undefined : String(v))}
-      />
-    );
-  }
-  return <Input style={{ width: 240 }} value={value} onChange={(e) => onChange(e.target.value)} />;
-};
-
-/** Port of legacy "metadata-transfer": value = { [key]: value } chosen from glance metadefs */
-export function MetadataPicker({ value, onChange, metadata = [] }) {
-  const current = value && typeof value === 'object' ? value : {};
-  const schemaMap = useMemo(() => {
-    const map = {};
-    metadata.forEach((ns) => {
-      Object.entries(ns.properties || {}).forEach(([k, schema]) => {
-        map[k] = { ...schema, namespace: ns.title };
-      });
-    });
-    return map;
-  }, [metadata]);
-  const options = metadata
-    .map((ns) => ({
-      label: ns.title,
-      options: Object.entries(ns.properties || {})
-        .filter(([k]) => !(k in current))
-        .map(([k, schema]) => ({ value: k, label: `${schema.title || k} (${k})` })),
-    }))
-    .filter((g) => g.options.length);
-  if (!metadata.length) {
-    return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('No Data')} />;
-  }
-  return (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Select
-        showSearch
-        style={{ width: '100%' }}
-        placeholder={t('Please select')}
-        value={null}
-        options={options}
-        onChange={(k) => {
-          const schema = schemaMap[k] || {};
-          const def = schema.default !== undefined ? String(schema.default) : schema.type === 'boolean' ? 'false' : undefined;
-          onChange?.({ ...current, [k]: def });
-        }}
-        filterOption={(input, opt) => String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-      />
-      {Object.keys(current).map((k) => (
-        <Space key={k} align="center" wrap>
-          <Tooltip title={schemaMap[k]?.description}>
-            <span style={{ display: 'inline-block', minWidth: 260, fontFamily: 'monospace', fontSize: 12 }}>
-              {schemaMap[k]?.title ? `${schemaMap[k].title} (${k})` : k}
-            </span>
-          </Tooltip>
-          <PropertyValueInput schema={schemaMap[k]} value={current[k]} onChange={(v) => onChange?.({ ...current, [k]: v })} />
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => {
-              const next = { ...current };
-              delete next[k];
-              onChange?.(next);
-            }}
-          />
-        </Space>
-      ))}
-    </Space>
-  );
-}
+/** Port of legacy "metadata-transfer" (moved to src/components/MetadataEditor) */
+export { MetadataPicker };
 
 /* ------------------------------------------------------------------ */
 /* Columns / filters (legacy getBaseColumns, extraColumns, gpuColumns) */

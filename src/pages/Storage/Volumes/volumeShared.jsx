@@ -18,7 +18,15 @@ import {
   formatTime,
 } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { SelectTable, selectTableField, volumeLabel, downloadText, ConfirmCheckbox } from '../shared';
+import { volumeLabel, downloadText, ConfirmCheckbox } from '../shared';
+import { KeysSelectTable as SelectTable, selectTableField } from '@/components/SelectTable';
+import { quotaItem, withQuota } from '@/components/Quota/utils';
+import {
+  fetchCinderQuota as fetchCinderQuotaNormalized,
+  volumeQuotaItems,
+  backupQuotaItems,
+  volumeCreateQuota,
+} from '@/components/Quota/services';
 
 /* =================================================================== resources/cinder/volume */
 export const volumeStatus = () => ({
@@ -157,22 +165,9 @@ export const fetchCinderQuota = async () => {
   }
 };
 
-const quotaAlert = (quota, type, extra = []) => {
-  const lines = [
-    `${t('Volume')}: ${leftOf(quota.volumes) === Infinity ? t('Unlimited') : leftOf(quota.volumes)}`,
-    `${t('Volume Capacity (GiB)')}: ${leftOf(quota.gigabytes) === Infinity ? t('Unlimited') : leftOf(quota.gigabytes)}`,
-  ];
-  if (type && quota[`gigabytes_${type}`]) {
-    const l = leftOf(quota[`gigabytes_${type}`]);
-    lines.push(`${t('{name} type capacity', { name: type })}: ${l === Infinity ? t('Unlimited') : l}`);
-  }
-  return {
-    type: 'alert',
-    name: 'quota',
-    alertType: 'info',
-    message: `${t('Quota')} (${t('Left')}) - ${[...lines, ...extra].join(' | ')}`,
-  };
-};
+/** Cinder quota with used / left (legacy globalProjectStore.fetchProjectCinderQuota) */
+export const fetchCinderQuotaData = () => fetchCinderQuotaNormalized();
+export { volumeQuotaItems, backupQuotaItems, volumeCreateQuota };
 
 /* ----------------------------------------------------------------- shared option loaders */
 export const fetchVolumeTypeList = async () => {
@@ -334,6 +329,10 @@ export const createVolumeAction = () => {
         count: 1,
       };
     },
+    // legacy Volume/actions/Create showQuota (per volume-type quota, submit blocked when exceeded)
+    quota: volumeCreateQuota({
+      typeName: (values) => (ctx.types || []).find((tp) => tp.id === (values.volume_type || [])[0])?.name,
+    }),
     getFormItems: async () => {
       const [zonesRes, imagesRes, snapsRes, types, quota] = await Promise.all([
         cinderApi.listAvailabilityZones().catch(() => ({})),
@@ -349,7 +348,6 @@ export const createVolumeAction = () => {
       const gLeft = leftOf(quota.gigabytes);
       const vLeft = leftOf(quota.volumes);
       return [
-        quotaAlert(quota),
         { name: 'project', label: t('Project'), type: 'label' },
         {
           name: 'availableZone',
@@ -601,20 +599,18 @@ export const createVolumeSnapshotAction = () => ({
   buttonText: t('Create Snapshot'),
   allowed: isAvailableOrInUse,
   getDefaultValues: (item) => ({ volume: volumeLabel(item) }),
-  getFormItems: async (item) => {
-    const quota = await fetchCinderQuota();
-    const total = leftOf(quota.snapshots);
-    const typeLeft = leftOf(quota[`snapshots_${item.volume_type}`]);
+  // legacy Volume/actions/CreateSnapshot quotaInfo: snapshots + snapshots_<type>
+  quota: withQuota(fetchCinderQuotaData, (quota, values, item) => [
+    quotaItem(quota.snapshots, { name: 'snapshot', title: t('Volume Snapshot'), add: 1 }),
+    quota[`snapshots_${item?.volume_type}`] &&
+      quotaItem(quota[`snapshots_${item.volume_type}`], {
+        name: 'type',
+        title: t('{name} type snapshots', { name: item.volume_type }),
+        add: 1,
+      }),
+  ]),
+  getFormItems: async () => {
     return [
-      {
-        type: 'alert',
-        name: 'quota',
-        alertType: total === 0 || typeLeft === 0 ? 'error' : 'info',
-        message: `${t('Quota')} (${t('Left')}) - ${t('Volume Snapshot')}: ${total === Infinity ? t('Unlimited') : total} | ${t(
-          '{name} type snapshots',
-          { name: item.volume_type }
-        )}: ${typeLeft === Infinity ? t('Unlimited') : typeLeft}`,
-      },
       { name: 'volume', label: t('Volume'), type: 'label' },
       { name: 'name', label: t('Volume Snapshot Name'), type: 'input', required: true, placeholder: t('Please input snapshot name') },
     ];
@@ -634,19 +630,10 @@ export const createVolumeBackupAction = () => ({
   ),
   allowed: isAvailableOrInUse,
   getDefaultValues: (item) => ({ volume: volumeLabel(item), incremental: false }),
+  // legacy Volume/actions/CreateBackup quotaInfo (resources/cinder/backup): backups + backup_gigabytes
+  quota: withQuota(fetchCinderQuotaData, (quota, values, item) => backupQuotaItems(quota, item?.size)),
   getFormItems: async () => {
-    const quota = await fetchCinderQuota();
-    const left = leftOf(quota.backups);
-    const gLeft = leftOf(quota.backup_gigabytes);
     return [
-      {
-        type: 'alert',
-        name: 'quota',
-        alertType: left === 0 ? 'error' : 'info',
-        message: `${t('Quota')} (${t('Left')}) - ${t('Volume Backup')}: ${left === Infinity ? t('Unlimited') : left} | ${t(
-          'Backup Capacity (GiB)'
-        )}: ${gLeft === Infinity ? t('Unlimited') : gLeft}`,
-      },
       { name: 'volume', label: t('Volume'), type: 'label' },
       { name: 'name', label: t('Volume Backup Name'), type: 'input', required: true },
       {
@@ -702,11 +689,27 @@ export const cloneVolumeAction = () => ({
     const current = types.find((tp) => tp.name === item.volume_type);
     return { volume: volumeLabel(item), size: item.size, volume_type: current?.id, more: false };
   },
+  // legacy CloneVolume quotaInfo: one volume of the chosen size, quota of the chosen volume type
+  quota: (() => {
+    let types = [];
+    return withQuota(
+      async () => {
+        const [list, quota] = await Promise.all([fetchVolumeTypeList(), fetchCinderQuotaData()]);
+        types = list;
+        return quota;
+      },
+      (quota, values, item) =>
+        volumeQuotaItems(quota, {
+          count: 1,
+          size: values.size,
+          typeName: (values.more && types.find((tp) => tp.id === values.volume_type)?.name) || item?.volume_type,
+        })
+    );
+  })(),
   getFormItems: async (item) => {
     const [types, quota] = await Promise.all([fetchVolumeTypeList(), fetchCinderQuota()]);
     const gLeft = leftOf(quota.gigabytes);
     return [
-      quotaAlert(quota, item.volume_type),
       { name: 'volume', label: t('Volume'), type: 'label' },
       { name: 'name', label: t('Volume Name'), type: 'input', required: true },
       {
@@ -762,6 +765,14 @@ export const extendVolumeAction = () => ({
   description: t('After the volume is expanded, the volume cannot be reduced.'),
   allowed: isAvailableOrInUse,
   getDefaultValues: (item) => ({ volume: volumeLabel(item), new_size: item.size + 1 }),
+  // legacy ExtendVolume quotaInfo: capacity + <type> capacity, add = new size - current size
+  quota: withQuota(fetchCinderQuotaData, (quota, values, item) =>
+    volumeQuotaItems(quota, {
+      sizeOnly: true,
+      size: Math.max((Number(values.new_size) || 0) - (item?.size || 0), 0),
+      typeName: item?.volume_type,
+    })
+  ),
   getFormItems: async (item) => {
     const quota = await fetchCinderQuota();
     const gLeft = leftOf(quota.gigabytes);
@@ -769,7 +780,6 @@ export const extendVolumeAction = () => ({
     const left = Math.min(gLeft, typeLeft);
     const max = left === Infinity ? undefined : item.size + left;
     return [
-      quotaAlert(quota, item.volume_type),
       { name: 'volume', label: t('Volume'), type: 'label' },
       {
         name: 'new_size',

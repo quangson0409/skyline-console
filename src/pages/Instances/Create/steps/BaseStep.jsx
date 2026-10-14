@@ -8,11 +8,11 @@ import { useProjectMap } from '@/hooks/useProjectMap';
 import { formatSize } from '@/components/ResourcePage/helpers';
 import { t } from '@/core/i18n';
 import { isGpuCategory } from '@/pages/Compute/Flavors/helpers';
-import SelectTable, { col, mapCol, unitCol, timeCol } from '../components/SelectTable';
-import FlavorSelectTable from '../components/FlavorSelectTable';
+import SelectTable, { col, mapCol, unitCol, timeCol } from '@/components/SelectTable';
+import FlavorSelectTable from '@/components/compute/FlavorSelectTable';
 import InstanceVolume from '../components/InstanceVolume';
 import AddSelect from '../components/AddSelect';
-import { WrappedRadio, WrappedSelect, LabelValue, FormDivider, selectTableRule, narrowWrapper, tableWrapper } from '../components/fields';
+import { WrappedRadio, WrappedSelect, LabelValue, FormDivider, selectTableRule, narrowWrapper, tableWrapper } from '@/components/form/fields';
 import {
   canImageCreateInstance,
   canImageCreateIronicInstance,
