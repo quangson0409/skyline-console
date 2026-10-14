@@ -1,6 +1,7 @@
 import apiClient from './client';
 import { useAuthStore } from '@/store/authStore';
 import { serviceBase, versionHeaders } from './endpoints';
+import { getAllPages } from './paging';
 
 /**
  * OpenStack Cinder Block Storage API (v3) - port of legacy src/client/cinder
@@ -38,7 +39,8 @@ export const cinderApi = {
       projectId = null;
     }
     const pid = resolveProjectId(projectId);
-    return apiClient.get(`${base()}/${pid}/volumes/detail`, { params });
+    // every page (legacy lists were paged; never truncate at osapi_max_limit)
+    return getAllPages(`${base()}/${pid}/volumes/detail`, { key: 'volumes', params });
   },
   getVolume: (projectId, id) => {
     if (!id && projectId) {
@@ -81,7 +83,8 @@ export const cinderApi = {
       projectId = null;
     }
     const pid = resolveProjectId(projectId);
-    return apiClient.get(`${base()}/${pid}/snapshots/detail`, { params });
+    // every page (legacy lists were paged; never truncate at osapi_max_limit)
+    return getAllPages(`${base()}/${pid}/snapshots/detail`, { key: 'snapshots', params });
   },
   getSnapshot: (id) => apiClient.get(`${p()}/snapshots/${id}`, vh()),
   createSnapshot: (projectId, data) => {
@@ -112,7 +115,8 @@ export const cinderApi = {
       projectId = null;
     }
     const pid = resolveProjectId(projectId);
-    return apiClient.get(`${base()}/${pid}/backups/detail`, { params });
+    // every page (legacy lists were paged; never truncate at osapi_max_limit)
+    return getAllPages(`${base()}/${pid}/backups/detail`, { key: 'backups', params });
   },
   getBackup: (id) => apiClient.get(`${p()}/backups/${id}`, vh()),
   createBackup: (data) => apiClient.post(`${p()}/backups`, { backup: data }, vh()),
