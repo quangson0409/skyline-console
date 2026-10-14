@@ -2,64 +2,28 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { message } from 'antd';
 import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
+import { glanceApi } from '@/api/glance';
 import { useAuthStore } from '@/store/authStore';
+import { normalizeServer } from '@/pages/Instances/resources';
 
-// Normalize OpenStack Nova Server representation
-const normalizeServer = (srv) => {
-  let privateIp = null;
-  let floatingIp = null;
+// Server normalizer shared with the instance detail page and the legacy action checks
+export { normalizeServer };
 
-  if (srv.addresses && typeof srv.addresses === 'object') {
-    Object.values(srv.addresses).forEach((addrs) => {
-      if (Array.isArray(addrs)) {
-        addrs.forEach((addr) => {
-          if (addr && addr['OS-EXT-IPS:type'] === 'floating') {
-            floatingIp = addr.addr;
-          } else if (addr && addr.addr) {
-            privateIp = addr.addr;
-          }
-        });
-      }
-    });
+/** GET /servers/detail following servers_links "next" markers (legacy requestListAll) */
+export const listAllServers = async (params = {}, maxPages = 20) => {
+  const all = [];
+  let query = { ...params };
+  for (let i = 0; i < maxPages; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await novaApi.listServersV(Object.keys(query).length ? query : undefined);
+    const servers = Array.isArray(res?.servers) ? res.servers : null;
+    if (!servers) return i === 0 ? null : all;
+    all.push(...servers);
+    const next = (res.servers_links || []).find((l) => l.rel === 'next');
+    if (!next || !servers.length) break;
+    query = { ...params, marker: servers[servers.length - 1].id };
   }
-
-  const imageName = typeof srv.image === 'string'
-    ? (srv.image || t('Boot from Volume'))
-    : (srv.image?.name || srv.image?.id || t('Boot from Volume'));
-
-  const flavorName = typeof srv.flavor === 'string'
-    ? srv.flavor
-    : (srv.flavor?.original_name || srv.flavor?.name || srv.flavor?.id || t('Custom Flavor'));
-
-  return {
-    key: srv.id,
-    id: srv.id,
-    name: srv.name || 'Instance',
-    image: imageName,
-    ip: privateIp,
-    floatingIp,
-    flavor: flavorName,
-    vcpus: srv.flavor?.vcpus ?? null,
-    // GiB, rounded like legacy (flavor.ram is MiB)
-    ram: typeof srv.flavor?.ram === 'number' ? Math.round((srv.flavor.ram / 1024) * 100) / 100 : null,
-    disk: srv.flavor?.disk ?? null,
-    powerState: srv['OS-EXT-STS:power_state'] === 1 ? 'Running' : 'Shutoff',
-    status: typeof srv.status === 'string' ? srv.status : 'ACTIVE',
-    created: srv.created ? srv.created.replace('T', ' ').substring(0, 19) : '',
-    updated: srv.updated ? srv.updated.replace('T', ' ').substring(0, 19) : '',
-    zone: srv['OS-EXT-AZ:availability_zone'] || 'nova',
-    host: srv['OS-EXT-SRV-ATTR:host'] || '-',
-    hypervisor: srv['OS-EXT-SRV-ATTR:hypervisor_hostname'] || '-',
-    taskState: srv['OS-EXT-STS:task_state'] || 'None',
-    vmState: srv['OS-EXT-STS:vm_state'] || 'active',
-    keyName: srv.key_name || '-',
-    securityGroups: Array.isArray(srv.security_groups) ? srv.security_groups : [],
-    volumesAttached: Array.isArray(srv['os-extended-volumes:volumes_attached'])
-      ? srv['os-extended-volumes:volumes_attached']
-      : [],
-    locked: Boolean(srv.locked),
-    raw: srv,
-  };
+  return all;
 };
 
 export function useInstances({ allProjects = false } = {}) {
@@ -74,22 +38,24 @@ export function useInstances({ allProjects = false } = {}) {
   const fetchServers = useCallback(async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
     try {
-      // microversion 2.79 (legacy apiVersionMaps): embedded flavor with original_name / vcpus / ram
-      const [res, flavorRes] = await Promise.all([
-        novaApi.listServersV(allProjects ? { all_tenants: 1 } : undefined),
+      // microversion 2.79 (legacy apiVersionMaps): embedded flavor with original_name / vcpus / ram / extra_specs
+      const [servers, flavorRes, isoRes] = await Promise.all([
+        listAllServers(allProjects ? { all_tenants: 1 } : {}),
         novaApi.listFlavorsV().catch(() => null),
+        // legacy listDidFetch: servers booted from an ISO image are flagged (iso_server)
+        glanceApi.listImages({ disk_format: 'iso' }).catch(() => null),
       ]);
       const flavorNames = Object.fromEntries((flavorRes?.flavors || []).map((f) => [f.id, f]));
-      (res?.servers || []).forEach((srv) => {
+      const imageMap = Object.fromEntries((isoRes?.images || []).map((img) => [img.id, img]));
+      (servers || []).forEach((srv) => {
         // older clouds return only { id } -> resolve the name/specs from the flavor list
         if (srv.flavor && !srv.flavor.original_name && flavorNames[srv.flavor.id]) {
           const f = flavorNames[srv.flavor.id];
           srv.flavor = { ...srv.flavor, original_name: f.name, vcpus: f.vcpus, ram: f.ram, disk: f.disk };
         }
       });
-      if (res && res.servers && Array.isArray(res.servers)) {
-        const normalized = res.servers.map(normalizeServer);
-        setInstances(normalized);
+      if (Array.isArray(servers)) {
+        setInstances(servers.map((srv) => normalizeServer(srv, { imageMap })));
         setIsLiveApi(true);
       } else {
         setIsLiveApi(false);
@@ -115,12 +81,12 @@ export function useInstances({ allProjects = false } = {}) {
       const q = searchText.toLowerCase().trim();
       const matchSearch =
         !q ||
-        item.name.toLowerCase().includes(q) ||
-        item.ip.includes(q) ||
+        String(item.name || '').toLowerCase().includes(q) ||
+        (item.ip || '').includes(q) ||
         (item.floatingIp && item.floatingIp.includes(q)) ||
-        item.flavor.toLowerCase().includes(q) ||
+        String(item.flavor || '').toLowerCase().includes(q) ||
         item.id.toLowerCase().includes(q) ||
-        item.host.toLowerCase().includes(q);
+        String(item.host || '').toLowerCase().includes(q);
 
       const matchStatus = statusFilter === 'ALL' || item.status === statusFilter;
       return matchSearch && matchStatus;

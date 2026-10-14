@@ -86,12 +86,15 @@ export const exportCsv = (columns, rows, filename) => {
 
 const storageKey = (tableKey) => `skyline_hidden_columns:${tableKey}`;
 
-export const loadHiddenColumns = (tableKey) => {
+/** stored choice, or the columns flagged `defaultHidden` (legacy columns hidden by default) */
+export const loadHiddenColumns = (tableKey, columns = []) => {
   try {
-    return JSON.parse(localStorage.getItem(storageKey(tableKey)) || '[]');
+    const raw = localStorage.getItem(storageKey(tableKey));
+    if (raw !== null) return JSON.parse(raw) || [];
   } catch {
-    return [];
+    // ignore
   }
+  return columns.filter((c) => c && c.defaultHidden).map((c) => columnKey(c));
 };
 
 const saveHiddenColumns = (tableKey, keys) => {

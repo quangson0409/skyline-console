@@ -58,7 +58,7 @@ export default function BaseTable({
   const visibleBatchActions = batchActions.filter((a) => checkActionPolicy(a, policyCtx));
   // legacy CustomColumns: hidden column keys persisted per table (default key = route path)
   const storageTableKey = tableKey || pathname.replace(/\/detail\/.*$/, '/detail');
-  const [hiddenColumns, setHiddenColumns] = useState(() => loadHiddenColumns(storageTableKey));
+  const [hiddenColumns, setHiddenColumns] = useState(() => loadHiddenColumns(storageTableKey, columns));
   const [page, setPage] = useState({ current: 1, pageSize: pagination?.pageSize || 10 });
   const isDark = currentTheme === THEMES.DARK_OPS;
 

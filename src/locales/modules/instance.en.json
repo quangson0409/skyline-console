@@ -1,0 +1,15 @@
+{
+  "A snapshot is an image which preserves the disk state of a running instance and can be used to start a new instance. An instance that boots from a volume will create snapshots for each mounted volume.": "A snapshot is an image which preserves the disk state of a running instance and can be used to start a new instance. An instance that boots from a volume will create snapshots for each mounted volume.",
+  "All Interfaces": "All Interfaces",
+  "Automatic": "Automatic",
+  "Console Type": "Console Type",
+  "Enter a tag and press Enter": "Enter a tag and press Enter",
+  "No console": "No console",
+  "Open in a new window": "Open in a new window",
+  "Port security is disabled on this interface.": "Port security is disabled on this interface.",
+  "Reconnect": "Reconnect",
+  "Serial Console": "Serial Console",
+  "The console is only available when the instance is active or in rescue mode.": "The console is only available when the instance is active or in rescue mode.",
+  "The serial console uses a websocket; open it in a new window.": "The serial console uses a websocket; open it in a new window.",
+  "Waiting for user to Confirm/Revert the Resize for\n {id}": "Waiting for user to Confirm/Revert the Resize for\n {id}"
+}

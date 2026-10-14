@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Card,
   Tabs,
@@ -61,43 +61,42 @@ import {
 import { novaApi } from '@/api/nova';
 import { cinderApi } from '@/api/cinder';
 import { neutronApi } from '@/api/neutron';
+import { glanceApi } from '@/api/glance';
 import { useAuthStore } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
 import Status from '@/components/Status';
 import { useActionRunner } from '@/components/Action/useActionRunner';
+import { getInstanceActions } from '@/pages/Instances/actions';
+import { useAutoRefresh } from '@/hooks/useAutoRefresh';
+import { hasEndpoint } from '@/api/endpoints';
+import { useIsAdminPage, IdNameCell, formatTime } from '@/components/ResourcePage/helpers';
 import {
-  ConsoleAction,
-  StartAction,
-  StopAction,
-  RebootAction,
-  SoftRebootAction,
-  LockAction,
-  UnlockAction,
-  PauseAction,
-  UnpauseAction,
-  SuspendAction,
-  ResumeAction,
-  ShelveAction,
-  UnshelveAction,
-  ResetStateAction,
-  RebuildAction,
-  RescueAction,
-  UnrescueAction,
-  EditInstanceAction,
-  AttachVolumeAction,
-  DetachVolumeAction,
-  AttachInterfaceAction,
-  DetachInterfaceAction,
-  CreateSnapshotAction,
-  ResizeAction,
-  ConfirmResizeAction,
-  RevertResizeAction,
-  ChangePasswordAction,
-  ModifyTagsAction,
-  MigrateAction,
-  LiveMigrateAction,
-  DeleteAction,
-} from '@/pages/Instances/actions';
+  normalizeServer,
+  isInstanceTransition,
+  isIronicInstance,
+  instanceStatusText,
+  renderTags,
+} from '@/pages/Instances/resources';
+import {
+  VolumesTab,
+  SnapshotsTab,
+  InterfacesTab,
+  FloatingIpsTab,
+  ActionLogTab,
+  LogsTab,
+  ConsoleTab,
+  AddButton,
+} from '@/pages/Instances/detail/tabs';
+
+/** legacy tab keys (?tab=) and the keys used by the previous version of this page */
+const TAB_ALIASES = {
+  details: 'detail',
+  interfaces: 'interface',
+  'security-groups': 'securityGroup',
+  'action-logs': 'action',
+  'console-log': 'logs',
+  floatingips: 'floatingIps',
+};
 
 // Quick-copy helper with visual feedback
 function CopyableText({ text, display, style }) {
@@ -155,19 +154,53 @@ export default function InstanceDetail() {
   const { t } = useTranslation();
   const { hasAdminRole, user, currentProject } = useAuthStore();
   const isAdmin = Boolean(hasAdminRole || (user?.roles || []).includes('admin'));
+  const isAdminPage = useIsAdminPage();
+  const { pathname } = useLocation();
+  const isRecycleBinDetail = pathname.includes('recycle-bin');
+  const listPath = isRecycleBinDetail
+    ? `/management/recycle-bin${isAdminPage ? '-admin' : ''}`
+    : `/compute/instance${isAdminPage ? '-admin' : ''}`;
+  const A = getInstanceActions(isAdminPage);
+  const {
+    Console: ConsoleAction,
+    Start: StartAction,
+    Stop: StopAction,
+    Reboot: RebootAction,
+    SoftReboot: SoftRebootAction,
+    Unrescue: UnrescueAction,
+    Rebuild: RebuildAction,
+    Edit: EditInstanceAction,
+    AttachVolume: AttachVolumeAction,
+    AttachInterface: AttachInterfaceAction,
+    AssociateFip: AssociateFipAction,
+    ManageSecurityGroup: ManageSecurityGroupAction,
+    CreateSnapshot: CreateSnapshotAction,
+    Resize: ResizeAction,
+    ConfirmResize: ConfirmResizeAction,
+    RevertResize: RevertResizeAction,
+    ModifyTags: ModifyTagsAction,
+    Delete: DeleteAction,
+  } = A;
 
   const [instance, setInstance] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('details');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get('tab') || 'detail';
+  const activeTab = TAB_ALIASES[rawTab] || rawTab;
+  const setActiveTab = useCallback(
+    (key) => {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', key);
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+  const [serverGroup, setServerGroup] = useState(null);
+  const [sgPortId, setSgPortId] = useState('all');
 
   // Enriched sub-resources
   const [volumes, setVolumes] = useState([]);
   const [ports, setPorts] = useState([]);
-  const [actionLogs, setActionLogs] = useState([]);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [consoleLog, setConsoleLog] = useState('');
-  const [consoleLoading, setConsoleLoading] = useState(false);
-  const [consoleTail, setConsoleTail] = useState(100);
 
   // Security Group and Rule management state
   const [allProjectSgs, setAllProjectSgs] = useState([]);
@@ -180,9 +213,10 @@ export default function InstanceDetail() {
   const [addRuleForm] = Form.useForm();
 
   // Fetch instance details and resolve all related entities
-  const fetchServerDetail = useCallback(async () => {
+  const fetchServerDetail = useCallback(async (opts) => {
     if (!id) return;
-    setLoading(true);
+    const quiet = Boolean(opts && opts.quiet);
+    if (!quiet) setLoading(true);
     try {
       // microversion 2.79: embedded flavor (original_name, vcpus, ram) like legacy
       const res = await novaApi.getServerV(id);
@@ -196,7 +230,7 @@ export default function InstanceDetail() {
 
       // Concurrently query flavor list, neutron ports, security groups scoped to project
       const [flavorsRes, portsRes, secGroupsRes] = await Promise.allSettled([
-        novaApi.listFlavors(),
+        novaApi.listFlavorsV(),
         neutronApi.listPorts({ device_id: id }),
         neutronApi.listSecurityGroups(instanceProjectId ? { project_id: instanceProjectId } : {}),
       ]);
@@ -244,6 +278,15 @@ export default function InstanceDetail() {
 
       // Resolve image from root volume if server.image is empty (boot-from-volume)
       let enrichedImage = srv.image;
+      // nova returns { id, links } only: resolve name / os_distro from glance (legacy itemInList.image_name)
+      if (enrichedImage && typeof enrichedImage === 'object' && enrichedImage.id && !enrichedImage.name) {
+        try {
+          const img = await glanceApi.getImage(enrichedImage.id);
+          if (img?.id) enrichedImage = { ...enrichedImage, name: img.name, os_distro: img.os_distro, disk_format: img.disk_format };
+        } catch {
+          // image deleted or not visible
+        }
+      }
       const rootVol = enrichedVolumes.find((v) => v.isBootable || v.device === '/dev/vda');
       if (!enrichedImage || typeof enrichedImage === 'string') {
         if (rootVol?.volume_image_metadata?.image_name) {
@@ -341,63 +384,52 @@ export default function InstanceDetail() {
         ...srv,
         flavor: enrichedFlavor,
         image: enrichedImage,
+        raw: srv,
         volumesAttached: enrichedVolumes.length > 0 ? enrichedVolumes : attached,
         security_groups: enrichedSgs,
       });
       setVolumes(enrichedVolumes);
       setPorts(enrichedPorts);
+      // legacy serverGroupCard
+      if ((srv.server_groups || [])[0]) {
+        novaApi
+          .getServerGroupV(srv.server_groups[0])
+          .then((r) => setServerGroup(r?.server_group || null))
+          .catch(() => setServerGroup(null));
+      }
     } catch (err) {
-      message.error(t('Failed to load instance details: ') + err.message);
+      if (!quiet) message.error(t('Failed to load instance details: ') + err.message);
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, [id, t]);
 
-  const { handleAction, actionModal } = useActionRunner({ onRefresh: fetchServerDetail });
+  const { handleAction, actionModal } = useActionRunner({ onRefresh: () => fetchServerDetail({ quiet: true }) });
+
+  // normalized item for the legacy action checks (status, vm_state, locked, flavor_info, addresses...)
+  const actionItem = useMemo(() => (instance?.raw ? normalizeServer(instance.raw) : null), [instance]);
+
+  // legacy TabDetail watcher: poll while the server is in a transition status
+  useAutoRefresh({
+    data: actionItem,
+    refetch: fetchServerDetail,
+    initialAuto: false,
+    isTransition: isInstanceTransition,
+  });
+
+  const can = (action) => {
+    if (!action || !actionItem) return false;
+    if (action.adminOnly && !isAdmin) return false;
+    try {
+      return action.allowed ? Boolean(action.allowed(actionItem)) : true;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     fetchServerDetail();
   }, [fetchServerDetail]);
-
-  // Fetch action logs
-  const fetchActionLogs = useCallback(async () => {
-    if (!id) return;
-    setLogsLoading(true);
-    try {
-      const res = await novaApi.getServerActionRecords(id);
-      if (res && res.instanceActions) {
-        setActionLogs(res.instanceActions);
-      }
-    } catch {
-      setActionLogs([]);
-    } finally {
-      setLogsLoading(false);
-    }
-  }, [id]);
-
-  // Fetch serial console log
-  const fetchConsoleLog = useCallback(async (tail = consoleTail) => {
-    if (!id) return;
-    setConsoleLoading(true);
-    try {
-      const res = await novaApi.serverAction(id, {
-        'os-getConsoleOutput': { length: tail },
-      });
-      setConsoleLog(res?.output || 'No console log output available.');
-    } catch {
-      setConsoleLog('Console log output is not available for this instance state.');
-    } finally {
-      setConsoleLoading(false);
-    }
-  }, [id, consoleTail]);
-
-  useEffect(() => {
-    if (activeTab === 'action-logs') {
-      fetchActionLogs();
-    } else if (activeTab === 'console-log') {
-      fetchConsoleLog();
-    }
-  }, [activeTab, fetchActionLogs, fetchConsoleLog]);
 
   // Direct Detach single volume action with modal confirmation
   const handleDetachSingleVolume = (volume) => {
@@ -409,7 +441,7 @@ export default function InstanceDetail() {
       cancelText: t('Cancel'),
       onOk: async () => {
         try {
-          await novaApi.detachVolume(id, volume.id);
+          await novaApi.deleteVolumeAttachmentV(id, volume.id);
           message.success(t('Detached volume successfully'));
           fetchServerDetail();
         } catch (err) {
@@ -431,7 +463,7 @@ export default function InstanceDetail() {
       cancelText: t('Cancel'),
       onOk: async () => {
         try {
-          await novaApi.detachInterface(id, portId);
+          await novaApi.deleteServerInterfaceV(id, portId);
           message.success(t('Detached interface successfully'));
           fetchServerDetail();
         } catch (err) {
@@ -441,25 +473,18 @@ export default function InstanceDetail() {
     });
   };
 
-  // Direct Delete Action with safety confirmation & redirection
-  const handleDeleteInstance = () => {
-    Modal.confirm({
-      title: `${t('Delete')} ${instance?.name}?`,
-      content: t('Are you sure you want to delete this instance? This cannot be undone.'),
-      okText: t('Delete'),
-      okType: 'danger',
-      cancelText: t('Cancel'),
-      onOk: async () => {
-        try {
-          await novaApi.deleteServer(id);
-          message.success(t('Instance deleted successfully'));
-          navigate('/compute/instance');
-        } catch (err) {
-          message.error(err.message || t('Failed to delete instance'));
-        }
+  // Delete (legacy SoftDelete) then back to the list
+  const handleDeleteInstance = () =>
+    handleAction(
+      {
+        ...DeleteAction,
+        onSubmit: async (target) => {
+          await DeleteAction.onSubmit(target);
+          navigate(listPath);
+        },
       },
-    });
-  };
+      actionItem
+    );
 
   // Delete a security group rule with confirmation
   const handleDeleteRule = (rule) => {
@@ -689,316 +714,63 @@ export default function InstanceDetail() {
     });
   };
 
-  const isRunning = instance?.status === 'ACTIVE';
-  const isShutoff = ['SHUTOFF', 'STOPPED', 'CRASHED'].includes(instance?.status?.toUpperCase());
 
-  // Comprehensive categorized More Actions items matching legacy Skyline 1:1
-  const moreMenuItems = useMemo(() => {
-    if (!instance) return [];
-
-    // 1. Instance Status
-    const statusChildren = [
-      isShutoff && {
-        key: 'start',
-        icon: <PlayCircleOutlined style={{ color: '#10b981' }} />,
-        label: t('Start Instance'),
-        title: StartAction.description,
-        onClick: () => handleAction(StartAction, instance),
+  // legacy Detail/SecurityGroup/action/Detach: PUT /ports/{id} { port: { security_groups } }
+  const handleDetachPortSecurityGroup = (port, sg) => {
+    Modal.confirm({
+      title: t('Detach Security Group'),
+      content: t('Are you sure to {action} "{name}"?', { action: t('detach security group'), name: sg.name }),
+      okText: t('Detach'),
+      okType: 'danger',
+      cancelText: t('Cancel'),
+      onOk: async () => {
+        try {
+          await neutronApi.updatePort(port.id, {
+            security_groups: (port.security_groups || []).filter((it) => it !== sg.id),
+          });
+          message.success(t('Operation completed successfully'));
+          fetchServerDetail({ quiet: true });
+        } catch (err) {
+          message.error(err.response?.data?.NeutronError?.message || err.message || t('Operation failed'));
+        }
       },
-      isRunning && {
-        key: 'stop',
-        icon: <PauseCircleOutlined style={{ color: '#f59e0b' }} />,
-        label: t('Stop Instance'),
-        title: StopAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(StopAction, instance),
-      },
-      {
-        key: 'soft-reboot',
-        icon: <ReloadOutlined />,
-        label: t('Soft Reboot'),
-        title: SoftRebootAction.description,
-        disabled: !isRunning || instance.locked,
-        onClick: () => handleAction(SoftRebootAction, instance),
-      },
-      {
-        key: 'reboot',
-        icon: <ReloadOutlined style={{ color: '#ef4444' }} />,
-        label: t('Hard Reboot'),
-        title: RebootAction.description,
-        danger: true,
-        disabled: instance.locked,
-        onClick: () => handleAction(RebootAction, instance),
-      },
-      {
-        key: 'lock-toggle',
-        icon: instance.locked ? <UnlockOutlined /> : <LockOutlined />,
-        label: instance.locked ? t('Unlock Instance') : t('Lock Instance'),
-        title: instance.locked ? UnlockAction.description : LockAction.description,
-        onClick: () => handleAction(instance.locked ? UnlockAction : LockAction, instance),
-      },
-      isRunning && {
-        key: 'pause',
-        icon: <PauseCircleOutlined />,
-        label: t('Pause Instance'),
-        title: PauseAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(PauseAction, instance),
-      },
-      instance.status?.toLowerCase() === 'paused' && {
-        key: 'unpause',
-        icon: <PlayCircleOutlined style={{ color: '#10b981' }} />,
-        label: t('Unpause Instance'),
-        title: UnpauseAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(UnpauseAction, instance),
-      },
-      isRunning && {
-        key: 'suspend',
-        icon: <PoweroffOutlined />,
-        label: t('Suspend Instance'),
-        title: SuspendAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(SuspendAction, instance),
-      },
-      instance.status?.toLowerCase() === 'suspended' && {
-        key: 'resume',
-        icon: <PlayCircleOutlined style={{ color: '#10b981' }} />,
-        label: t('Resume Instance'),
-        title: ResumeAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(ResumeAction, instance),
-      },
-      ['active', 'shutoff', 'paused', 'suspended'].includes(instance.status?.toLowerCase()) && {
-        key: 'shelve',
-        icon: <CloudDownloadOutlined />,
-        label: t('Shelve Instance'),
-        title: ShelveAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(ShelveAction, instance),
-      },
-      ['shelved', 'shelved_offloaded'].includes(instance.status?.toLowerCase()) && {
-        key: 'unshelve',
-        icon: <CloudUploadOutlined style={{ color: '#10b981' }} />,
-        label: t('Unshelve Instance'),
-        title: UnshelveAction.description,
-        onClick: () => handleAction(UnshelveAction, instance),
-      },
-      ['active', 'shutoff'].includes(instance.status?.toLowerCase()) && !instance.locked && {
-        key: 'rescue',
-        icon: <SafetyOutlined style={{ color: '#f59e0b' }} />,
-        label: t('Rescue Instance'),
-        title: RescueAction.description,
-        onClick: () => handleAction(RescueAction, instance),
-      },
-      instance.status?.toLowerCase() === 'rescue' && {
-        key: 'unrescue',
-        icon: <UndoOutlined style={{ color: '#10b981' }} />,
-        label: t('Unrescue Instance'),
-        title: UnrescueAction.description,
-        onClick: () => handleAction(UnrescueAction, instance),
-      },
-      ['active', 'shutoff', 'error'].includes(instance.status?.toLowerCase()) && !instance.locked && {
-        key: 'rebuild',
-        icon: <SyncOutlined style={{ color: '#ef4444' }} />,
-        label: t('Rebuild Instance'),
-        title: RebuildAction.description,
-        danger: true,
-        onClick: () => handleAction(RebuildAction, instance),
-      },
-      isAdmin && {
-        key: 'reset-state',
-        icon: <UndoOutlined />,
-        label: t('Reset State'),
-        title: ResetStateAction.description,
-        onClick: () => handleAction(ResetStateAction, instance),
-      },
-    ].filter(Boolean);
-
-    // 2. Related Resources
-    const resourceChildren = [
-      {
-        key: 'attach-volume',
-        icon: <HddOutlined />,
-        label: t('Attach Volume'),
-        title: AttachVolumeAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(AttachVolumeAction, instance),
-      },
-      {
-        key: 'detach-volume',
-        icon: <DisconnectOutlined />,
-        label: t('Detach Volume'),
-        title: DetachVolumeAction.description,
-        danger: true,
-        disabled: instance.locked || volumes.length === 0,
-        onClick: () => handleAction(DetachVolumeAction, instance),
-      },
-      {
-        key: 'attach-interface',
-        icon: <ApartmentOutlined />,
-        label: t('Attach Interface'),
-        title: AttachInterfaceAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(AttachInterfaceAction, instance),
-      },
-      {
-        key: 'detach-interface',
-        icon: <DisconnectOutlined />,
-        label: t('Detach Interface'),
-        title: DetachInterfaceAction.description,
-        danger: true,
-        disabled: instance.locked,
-        onClick: () => handleAction(DetachInterfaceAction, instance),
-      },
-    ];
-
-    // 3. Backups & Snapshots
-    const backupChildren = [
-      {
-        key: 'create-snapshot',
-        icon: <CameraOutlined />,
-        label: t('Create Snapshot'),
-        title: CreateSnapshotAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(CreateSnapshotAction, instance),
-      },
-    ];
-
-    // 4. Configuration Update
-    const configChildren = [
-      !instance.locked && {
-        key: 'edit-instance',
-        icon: <EditOutlined style={{ color: '#0068ff' }} />,
-        label: t('Edit Instance'),
-        title: EditInstanceAction.description,
-        onClick: () => handleAction(EditInstanceAction, instance),
-      },
-      {
-        key: 'resize',
-        icon: <SettingOutlined />,
-        label: t('Resize Instance'),
-        title: ResizeAction.description,
-        disabled: instance.locked,
-        onClick: () => handleAction(ResizeAction, instance),
-      },
-      instance.status === 'VERIFY_RESIZE' && {
-        key: 'confirm-resize',
-        icon: <CheckCircleOutlined style={{ color: '#10b981' }} />,
-        label: t('Confirm Resize'),
-        title: ConfirmResizeAction.description,
-        onClick: () => handleAction(ConfirmResizeAction, instance),
-      },
-      instance.status === 'VERIFY_RESIZE' && {
-        key: 'revert-resize',
-        icon: <CloseCircleOutlined style={{ color: '#ef4444' }} />,
-        label: t('Revert Resize'),
-        title: RevertResizeAction.description,
-        danger: true,
-        onClick: () => handleAction(RevertResizeAction, instance),
-      },
-      {
-        key: 'change-password',
-        icon: <KeyOutlined />,
-        label: t('Change Admin Password'),
-        title: ChangePasswordAction.description,
-        disabled: !isRunning || instance.locked,
-        onClick: () => handleAction(ChangePasswordAction, instance),
-      },
-      {
-        key: 'modify-tags',
-        icon: <TagOutlined />,
-        label: t('Modify Tags'),
-        title: ModifyTagsAction.description,
-        onClick: () => handleAction(ModifyTagsAction, instance),
-      },
-    ].filter(Boolean);
-
-    // 5. Administration (Admin only)
-    const adminChildren = isAdmin
-      ? [
-          {
-            key: 'cold-migrate',
-            icon: <ExportOutlined />,
-            label: t('Cold Migrate'),
-            title: MigrateAction.description,
-            onClick: () => handleAction(MigrateAction, instance),
-          },
-          {
-            key: 'live-migrate',
-            icon: <SyncOutlined />,
-            label: t('Live Migrate'),
-            title: LiveMigrateAction.description,
-            disabled: !isRunning,
-            onClick: () => handleAction(LiveMigrateAction, instance),
-          },
-        ]
-      : [];
-
-    const items = [
-      {
-        type: 'group',
-        label: (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('Instance Status')}
-          </span>
-        ),
-        children: statusChildren,
-      },
-      {
-        type: 'group',
-        label: (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('Related Resources')}
-          </span>
-        ),
-        children: resourceChildren,
-      },
-      {
-        type: 'group',
-        label: (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('Backups & Snapshots')}
-          </span>
-        ),
-        children: backupChildren,
-      },
-      {
-        type: 'group',
-        label: (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('Configuration')}
-          </span>
-        ),
-        children: configChildren,
-      },
-    ];
-
-    if (adminChildren.length > 0) {
-      items.push({
-        type: 'group',
-        label: (
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {t('Administration')}
-          </span>
-        ),
-        children: adminChildren,
-      });
-    }
-
-    items.push({ type: 'divider' });
-
-    items.push({
-      key: 'delete',
-      icon: <DeleteOutlined />,
-      label: t('Delete Instance'),
-      danger: true,
-      disabled: instance.locked,
-      onClick: handleDeleteInstance,
     });
+  };
 
+  // "More Actions" menu built from the legacy row action groups (project / administrator sets)
+  // with the legacy allowed rules; Delete navigates back to the list.
+  const rowActionConfig = useMemo(() => A.getRowActions(), [A]);
+  const moreMenuItems = useMemo(() => {
+    if (!actionItem) return [];
+    const toItem = (act) => ({
+      key: act.id,
+      label: act.title,
+      title: act.description || act.title,
+      danger: Boolean(act.isDanger),
+      onClick: () => (act.id === 'delete' ? handleDeleteInstance() : handleAction(act, actionItem)),
+    });
+    const groupLabel = (text) => (
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {text}
+      </span>
+    );
+    const items = [];
+    const singles = [];
+    rowActionConfig.moreActions.forEach((group, idx) => {
+      if (group.actions) {
+        const children = group.actions.filter(can).map(toItem);
+        if (children.length) items.push({ type: 'group', key: `group-${idx}`, label: groupLabel(group.title), children });
+      } else if (group.action && can(group.action)) {
+        singles.push(toItem(group.action));
+      }
+    });
+    if (singles.length) {
+      if (items.length) items.push({ type: 'divider' });
+      items.push(...singles);
+    }
     return items;
-  }, [instance, isRunning, isShutoff, isAdmin, volumes.length, t, handleAction]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionItem, rowActionConfig, isAdmin, handleAction]);
 
   // Structured network list from addresses and neutron ports
   const networkList = useMemo(() => {
@@ -1045,14 +817,21 @@ export default function InstanceDetail() {
           message={t('Instance not found')}
           description={t('The instance does not exist or has been deleted from the OpenStack cluster.')}
         />
-        <Button style={{ marginTop: 16 }} onClick={() => navigate('/compute/instance')}>
+        <Button style={{ marginTop: 16 }} onClick={() => navigate(listPath)}>
           {t('Back to instance list')}
         </Button>
       </div>
     );
   }
 
-  const securityGroups = instance.security_groups || [];
+  const ironic = isIronicInstance(actionItem || {});
+  // legacy tabs: Volumes only with cinder, Volumes / Snapshots hidden for ironic instances
+  const showVolumes = hasEndpoint('cinder') && !ironic;
+  const selectedSgPort = sgPortId !== 'all' ? ports.find((p) => p.id === sgPortId) : null;
+  const allSecurityGroups = instance.security_groups || [];
+  const securityGroups = selectedSgPort
+    ? allSecurityGroups.filter((sg) => (selectedSgPort.security_groups || []).includes(sg.id))
+    : allSecurityGroups;
   const tags = instance.tags || [];
 
   return (
@@ -1063,7 +842,7 @@ export default function InstanceDetail() {
           <Button
             type="link"
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/compute/instance')}
+            onClick={() => navigate(listPath)}
             style={{ padding: 0, fontWeight: 600, color: '#0068ff' }}
           >
             {t('Instances')}
@@ -1108,17 +887,19 @@ export default function InstanceDetail() {
                 <h1 className="page-title" style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
                   {instance.name}
                 </h1>
+                {!isAdminPage && !isRecycleBinDetail && (
                 <Tooltip title={t('Edit Instance')}>
                   <Button
                     type="text"
                     size="small"
                     icon={<EditOutlined style={{ color: '#0068ff' }} />}
-                    disabled={instance.locked}
-                    onClick={() => handleAction(EditInstanceAction, instance)}
+                    disabled={!can(EditInstanceAction)}
+                    onClick={() => handleAction(EditInstanceAction, actionItem)}
                     style={{ width: 28, height: 28, minWidth: 28 }}
                   />
                 </Tooltip>
-                <Status status={instance.status} />
+                )}
+                <Status status={String(instance.status || '').toLowerCase()} text={instanceStatusText(instance.status)} />
                 {instance.locked && (
                   <Tag color="warning" icon={<LockOutlined />}>
                     {t('Locked')}
@@ -1136,19 +917,29 @@ export default function InstanceDetail() {
                   {t('Availability Zone')}: <b>{instance['OS-EXT-AZ:availability_zone'] || 'nova'}</b>
                 </span>
                 <span>
-                  {t('Created At')}: {instance.created ? instance.created.replace('T', ' ').substring(0, 19) : '-'}
+                  {t('Created At')}: {instance.created ? formatTime(instance.created) : '-'}
                 </span>
+                <span>
+                  {t('Lock Status')}: <b>{instance.locked ? t('Locked') : t('Not locked')}</b>
+                </span>
+                {isAdminPage && (
+                  <span>
+                    {t('Project ID')}: <CopyableText text={instance.tenant_id} />
+                  </span>
+                )}
               </Space>
             </div>
           </div>
 
           {/* Action Toolbar matching legacy Skyline & UI/UX guidelines */}
+          {!isRecycleBinDetail && (
           <Space wrap size={8} style={{ alignItems: 'center' }}>
-            {/* 1. Primary CTA: VNC Console */}
+            {/* 1. Primary CTA: Console (legacy first action) */}
             <Button
               type="primary"
               icon={<CodeOutlined />}
-              onClick={() => handleAction(ConsoleAction, instance)}
+              disabled={!can(ConsoleAction)}
+              onClick={() => handleAction(ConsoleAction, actionItem)}
               style={{
                 backgroundColor: '#0068ff',
                 fontWeight: 600,
@@ -1159,11 +950,11 @@ export default function InstanceDetail() {
             </Button>
 
             {/* 2. Contextual Primary / Secondary Lifecycle Button */}
-            {isShutoff && (
+            {can(StartAction) && (
               <Button
                 type="primary"
                 icon={<PlayCircleOutlined />}
-                onClick={() => handleAction(StartAction, instance)}
+                onClick={() => handleAction(StartAction, actionItem)}
                 style={{
                   backgroundColor: '#10b981',
                   borderColor: '#10b981',
@@ -1175,12 +966,12 @@ export default function InstanceDetail() {
               </Button>
             )}
 
-            {isRunning && (
+            {(can(StopAction) || can(SoftRebootAction) || can(RebootAction)) && (
               <>
                 <Button
                   icon={<PauseCircleOutlined />}
-                  disabled={instance.locked}
-                  onClick={() => handleAction(StopAction, instance)}
+                  disabled={!can(StopAction)}
+                  onClick={() => handleAction(StopAction, actionItem)}
                 >
                   {t('Stop')}
                 </Button>
@@ -1192,18 +983,19 @@ export default function InstanceDetail() {
                         key: 'soft',
                         icon: <ReloadOutlined />,
                         label: t('Soft Reboot'),
-                        onClick: () => handleAction(SoftRebootAction, instance),
+                        disabled: !can(SoftRebootAction),
+                        onClick: () => handleAction(SoftRebootAction, actionItem),
                       },
                       {
                         key: 'hard',
                         icon: <ReloadOutlined style={{ color: '#ef4444' }} />,
                         label: t('Hard Reboot'),
                         danger: true,
-                        onClick: () => handleAction(RebootAction, instance),
+                        disabled: !can(RebootAction),
+                        onClick: () => handleAction(RebootAction, actionItem),
                       },
                     ],
                   }}
-                  disabled={instance.locked}
                 >
                   <Button icon={<ReloadOutlined />}>
                     {t('Reboot')} <DownOutlined style={{ fontSize: 10 }} />
@@ -1212,61 +1004,64 @@ export default function InstanceDetail() {
               </>
             )}
 
-            {instance.status === 'VERIFY_RESIZE' && (
+            {can(ConfirmResizeAction) && (
               <>
                 <Button
                   type="primary"
                   style={{ backgroundColor: '#10b981', borderColor: '#10b981', fontWeight: 600 }}
-                  onClick={() => handleAction(ConfirmResizeAction, instance)}
+                  onClick={() => handleAction(ConfirmResizeAction, actionItem)}
                 >
                   {t('Confirm Resize')}
                 </Button>
                 <Button
                   danger
-                  onClick={() => handleAction(RevertResizeAction, instance)}
+                  disabled={!can(RevertResizeAction)}
+                  onClick={() => handleAction(RevertResizeAction, actionItem)}
                 >
                   {t('Revert Resize')}
                 </Button>
               </>
             )}
 
-            {instance.status === 'RESCUE' && (
+            {can(UnrescueAction) && (
               <Button
                 type="primary"
                 icon={<UndoOutlined />}
                 style={{ backgroundColor: '#10b981', borderColor: '#10b981', fontWeight: 600 }}
-                onClick={() => handleAction(UnrescueAction, instance)}
+                onClick={() => handleAction(UnrescueAction, actionItem)}
               >
                 {t('Unrescue')}
               </Button>
             )}
 
-            {instance.status === 'ERROR' && (
+            {instance.status === 'ERROR' && can(RebuildAction) && !isAdminPage && (
               <Button
                 danger
                 icon={<SyncOutlined />}
-                onClick={() => handleAction(RebuildAction, instance)}
+                onClick={() => handleAction(RebuildAction, actionItem)}
               >
                 {t('Rebuild')}
               </Button>
             )}
 
-            {/* 3. Snapshot Quick Action */}
+            {/* 3. Snapshot Quick Action (not in the administrator action set) */}
+            {!isAdminPage && can(CreateSnapshotAction) && (
             <Button
               icon={<CameraOutlined />}
-              disabled={instance.locked}
-              onClick={() => handleAction(CreateSnapshotAction, instance)}
+              onClick={() => handleAction(CreateSnapshotAction, actionItem)}
             >
               {t('Create Snapshot')}
             </Button>
+            )}
 
             {/* 4. Complete Categorized More Actions Dropdown */}
-            <Dropdown menu={{ items: moreMenuItems }} trigger={['click']} placement="bottomRight">
+            <Dropdown menu={{ items: moreMenuItems }} trigger={['click']} placement="bottomRight" disabled={!moreMenuItems.length}>
               <Button icon={<MoreOutlined />}>
                 {t('More Actions')} <DownOutlined style={{ fontSize: 10 }} />
               </Button>
             </Dropdown>
           </Space>
+          )}
         </div>
       </div>
 
@@ -1284,7 +1079,7 @@ export default function InstanceDetail() {
           onChange={setActiveTab}
           items={[
             {
-              key: 'details',
+              key: 'detail',
               label: t('Details'),
               children: (
                 <Row gutter={[20, 20]}>
@@ -1354,7 +1149,7 @@ export default function InstanceDetail() {
                             size="small"
                             icon={<SettingOutlined />}
                             disabled={instance.locked}
-                            onClick={() => handleAction(ResizeAction, instance)}
+                            onClick={() => handleAction(ResizeAction, actionItem)}
                             style={{ padding: 0, fontWeight: 600, color: '#0068ff' }}
                           >
                             {t('Resize')}
@@ -1403,7 +1198,9 @@ export default function InstanceDetail() {
                         </Descriptions.Item>
                         <Descriptions.Item label={t('Image ID')} span={2}>
                           {instance.image?.id ? (
-                            <CopyableText text={instance.image.id} />
+                            <Link to={`/compute/image${isAdminPage ? '-admin' : ''}/detail/${instance.image.id}`}>
+                              {instance.image.id}
+                            </Link>
                           ) : (
                             <span style={{ color: '#94a3b8' }}>{t('Booted from volume')}</span>
                           )}
@@ -1427,7 +1224,7 @@ export default function InstanceDetail() {
                           {securityGroups.length > 0 ? (
                             <Space wrap>
                               {securityGroups.map((sg, i) => (
-                                <Tag key={i} color="blue" onClick={() => setActiveTab('security-groups')} style={{ cursor: 'pointer' }}>
+                                <Tag key={i} color="blue" onClick={() => setActiveTab('securityGroup')} style={{ cursor: 'pointer' }}>
                                   {sg.name}
                                 </Tag>
                               ))}
@@ -1437,8 +1234,30 @@ export default function InstanceDetail() {
                           )}
                         </Descriptions.Item>
                         <Descriptions.Item label={t('SSH Keypair')}>
-                          {instance.key_name || <span style={{ color: '#94a3b8' }}>{t('None')}</span>}
+                          {instance.key_name ? (
+                            isAdminPage ? (
+                              instance.key_name
+                            ) : (
+                              <Link to={`/compute/keypair/detail/${encodeURIComponent(instance.key_name)}`}>{instance.key_name}</Link>
+                            )
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>{t('None')}</span>
+                          )}
                         </Descriptions.Item>
+                        {!ironic && (
+                          <Descriptions.Item label={t('Server Group')} span={2}>
+                            {serverGroup ? (
+                              <IdNameCell
+                                id={serverGroup.id}
+                                name={serverGroup.name}
+                                href={`/compute/server-group${isAdminPage ? '-admin' : ''}/detail/${serverGroup.id}`}
+                                bold={false}
+                              />
+                            ) : (
+                              '-'
+                            )}
+                          </Descriptions.Item>
+                        )}
                         <Descriptions.Item label={t('Project ID')} span={2}>
                           <CopyableText text={instance.tenant_id} />
                         </Descriptions.Item>
@@ -1458,7 +1277,7 @@ export default function InstanceDetail() {
                             type="link"
                             size="small"
                             icon={<EditOutlined />}
-                            onClick={() => handleAction(ModifyTagsAction, instance)}
+                            onClick={() => handleAction(ModifyTagsAction, actionItem)}
                             style={{ padding: 0, fontWeight: 600, color: '#0068ff' }}
                           >
                             {t('Edit')}
@@ -1481,6 +1300,27 @@ export default function InstanceDetail() {
 
                   {/* Right Column: Skyline Signature Resource Topology */}
                   <Col xs={24} lg={10}>
+                    {/* legacy errorCard: server fault */}
+                    {instance.fault?.message && (
+                      <Card
+                        size="small"
+                        title={<span style={{ color: '#ef4444' }}>{t('Error')}</span>}
+                        style={{ marginBottom: 16, borderRadius: 8, borderColor: '#fecaca' }}
+                      >
+                        <Descriptions column={1} size="small" bordered>
+                          <Descriptions.Item label={t('Message')}>{instance.fault.message}</Descriptions.Item>
+                          {hasAdminRole && instance.fault.details ? (
+                            <Descriptions.Item label={t('Details')}>
+                              <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontSize: 11, maxHeight: 240, overflow: 'auto' }}>
+                                {instance.fault.details}
+                              </pre>
+                            </Descriptions.Item>
+                          ) : null}
+                          <Descriptions.Item label={t('Code')}>{instance.fault.code}</Descriptions.Item>
+                          <Descriptions.Item label={t('Created At')}>{formatTime(instance.fault.created)}</Descriptions.Item>
+                        </Descriptions>
+                      </Card>
+                    )}
                     <Card
                       size="small"
                       title={
@@ -1627,241 +1467,58 @@ export default function InstanceDetail() {
                 </Row>
               ),
             },
-            {
+            showVolumes && {
               key: 'volumes',
               label: t('Volumes'),
               children: (
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: 12,
-                      marginBottom: 16,
-                      background: '#f8fafc',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{t('Attached Volumes')}</span>
-                        <Tag color="blue" style={{ margin: 0, fontWeight: 600 }}>{volumes.length}</Tag>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        {t('Manage block storage volumes attached to this compute instance.')}
-                      </div>
-                    </div>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      disabled={instance.locked}
-                      onClick={() => handleAction(AttachVolumeAction, instance)}
-                      style={{ backgroundColor: '#0068ff', fontWeight: 600 }}
-                    >
-                      {t('Attach Volume')}
-                    </Button>
-                  </div>
-                  <Table
-                    dataSource={volumes}
-                    pagination={false}
-                    rowKey="id"
-                    columns={[
-                      {
-                        title: t('Name'),
-                        dataIndex: 'name',
-                        key: 'name',
-                        render: (name, record) => (
-                          <div>
-                            <div style={{ fontWeight: 600 }}>{name || record.volume_image_metadata?.image_name || '-'}</div>
-                            <div style={{ fontSize: 11, color: '#64748b' }}>
-                              <CopyableText text={record.id} display={`${record.id?.substring(0, 12)}...`} />
-                            </div>
-                          </div>
-                        ),
-                      },
-                      {
-                        title: t('Size'),
-                        dataIndex: 'size',
-                        key: 'size',
-                        render: (sz) => <b>{sz ? `${sz} GiB` : '-'}</b>,
-                      },
-                      {
-                        title: t('Volume Type'),
-                        dataIndex: 'volume_type',
-                        key: 'volume_type',
-                        render: (vt) => <Tag color="blue">{vt || 'ssd'}</Tag>,
-                      },
-                      {
-                        title: t('Device'),
-                        dataIndex: 'device',
-                        key: 'device',
-                        render: (dev) => <code>{dev || '/dev/vda'}</code>,
-                      },
-                      {
-                        title: t('Bootable'),
-                        dataIndex: 'isBootable',
-                        key: 'bootable',
-                        render: (b) => (b ? <Tag color="success">{t('Yes (Root)')}</Tag> : <Tag>{t('No')}</Tag>),
-                      },
-                      {
-                        title: t('Status'),
-                        dataIndex: 'status',
-                        key: 'status',
-                        render: (st) => <Status status={st || 'in-use'} />,
-                      },
-                      {
-                        title: t('Delete on Termination'),
-                        dataIndex: 'delete_on_termination',
-                        key: 'del',
-                        render: (del) => (del ? <Tag color="orange">{t('Yes')}</Tag> : <Tag>{t('No')}</Tag>),
-                      },
-                      {
-                        title: t('Action'),
-                        key: 'action',
-                        width: 140,
-                        render: (_, record) => {
-                          if (record.isBootable || record.device === '/dev/vda') {
-                            return (
-                              <Tooltip title={t('Root system disk cannot be detached while running')}>
-                                <span style={{ color: '#94a3b8', fontSize: 12 }}>{t('Root Disk')}</span>
-                              </Tooltip>
-                            );
-                          }
-                          return (
-                            <Button
-                              type="link"
-                              danger
-                              size="small"
-                              icon={<DisconnectOutlined />}
-                              disabled={instance.locked}
-                              onClick={() => handleDetachSingleVolume(record)}
-                              style={{ padding: 0 }}
-                            >
-                              {t('Detach')}
-                            </Button>
-                          );
-                        },
-                      },
-                    ]}
-                    locale={{ emptyText: t('No volumes are attached to this instance') }}
-                  />
-                </div>
+                <VolumesTab
+                  item={actionItem}
+                  isAdminPage={isAdminPage}
+                  attachButton={
+                    can(AttachVolumeAction) ? (
+                      <AddButton onClick={() => handleAction(AttachVolumeAction, actionItem)}>{t('Attach Volume')}</AddButton>
+                    ) : null
+                  }
+                />
               ),
             },
+            !ironic && {
+              key: 'snapshots',
+              label: t('Snapshots'),
+              children: <SnapshotsTab item={actionItem} />,
+            },
             {
-              key: 'interfaces',
+              key: 'interface',
               label: t('Interfaces'),
               children: (
-                <div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: 12,
-                      marginBottom: 16,
-                      background: '#f8fafc',
-                      padding: '12px 16px',
-                      borderRadius: 8,
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{t('Network Interfaces')}</span>
-                        <Tag color="blue" style={{ margin: 0, fontWeight: 600 }}>{networkList.length}</Tag>
-                      </div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                        {t('Manage virtual NIC ports and network attachments connected to this compute instance.')}
-                      </div>
-                    </div>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      disabled={instance.locked}
-                      onClick={() => handleAction(AttachInterfaceAction, instance)}
-                      style={{ backgroundColor: '#0068ff', fontWeight: 600 }}
-                    >
-                      {t('Attach Interface')}
-                    </Button>
-                  </div>
-                  <Table
-                    dataSource={networkList}
-                    pagination={false}
-                    rowKey="ip"
-                    columns={[
-                      {
-                        title: t('Network'),
-                        dataIndex: 'networkName',
-                        key: 'net',
-                        render: (net) => <Tag color="blue">{net}</Tag>,
-                      },
-                      {
-                        title: t('Port ID'),
-                        dataIndex: 'portId',
-                        key: 'portId',
-                        render: (pid) => (pid !== '-' ? <CopyableText text={pid} /> : '-'),
-                      },
-                      {
-                        title: t('IP Address'),
-                        dataIndex: 'ip',
-                        key: 'ip',
-                        render: (ip) => <CopyableText text={ip} />,
-                      },
-                      {
-                        title: t('Type'),
-                        dataIndex: 'type',
-                        key: 'type',
-                        render: (tp) => <Tag color={tp === 'floating' ? 'cyan' : 'geekblue'}>{tp}</Tag>,
-                      },
-                      {
-                        title: t('MAC Address'),
-                        dataIndex: 'mac',
-                        key: 'mac',
-                        render: (mac) => <code>{mac}</code>,
-                      },
-                      {
-                        title: t('Status'),
-                        dataIndex: 'portStatus',
-                        key: 'status',
-                        render: (st) => <Status status={st} />,
-                      },
-                      {
-                        title: t('Action'),
-                        key: 'action',
-                        width: 140,
-                        render: (_, record) => {
-                          const portId = record.portId;
-                          if (!portId || portId === '-') {
-                            return <span style={{ color: '#94a3b8' }}>-</span>;
-                          }
-                          return (
-                            <Button
-                              type="link"
-                              danger
-                              size="small"
-                              icon={<DisconnectOutlined />}
-                              disabled={instance.locked}
-                              onClick={() => handleDetachSinglePort(record)}
-                              style={{ padding: 0 }}
-                            >
-                              {t('Detach')}
-                            </Button>
-                          );
-                        },
-                      },
-                    ]}
-                  />
-                </div>
+                <InterfacesTab
+                  item={actionItem}
+                  count={ports.length}
+                  attachButton={
+                    can(AttachInterfaceAction) ? (
+                      <AddButton onClick={() => handleAction(AttachInterfaceAction, actionItem)}>{t('Attach Interface')}</AddButton>
+                    ) : null
+                  }
+                />
               ),
             },
             {
-              key: 'security-groups',
+              key: 'floatingIps',
+              label: t('Floating IPs'),
+              children: (
+                <FloatingIpsTab
+                  item={actionItem}
+                  isAdminPage={isAdminPage}
+                  associateButton={
+                    can(AssociateFipAction) ? (
+                      <AddButton onClick={() => handleAction(AssociateFipAction, actionItem)}>{t('Associate Floating IP')}</AddButton>
+                    ) : null
+                  }
+                />
+              ),
+            },
+            {
+              key: 'securityGroup',
               label: t('Security Groups'),
               children: (
                 <div>
@@ -1903,14 +1560,55 @@ export default function InstanceDetail() {
                       >
                         {t('Attach Security Group')}
                       </Button>
+                      {!isAdminPage && can(ManageSecurityGroupAction) && (
+                        <Button
+                          icon={<SafetyOutlined />}
+                          onClick={() =>
+                            handleAction(ManageSecurityGroupAction, {
+                              ...actionItem,
+                              __portId: selectedSgPort ? selectedSgPort.id : undefined,
+                            })
+                          }
+                        >
+                          {t('Manage Security Group')}
+                        </Button>
+                      )}
                       <Button
                         icon={<SettingOutlined />}
-                        onClick={() => navigate('/network/security-group')}
+                        onClick={() => navigate(`/network/security-group${isAdminPage ? '-admin' : ''}`)}
                       >
                         {t('Manage Security Groups')}
                       </Button>
                     </Space>
                   </div>
+
+                  {/* legacy per-interface view: pick a port to see / manage only its security groups */}
+                  {ports.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Radio.Group
+                        value={sgPortId}
+                        onChange={(e) => setSgPortId(e.target.value)}
+                        optionType="button"
+                        buttonStyle="solid"
+                        style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                      >
+                        <Radio.Button value="all">{t('All Interfaces')}</Radio.Button>
+                        {ports.map((p) => (
+                          <Radio.Button key={p.id} value={p.id}>
+                            {t('Interface Name:')} {p.id.substring(0, 8)} · {t('Security Group Num:')} {(p.security_groups || []).length}
+                          </Radio.Button>
+                        ))}
+                      </Radio.Group>
+                      {selectedSgPort && selectedSgPort.port_security_enabled === false && (
+                        <Alert
+                          style={{ marginTop: 8 }}
+                          type="warning"
+                          showIcon
+                          message={t('Port security is disabled on this interface.')}
+                        />
+                      )}
+                    </div>
+                  )}
 
                   {/* List of Security Groups Cards with Interactive Rules Table */}
                   {securityGroups.length > 0 ? (
@@ -1963,15 +1661,29 @@ export default function InstanceDetail() {
                               >
                                 {t('Add Rule')}
                               </Button>
-                              <Button
-                                size="small"
-                                danger
-                                icon={<DisconnectOutlined />}
-                                disabled={instance.locked}
-                                onClick={() => handleDetachSecurityGroup(sg)}
-                              >
-                                {t('Detach from Instance')}
-                              </Button>
+                              {selectedSgPort ? (
+                                // legacy Detail/SecurityGroup Detach: port level, only when more than one group
+                                !isAdminPage && securityGroups.length !== 1 && (
+                                  <Button
+                                    size="small"
+                                    danger
+                                    icon={<DisconnectOutlined />}
+                                    onClick={() => handleDetachPortSecurityGroup(selectedSgPort, sg)}
+                                  >
+                                    {t('Detach')}
+                                  </Button>
+                                )
+                              ) : (
+                                <Button
+                                  size="small"
+                                  danger
+                                  icon={<DisconnectOutlined />}
+                                  disabled={instance.locked}
+                                  onClick={() => handleDetachSecurityGroup(sg)}
+                                >
+                                  {t('Detach from Instance')}
+                                </Button>
+                              )}
                             </Space>
                           </div>
                         }
@@ -2126,108 +1838,22 @@ export default function InstanceDetail() {
               ),
             },
             {
-              key: 'action-logs',
+              key: 'action',
               label: t('Action Logs'),
-              children: (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-                    <Button size="small" icon={<ReloadOutlined />} onClick={fetchActionLogs} loading={logsLoading}>
-                      {t('Refresh')}
-                    </Button>
-                  </div>
-                  <Table
-                    dataSource={actionLogs}
-                    loading={logsLoading}
-                    rowKey="request_id"
-                    columns={[
-                      {
-                        title: t('Action'),
-                        dataIndex: 'action',
-                        key: 'action',
-                        render: (act) => <Tag color="blue">{act}</Tag>,
-                      },
-                      {
-                        title: t('Request ID'),
-                        dataIndex: 'request_id',
-                        key: 'request_id',
-                        render: (req) => <CopyableText text={req} display={`${req.substring(0, 16)}...`} />,
-                      },
-                      {
-                        title: t('User ID'),
-                        dataIndex: 'user_id',
-                        key: 'user_id',
-                        render: (uid) => <code style={{ fontSize: 11 }}>{uid || '-'}</code>,
-                      },
-                      {
-                        title: t('Start Time'),
-                        dataIndex: 'start_time',
-                        key: 'start_time',
-                        render: (tm) => <span>{tm ? tm.replace('T', ' ').substring(0, 19) : '-'}</span>,
-                      },
-                      {
-                        title: t('Result'),
-                        dataIndex: 'message',
-                        key: 'message',
-                        render: (msg) =>
-                          msg ? (
-                            <Tag color="error">{msg}</Tag>
-                          ) : (
-                            <Tag color="success" icon={<CheckCircleOutlined />}>
-                              {t('Success')}
-                            </Tag>
-                          ),
-                      },
-                    ]}
-                  />
-                </div>
-              ),
+              children: <ActionLogTab item={actionItem} isAdminPage={isAdminPage} />,
             },
             {
-              key: 'console-log',
+              key: 'logs',
               label: t('Logs'),
-              children: (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <Space>
-                      <span>{t('Last log lines')}:</span>
-                      <Select
-                        value={consoleTail}
-                        onChange={(val) => {
-                          setConsoleTail(val);
-                          fetchConsoleLog(val);
-                        }}
-                        style={{ width: 100 }}
-                        options={[
-                          { value: 50, label: '50' },
-                          { value: 100, label: '100' },
-                          { value: 200, label: '200' },
-                          { value: 500, label: '500' },
-                        ]}
-                      />
-                    </Space>
-                    <Button size="small" icon={<ReloadOutlined />} onClick={() => fetchConsoleLog(consoleTail)} loading={consoleLoading}>
-                      {t('Refresh')}
-                    </Button>
-                  </div>
-                  <pre
-                    style={{
-                      background: '#0f172a',
-                      color: '#38bdf8',
-                      padding: 16,
-                      borderRadius: 8,
-                      fontFamily: 'Consolas, Monaco, monospace',
-                      fontSize: 12,
-                      lineHeight: 1.5,
-                      maxHeight: 520,
-                      overflowY: 'auto',
-                    }}
-                  >
-                    {consoleLog}
-                  </pre>
-                </div>
-              ),
+              children: <LogsTab item={actionItem} />,
             },
-          ]}
+            {
+              key: 'console',
+              label: t('Console'),
+              children: activeTab === 'console' ? <ConsoleTab item={actionItem} /> : null,
+            },
+          ].filter(Boolean)}
+
         />
       </Card>
 

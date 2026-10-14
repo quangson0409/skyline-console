@@ -213,6 +213,35 @@ export const novaApi = {
 
   /** GET /servers (brief: id/name/links) - legacy globalServerStore list used by AdminOverview counts */
   listServersBriefV: (params) => apiClient.get(`${novaV()}/servers`, novaConf({ params })),
+
+  // ---------------------------------------------------------------------
+  // Instance actions (legacy client.nova.servers.*) - catalog base path + 2.79 microversion.
+  // Bodies are passed through untouched so they stay identical to the legacy store calls.
+  // ---------------------------------------------------------------------
+  /** POST /servers/{id}/action with the raw legacy body ({ 'os-start': null }, { reboot: {...} } ...) */
+  serverActionV: (id, body) => apiClient.post(`${novaV()}/servers/${id}/action`, body, novaConf()),
+  updateServerV: (id, server) => apiClient.put(`${novaV()}/servers/${id}`, { server }, novaConf()),
+  deleteServerV: (id) => apiClient.delete(`${novaV()}/servers/${id}`, novaConf()),
+  /** POST /servers/{id}/remote-consoles { remote_console: { protocol, type } } (legacy createConsole) */
+  createRemoteConsoleV: (id, remote_console) =>
+    apiClient.post(`${novaV()}/servers/${id}/remote-consoles`, { remote_console }, novaConf()),
+  listServerInterfacesV: (id) => apiClient.get(`${novaV()}/servers/${id}/os-interface`, novaConf()),
+  /** body = { interfaceAttachment: {...} } */
+  createServerInterfaceV: (id, body) => apiClient.post(`${novaV()}/servers/${id}/os-interface`, body, novaConf()),
+  deleteServerInterfaceV: (id, portId) =>
+    apiClient.delete(`${novaV()}/servers/${id}/os-interface/${portId}`, novaConf()),
+  listVolumeAttachmentsV: (id) => apiClient.get(`${novaV()}/servers/${id}/os-volume_attachments`, novaConf()),
+  /** body = { volumeAttachment: { volumeId } } */
+  createVolumeAttachmentV: (id, body) =>
+    apiClient.post(`${novaV()}/servers/${id}/os-volume_attachments`, body, novaConf()),
+  deleteVolumeAttachmentV: (id, volumeId) =>
+    apiClient.delete(`${novaV()}/servers/${id}/os-volume_attachments/${volumeId}`, novaConf()),
+  /** PUT /servers/{id}/tags { tags } (legacy tag store updateTags) */
+  updateServerTagsV: (id, body) => apiClient.put(`${novaV()}/servers/${id}/tags`, body, novaConf()),
+  listInstanceActionsV: (id) => apiClient.get(`${novaV()}/servers/${id}/os-instance-actions`, novaConf()),
+  getInstanceActionV: (id, requestId) =>
+    apiClient.get(`${novaV()}/servers/${id}/os-instance-actions/${requestId}`, novaConf()),
+  getQuotaSetDetailV: (projectId) => apiClient.get(`${novaV()}/os-quota-sets/${projectId}/detail`, novaConf()),
 };
 
 export default novaApi;
