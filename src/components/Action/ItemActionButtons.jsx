@@ -2,6 +2,9 @@ import React from 'react';
 import { Dropdown, Button, Space, Divider } from 'antd';
 import { DownOutlined, MoreOutlined } from '@ant-design/icons';
 import { useTranslation } from '@/core/i18n';
+import { useLocation } from 'react-router-dom';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+import { useAuthStore } from '@/store/authStore';
 
 /**
  * ItemActionButtons - Ant Design 5 Table Row Action Toolbar
@@ -18,11 +21,16 @@ export default function ItemActionButtons({
   isAdmin = false,
 }) {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
+  usePolicyStore((st) => st.rules); // re-render once policies are loaded
+  const isSystemReaderOnly = useAuthStore((st) => st.isSystemReaderOnly);
+  const isAdminPage = /-admin(\/|$)/.test(pathname);
 
-  // Helper to check if an action is permitted
+  // Helper to check if an action is permitted (adminOnly, legacy policy rules, allowed(item))
   const checkAllowed = (action) => {
     if (!action) return false;
     if (action.adminOnly && !isAdmin) return false;
+    if (!checkActionPolicy(action, { item, isAdminPage, isSystemReaderOnly })) return false;
     if (typeof action.allowed === 'function') {
       try {
         return Boolean(action.allowed(item));

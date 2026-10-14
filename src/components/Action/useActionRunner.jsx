@@ -3,6 +3,7 @@ import { message } from 'antd';
 import { t } from '@/core/i18n';
 import ActionModal from './ActionModal';
 import executeConfirmAction from './ConfirmAction';
+import { getErrorMessage } from '@/hooks/useResource';
 
 /**
  * useActionRunner - Universal controller for OpenStack Skyline actions
@@ -38,7 +39,7 @@ export function useActionRunner({ onRefresh } = {}) {
         try {
           await (action.onExecute ? action.onExecute(item || items) : action.onClick?.(item || items));
         } catch (err) {
-          message.error(err.message || t('Action execution failed'));
+          message.error(getErrorMessage(err, t('Action execution failed')));
         }
         return;
       }
@@ -55,8 +56,8 @@ export function useActionRunner({ onRefresh } = {}) {
             if (onRefresh) onRefresh();
           },
           onError: (err) => {
-            const msg = err.response?.data?.badRequest?.message || err.message || t('Operation failed');
-            message.error(msg);
+            // any OpenStack error body (badRequest, NeutronError, itemNotFound, faultstring, detail...)
+            message.error(getErrorMessage(err, t('Operation failed')));
           },
         });
         return;

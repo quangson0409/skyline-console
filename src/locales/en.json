@@ -3972,5 +3972,10 @@
   "Soft_deleted": "Soft_deleted",
   "System Admin": "System Admin",
   "True": "True",
-  "Verify_resize": "Verify_resize"
+  "Verify_resize": "Verify_resize",
+  "Download Current Page": "Download Current Page",
+  "Download All Data": "Download All Data",
+  "Custom Columns": "Custom Columns",
+  "Download": "Download",
+  "No data": "No data"
 }

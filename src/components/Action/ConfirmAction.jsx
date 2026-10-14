@@ -85,7 +85,11 @@ export function executeConfirmAction({
     ) : (
       <QuestionCircleFilled style={{ color: '#0068ff' }} />
     ),
-    okText: isDanger ? t('Delete') : t('Confirm'),
+    // legacy: the OK button carries the action name (Delete, Detach, Force Delete...)
+    okText:
+      action.okText ||
+      (typeof action.actionName === 'function' ? action.actionName() : action.actionName) ||
+      (isDanger ? t('Delete') : t('Confirm')),
     okType: isDanger ? 'danger' : 'primary',
     cancelText: t('Cancel'),
     autoFocusButton: isDanger ? 'cancel' : 'ok',

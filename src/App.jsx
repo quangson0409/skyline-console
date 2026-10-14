@@ -13,6 +13,7 @@ const AuthChangePassword = lazy(() => import('@/pages/UserCenter/ChangePassword'
 // Core Split Components
 const Overview = lazy(() => import('@/pages/Overview/Overview'));
 const AdminOverview = lazy(() => import('@/pages/Overview/AdminOverview'));
+const NotFound = lazy(() => import('@/pages/Base/NotFound'));
 
 // Compute
 const InstanceList = lazy(() => import('@/pages/Instances/InstanceList'));
@@ -151,8 +152,23 @@ export default function App() {
           <Route path="users" element={<Navigate to="/identity/user-admin" replace />} />
         </Route>
 
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/base/overview" replace />} />
+        {/* Legacy base/404 for unknown URLs */}
+        <Route
+          path="base/404"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <NotFound />
+            </Suspense>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <NotFound />
+            </Suspense>
+          }
+        />
       </Route>
     </Routes>
   );

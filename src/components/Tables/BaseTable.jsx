@@ -12,6 +12,10 @@ import ResourceEmptyState from '@/components/Common/ResourceEmptyState';
 import MagicInput from '@/components/MagicInput';
 import ItemActionButtons from '@/components/Action/ItemActionButtons';
 import { useThemeStore, THEMES } from '@/store/themeStore';
+import { useLocation } from 'react-router-dom';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+import { TableTools, loadHiddenColumns, columnKey, isHideable } from './tableTools';
+import { useAuthStore } from '@/store/authStore';
 
 const { Text } = Typography;
 
@@ -40,10 +44,22 @@ export default function BaseTable({
   getCheckboxProps,
   autoRefresh,
   onAutoRefreshChange,
+  tableKey,
+  resourceName,
+  showTools = true,
 }) {
   const [searchText, setSearchText] = useState('');
   const [internalFilters, setInternalFilters] = useState(filters);
   const { currentTheme } = useThemeStore();
+  const { pathname } = useLocation();
+  const policyRules = usePolicyStore((st) => st.rules);
+  const isSystemReaderOnly = useAuthStore((st) => st.isSystemReaderOnly);
+  const policyCtx = { isAdminPage: /-admin(\/|$)/.test(pathname), isSystemReaderOnly };
+  const visibleBatchActions = batchActions.filter((a) => checkActionPolicy(a, policyCtx));
+  // legacy CustomColumns: hidden column keys persisted per table (default key = route path)
+  const storageTableKey = tableKey || pathname.replace(/\/detail\/.*$/, '/detail');
+  const [hiddenColumns, setHiddenColumns] = useState(() => loadHiddenColumns(storageTableKey));
+  const [page, setPage] = useState({ current: 1, pageSize: pagination?.pageSize || 10 });
   const isDark = currentTheme === THEMES.DARK_OPS;
 
   // Handle filter change for MagicInput
@@ -125,6 +141,12 @@ export default function BaseTable({
     return [...columns, actionColumn];
   }, [columns, rowActions, isAdmin, onActionClick]);
 
+  const shownColumns = useMemo(
+    () => finalColumns.filter((c, i) => !(isHideable(c, i) && hiddenColumns.includes(columnKey(c)))),
+    [finalColumns, hiddenColumns]
+  );
+  const currentPageRows = filteredData.slice((page.current - 1) * page.pageSize, page.current * page.pageSize);
+
   // Row selection configuration
   const rowSelection = onSelectChange
     ? {
@@ -140,8 +162,9 @@ export default function BaseTable({
     if (primaryAction && !list.some((a) => a.id === primaryAction.id || a.label === primaryAction.label)) {
       list.unshift(primaryAction);
     }
-    return list;
-  }, [primaryAction, primaryActions]);
+    return list.filter((a) => checkActionPolicy(a, policyCtx));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [primaryAction, primaryActions, policyRules, pathname, isSystemReaderOnly]);
 
   return (
     <div style={{ ...style }}>
@@ -193,12 +216,12 @@ export default function BaseTable({
           )}
 
           {/* Batch Actions when rows are selected */}
-          {selectedRowKeys.length > 0 && batchActions.length > 0 && (
+          {selectedRowKeys.length > 0 && visibleBatchActions.length > 0 && (
             <Space>
               <Text type="secondary" style={{ fontSize: 13 }}>
                 {t('Selected')} <b>{selectedRowKeys.length}</b> {t('items')}:
               </Text>
-              {batchActions.map((action, idx) => (
+              {visibleBatchActions.map((action, idx) => (
                 <Button
                   key={action.id || idx}
                   danger={Boolean(action.danger || action.isDanger)}
@@ -216,6 +239,17 @@ export default function BaseTable({
 
         {/* Right: Primary Action button & Extra Actions */}
         <Space wrap>
+          {showTools && (
+            <TableTools
+              columns={finalColumns}
+              hidden={hiddenColumns}
+              onHiddenChange={setHiddenColumns}
+              tableKey={storageTableKey}
+              currentRows={currentPageRows}
+              allRows={filteredData}
+              resourceName={resourceName}
+            />
+          )}
           {extraActions}
           {allPrimaryActions.map((act, idx) => (
             <Button
@@ -249,7 +283,7 @@ export default function BaseTable({
         styles={{ body: { padding: 0 } }}
       >
         <Table
-          columns={finalColumns}
+          columns={shownColumns}
           dataSource={filteredData}
           loading={loading}
           rowKey={rowKey}
@@ -258,6 +292,9 @@ export default function BaseTable({
             showSizeChanger: true,
             showTotal: (total) => `${t('Total')}: ${total}`,
             ...pagination,
+            current: page.current,
+            pageSize: page.pageSize,
+            onChange: (current, pageSize) => setPage({ current, pageSize }),
           }}
           locale={{
             emptyText: (

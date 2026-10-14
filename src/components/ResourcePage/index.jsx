@@ -138,6 +138,7 @@ export default function ResourcePage({
         dataSource={list}
         loading={loading}
         rowKey={rowKey}
+        resourceName={typeof title === 'string' ? title : undefined}
         filterParams={filterParams}
         filters={initialFilters}
         getCheckboxProps={getCheckboxProps}

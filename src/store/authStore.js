@@ -4,6 +4,7 @@ import apiClient from '@/api/client';
 import { message } from 'antd';
 import { t } from '@/core/i18n';
 import { saveEndpoints, serviceBase } from '@/api/endpoints';
+import { usePolicyStore } from '@/core/policy';
 
 export const formatErrorMessage = (err) => {
   if (!err) return t('Unknown error');
@@ -129,6 +130,7 @@ export const useAuthStore = create((set, get) => ({
   hasAdminPageRole: localStorage.getItem('skyline_admin_page_role') === '1',
   hasAdminRole: localStorage.getItem('skyline_admin_page_role') === '1',
   hasAdminOnlyRole: Boolean(savedUser?.roles?.includes('admin')),
+  isSystemReaderOnly: localStorage.getItem('skyline_system_reader_only') === '1',
 
   /** Applies a skyline Profile and persists it (single place for login / profile / switch). */
   applyProfile: async (res) => {
@@ -159,22 +161,26 @@ export const useAuthStore = create((set, get) => ({
       baseDomains: p.baseDomains,
       hasAdminOnlyRole: p.roles.includes('admin'),
     });
-    await get().refreshSystemRoles(p.user.id);
+    await Promise.all([get().refreshSystemRoles(p.user.id), usePolicyStore.getState().load()]);
   },
 
   /** Legacy getUserSystemRoles: only system-scope admin/reader may open administrator pages */
   refreshSystemRoles: async (userId = get().user?.id) => {
-    let allowed = false;
+    let systemRoles = [];
     if (userId) {
       try {
         const res = await apiClient.get(`${serviceBase('keystone')}/system/users/${userId}/roles`);
-        allowed = (res?.roles || []).some((r) => r.name === 'admin' || r.name === 'reader');
+        systemRoles = (res?.roles || []).map((r) => r.name);
       } catch {
-        allowed = false;
+        systemRoles = [];
       }
     }
+    const allowed = systemRoles.includes('admin') || systemRoles.includes('reader');
+    // legacy systemRoleIsReader: reader without admin -> read-only on administrator pages
+    const isSystemReaderOnly = systemRoles.includes('reader') && !systemRoles.includes('admin');
     localStorage.setItem('skyline_admin_page_role', allowed ? '1' : '0');
-    set({ hasAdminPageRole: allowed, hasAdminRole: allowed });
+    localStorage.setItem('skyline_system_reader_only', isSystemReaderOnly ? '1' : '0');
+    set({ hasAdminPageRole: allowed, hasAdminRole: allowed, isSystemReaderOnly });
     return allowed;
   },
 
@@ -292,6 +298,7 @@ export const useAuthStore = create((set, get) => ({
         'keystone_username',
         'skyline_user',
         'skyline_admin_page_role',
+        'skyline_system_reader_only',
         'keystone_current_project',
         'keystone_projects',
       ].forEach((k) => localStorage.removeItem(k));
@@ -302,8 +309,10 @@ export const useAuthStore = create((set, get) => ({
         hasAdminPageRole: false,
         hasAdminRole: false,
         hasAdminOnlyRole: false,
+        isSystemReaderOnly: false,
         user: { id: '', username: '', domain: '', roles: [], email: '' },
       });
+      usePolicyStore.getState().clear();
       if (!silent) {
         message.info(t('You have been logged out of your OpenStack session.'));
       }

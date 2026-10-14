@@ -2113,5 +2113,11 @@
   "System Admin": "Quản trị hệ thống",
   "True": "Đúng",
   "Unknown": "Không xác định",
-  "Verify_resize": "Chờ xác nhận đổi cấu hình"
+  "Verify_resize": "Chờ xác nhận đổi cấu hình",
+  "Sorry, the page you visited does not exist.": "Xin lỗi, trang bạn truy cập không tồn tại.",
+  "Download Current Page": "Tải trang hiện tại",
+  "Download All Data": "Tải toàn bộ dữ liệu",
+  "Custom Columns": "Tùy chỉnh cột",
+  "Download": "Tải xuống",
+  "No data": "Không có dữ liệu"
 }

@@ -3600,5 +3600,10 @@
   "{pageSize} items/page": "{pageSize} 条/页",
   "{seconds} seconds": "{seconds}秒",
   "Operation failed": "操作失败",
-  "Operation completed successfully": "操作成功"
+  "Operation completed successfully": "操作成功",
+  "Download Current Page": "下载当前页",
+  "Download All Data": "下载所有数据",
+  "Custom Columns": "自定义列",
+  "Download": "下载",
+  "No data": "暂无数据"
 }

@@ -76,6 +76,24 @@ export const ShortId = ({ id, href }) => {
   );
 };
 
+/**
+ * Standard cell for anything that has an id and a name (legacy getNameRender):
+ * copyable short id (link when href is given) on top, name below.
+ * Use it for primary ID/Name columns and for related-resource columns (Volume ID/Name, Network ID/Name...).
+ */
+export const IdNameCell = ({ id, name, href, bold = true }) => {
+  if (!id) {
+    const text = name || '-';
+    return href ? <Link to={href}>{text}</Link> : <span>{text}</span>;
+  }
+  return (
+    <div style={{ minWidth: 0 }}>
+      <ShortId id={id} href={href} />
+      <div style={{ fontWeight: bold ? 600 : 400, wordBreak: 'break-word' }}>{name || '-'}</div>
+    </div>
+  );
+};
+
 /** Legacy "ID/Name" column (utils/table getNameRender): short id link on top, bold name below */
 export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, width } = {}) => ({
   title: title || t('ID/Name'),
@@ -83,19 +101,14 @@ export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, 
   key: dataIndex,
   width,
   sorter: (a, b) => String(a[dataIndex] || '').localeCompare(String(b[dataIndex] || '')),
-  render: (value, record) => {
-    const id = record[idIndex];
-    const href = typeof linkTo === 'function' ? linkTo(record) : null;
-    if (!id) {
-      return href ? <Link to={href} style={{ fontWeight: 600 }}>{value || '-'}</Link> : <span style={{ fontWeight: 600 }}>{value || '-'}</span>;
-    }
-    return (
-      <div style={{ minWidth: 0 }}>
-        <ShortId id={id} href={href} />
-        <div style={{ fontWeight: 600, wordBreak: 'break-word' }}>{value || '-'}</div>
-      </div>
-    );
-  },
+  exportIdIndex: idIndex, // CSV: emit separate ID and Name columns
+  render: (value, record) => (
+    <IdNameCell
+      id={record[idIndex]}
+      name={value}
+      href={typeof linkTo === 'function' ? linkTo(record) : null}
+    />
+  ),
 });
 
 export const statusColumn = ({ title, dataIndex = 'status', textMap } = {}) => ({
@@ -114,6 +127,7 @@ export const timeColumn = ({ title, dataIndex = 'created_at' } = {}) => ({
   dataIndex,
   key: dataIndex,
   sorter: (a, b) => new Date(a[dataIndex] || 0) - new Date(b[dataIndex] || 0),
+  exportRender: (value) => formatTime(value),
   render: (value) => <span style={{ color: '#64748b', fontSize: 12 }}>{formatTime(value)}</span>,
 });
 

@@ -16,6 +16,7 @@ import {
   message,
 } from 'antd';
 import { useTranslation } from '@/core/i18n';
+import { getErrorMessage } from '@/hooks/useResource';
 
 /**
  * ActionModal - Generic UI Adapter for OpenStack ModalActions (Ant Design 5)
@@ -65,7 +66,7 @@ export default function ActionModal({
         // Validation failed in form
         return;
       }
-      message.error(err.message || t('Operation failed'));
+      message.error(getErrorMessage(err, t('Operation failed')));
     } finally {
       setSubmitting(false);
     }
