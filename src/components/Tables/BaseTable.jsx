@@ -240,8 +240,10 @@ export default function BaseTable({
       <Card
         variant="borderless"
         style={{
-          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-          borderRadius: 8,
+          // legacy @base-shadow / @border-radius
+          boxShadow: '0 4px 8px 0 rgba(36, 46, 66, 0.06)',
+          borderRadius: 4,
+          overflow: 'hidden',
           background: isDark ? '#141c2b' : '#ffffff',
         }}
         styles={{ body: { padding: 0 } }}

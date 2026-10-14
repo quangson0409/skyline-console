@@ -184,7 +184,8 @@ export default function InstanceDetail() {
     if (!id) return;
     setLoading(true);
     try {
-      const res = await novaApi.getServer(id);
+      // microversion 2.79: embedded flavor (original_name, vcpus, ram) like legacy
+      const res = await novaApi.getServerV(id);
       const srv = res?.server || res;
       if (!srv) {
         setInstance(null);
@@ -1364,7 +1365,7 @@ export default function InstanceDetail() {
                     >
                       <Descriptions column={2} size="small" bordered>
                         <Descriptions.Item label={t('Name')}>
-                          <b>{instance.flavor?.name || instance.flavor?.original_name || instance.flavor?.id || '-'}</b>
+                          <b>{instance.flavor?.original_name || instance.flavor?.name || instance.flavor?.id || '-'}</b>
                         </Descriptions.Item>
                         <Descriptions.Item label="vCPU">
                           <b>{instance.flavor?.vcpus ?? '-'} {t('Cores')}</b>
@@ -1558,7 +1559,7 @@ export default function InstanceDetail() {
                             {t('Status')}: <b>{instance.status}</b> | {t('Host')}: <b>{instance['OS-EXT-SRV-ATTR:host'] || 'nova'}</b>
                           </div>
                           <div style={{ fontSize: 11, opacity: 0.85, marginTop: 2 }}>
-                            {instance.flavor?.name || instance.flavor?.original_name || 'm1.small'} ({instance.flavor?.vcpus || 2} vCPU / {instance.flavor?.ram ? instance.flavor.ram / 1024 : 2} GiB)
+                            {instance.flavor?.original_name || instance.flavor?.name || instance.flavor?.id || '-'} ({instance.flavor?.vcpus ?? '-'} vCPU / {instance.flavor?.ram ? instance.flavor.ram / 1024 : '-'} GiB)
                           </div>
                         </div>
 

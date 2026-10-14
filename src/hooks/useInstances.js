@@ -74,7 +74,19 @@ export function useInstances({ allProjects = false } = {}) {
   const fetchServers = useCallback(async ({ quiet = false } = {}) => {
     if (!quiet) setLoading(true);
     try {
-      const res = await novaApi.listServers(allProjects ? { all_tenants: 1 } : undefined);
+      // microversion 2.79 (legacy apiVersionMaps): embedded flavor with original_name / vcpus / ram
+      const [res, flavorRes] = await Promise.all([
+        novaApi.listServersV(allProjects ? { all_tenants: 1 } : undefined),
+        novaApi.listFlavorsV().catch(() => null),
+      ]);
+      const flavorNames = Object.fromEntries((flavorRes?.flavors || []).map((f) => [f.id, f]));
+      (res?.servers || []).forEach((srv) => {
+        // older clouds return only { id } -> resolve the name/specs from the flavor list
+        if (srv.flavor && !srv.flavor.original_name && flavorNames[srv.flavor.id]) {
+          const f = flavorNames[srv.flavor.id];
+          srv.flavor = { ...srv.flavor, original_name: f.name, vcpus: f.vcpus, ram: f.ram, disk: f.disk };
+        }
+      });
       if (res && res.servers && Array.isArray(res.servers)) {
         const normalized = res.servers.map(normalizeServer);
         setInstances(normalized);

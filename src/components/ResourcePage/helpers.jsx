@@ -62,7 +62,21 @@ export const CopyText = ({ value, children, style }) => (
   </Space>
 );
 
-/** Legacy "ID/Name" column: name (link to detail) + copyable id underneath */
+/** Legacy short id (utils/table getIdRender): first 8 chars, copy button copies the full id */
+export const ShortId = ({ id, href }) => {
+  if (!id) return null;
+  const short = String(id).substring(0, 8);
+  return (
+    <Typography.Paragraph
+      copyable={{ text: String(id) }}
+      style={{ margin: 0, display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12 }}
+    >
+      {href ? <Link to={href}>{short}</Link> : short}
+    </Typography.Paragraph>
+  );
+};
+
+/** Legacy "ID/Name" column (utils/table getNameRender): short id link on top, bold name below */
 export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, width } = {}) => ({
   title: title || t('ID/Name'),
   dataIndex,
@@ -71,22 +85,14 @@ export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, 
   sorter: (a, b) => String(a[dataIndex] || '').localeCompare(String(b[dataIndex] || '')),
   render: (value, record) => {
     const id = record[idIndex];
-    const display = value || (id ? String(id).substring(0, 8) : '-');
     const href = typeof linkTo === 'function' ? linkTo(record) : null;
+    if (!id) {
+      return href ? <Link to={href} style={{ fontWeight: 600 }}>{value || '-'}</Link> : <span style={{ fontWeight: 600 }}>{value || '-'}</span>;
+    }
     return (
       <div style={{ minWidth: 0 }}>
-        {href ? (
-          <Link to={href} style={{ fontWeight: 600 }}>
-            {display}
-          </Link>
-        ) : (
-          <span style={{ fontWeight: 600 }}>{display}</span>
-        )}
-        {id && id !== value ? (
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            <CopyText value={id} />
-          </div>
-        ) : null}
+        <ShortId id={id} href={href} />
+        <div style={{ fontWeight: 600, wordBreak: 'break-word' }}>{value || '-'}</div>
       </div>
     );
   },

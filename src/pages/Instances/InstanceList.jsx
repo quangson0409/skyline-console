@@ -30,7 +30,9 @@ import useActionRunner from '@/components/Action/useActionRunner';
 import { rowActions, batchActions } from './actions';
 import { useTranslation } from '@/core/i18n';
 import { useAutoRefresh, defaultIsTransition } from '@/hooks/useAutoRefresh';
-import { useIsAdminPage } from '@/components/ResourcePage/helpers';
+import { useIsAdminPage, nameColumn } from '@/components/ResourcePage/helpers';
+
+const SHOW_IMAGE_COLUMN = false;
 
 export default function InstanceList() {
   const { t } = useTranslation();
@@ -111,36 +113,9 @@ export default function InstanceList() {
 
   const columns = useMemo(
     () => [
-      {
-        title: t('Name'),
-        dataIndex: 'name',
-        key: 'name',
-        sorter: (a, b) => (a.name || '').localeCompare(b.name || ''),
-        render: (text, record) => (
-          <div>
-            <div
-              style={{ fontWeight: 600, color: '#0068ff', cursor: 'pointer' }}
-              onClick={() => navigate(`/compute/instance/detail/${record.id}`)}
-            >
-              {text}
-            </div>
-            <Space style={{ fontSize: 11, color: '#94a3b8' }}>
-              <span>ID: {record.id}</span>
-              <Tooltip title={t('Copy')}>
-                <CopyOutlined
-                  style={{ cursor: 'pointer' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigator.clipboard.writeText(record.id);
-                    message.success(t('Copied'));
-                  }}
-                />
-              </Tooltip>
-            </Space>
-          </div>
-        ),
-      },
-      {
+      nameColumn({ linkTo: (r) => `/compute/instance${isAdminPage ? '-admin' : ''}/detail/${r.id}` }),
+      // Image column temporarily hidden (flip SHOW_IMAGE_COLUMN to bring it back)
+      SHOW_IMAGE_COLUMN && {
         title: t('Images'),
         dataIndex: 'image',
         key: 'image',
@@ -183,8 +158,8 @@ export default function InstanceList() {
         sorter: (a, b) => (a.created || '').localeCompare(b.created || ''),
         render: (dateStr) => <span style={{ fontSize: 12, color: '#94a3b8' }}>{dateStr}</span>,
       },
-    ],
-    [t, navigate]
+    ].filter(Boolean),
+    [t, navigate, isAdminPage]
   );
 
   return (

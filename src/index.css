@@ -84,24 +84,55 @@ code, pre, .font-mono {
   line-height: 56px !important;
 }
 
-.ant-table-thead > tr > th {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.5px !important;
-  color: #64748b !important;
-  text-transform: uppercase !important;
+/* Tables - legacy Skyline look (styles/base.less + Tables/Base/index.less):
+   12px text, sentence-case headers on a faint primary tint, #f2f7ff hover/selected rows */
+.ant-table-wrapper .ant-table {
+  font-size: 12px;
+}
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-size: 12px;
+  font-weight: 600;
   white-space: nowrap;
 }
-
-/* Consistent table geometry across every list page */
-.ant-table-tbody > tr > td {
+.ant-table-wrapper .ant-table-thead > tr > th,
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  padding: 10px 12px;
+}
+.ant-table-wrapper .ant-table-thead > tr > th.ant-table-selection-column,
+.ant-table-wrapper .ant-table-tbody > tr > td.ant-table-selection-column {
+  padding-left: 12px;
+  padding-right: 4px;
+}
+body:not(.dark-mode) .ant-table-wrapper .ant-table-thead > tr > th {
+  color: #252525;
+  /* opaque equivalent of legacy rgba(0, 104, 255, 2%) so fixed columns never show content behind */
+  background: #fafcff;
+}
+body:not(.dark-mode) .ant-table-wrapper .ant-table-thead th.ant-table-column-has-sorters:hover {
+  background: #e6f0ff;
+}
+body:not(.dark-mode) .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td,
+body:not(.dark-mode) .ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #f2f7ff;
+}
+.ant-table-wrapper .ant-table-tbody > tr > td {
   vertical-align: middle;
+}
+.ant-table-wrapper td.ant-table-column-sort {
+  background: inherit;
 }
 .ant-table-wrapper .ant-table-cell-fix-right {
   white-space: nowrap;
 }
 .ant-table-wrapper .ant-table-thead > tr > th::before {
   height: 1em !important;
+}
+.ant-table-wrapper .ant-table-pagination.ant-pagination {
+  margin: 0;
+  padding: 8px 16px;
+}
+.ant-table-wrapper .ant-table-tbody .ant-btn-link.ant-btn-sm {
+  font-size: 12px;
 }
 
 /* Buttons cursor pointer */
