@@ -8,7 +8,7 @@ import { Table, Tabs, Input, Checkbox, Space } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
-import { yesNo } from '@/components/ResourcePage';
+import { yesNo, IdNameCell } from '@/components/ResourcePage';
 import { adminSuffix, detailPath, networkLink, routerLink, instanceLink } from '../common';
 
 /* ------------------------------------------------------------------ */
@@ -390,20 +390,26 @@ const dash = (v) => (v === undefined || v === null || v === '' ? '-' : String(v)
 const mapText = (map) => (v) => map[v] || dash(v);
 
 export const policyTableColumns = () => [
-  { title: t('Name'), dataIndex: 'name', render: dash },
+  { title: t('ID/Name'), dataIndex: 'name', render: (v, r) => <IdNameCell id={r.id} name={v} /> },
   { title: t('Description'), dataIndex: 'description', render: dash },
   {
     title: t('Rules'),
     dataIndex: 'rules',
     render: (value) =>
-      !value?.length ? '-' : value.map((item) => <div key={item.id}>{item.name || item.id}</div>),
+      !value?.length
+        ? '-'
+        : value.map((item) => (
+            <div key={item.id}>
+              <IdNameCell id={item.id} name={item.name} bold={false} />
+            </div>
+          )),
   },
   { title: t('Shared Rule'), dataIndex: 'shared', render: yesNo },
   { title: t('Audited'), dataIndex: 'audited', render: yesNo },
 ];
 
 export const ruleTableColumns = () => [
-  { title: t('Rule Name'), dataIndex: 'name', render: (v, r) => v || r.id },
+  { title: t('ID/Name'), dataIndex: 'name', render: (v, r) => <IdNameCell id={r.id} name={v} /> },
   { title: t('Description'), dataIndex: 'description', render: dash },
   { title: t('Protocol'), dataIndex: 'protocol', render: mapText(protocolInfos()) },
   { title: t('Source IP'), dataIndex: 'source_ip_address', render: dash },
@@ -416,29 +422,45 @@ export const ruleTableColumns = () => [
 ];
 
 export const routerPortTableColumns = () => [
-  { title: t('Port'), dataIndex: 'id' },
-  { title: t('Network'), dataIndex: 'network_name', render: dash },
-  { title: t('Subnet'), dataIndex: 'subnet_name', render: dash },
+  // fetchRouterPorts sets name = port id (legacy), so the port has no displayable name here
+  { title: t('Port'), dataIndex: 'id', render: (v, r) => <IdNameCell id={v} name={r.name !== v ? r.name : undefined} /> },
+  {
+    title: t('Network'),
+    dataIndex: 'network_name',
+    render: (v, r) => <IdNameCell id={r.network_id} name={r.network?.name} bold={false} />,
+  },
+  {
+    title: t('Subnet'),
+    dataIndex: 'subnet_name',
+    render: (v, r) => <IdNameCell id={r.subnet?.id} name={r.subnet?.name} bold={false} />,
+  },
   { title: t('IP Address'), dataIndex: 'ip_address', render: dash },
   { title: t('Owner'), dataIndex: 'owner', render: dash },
-  { title: t('Device'), dataIndex: 'device_name', render: dash },
+  {
+    title: t('Device'),
+    dataIndex: 'device_name',
+    render: (v, r) => <IdNameCell id={r.device_id} name={v} bold={false} />,
+  },
   { title: t('Status'), dataIndex: 'status', render: mapText(portStatus()) },
 ];
 
 export const instancePortTableColumns = () => [
-  { title: t('Port'), dataIndex: 'id' },
+  { title: t('Port'), dataIndex: 'id', render: (v, r) => <IdNameCell id={v} name={r.name !== v ? r.name : undefined} /> },
   {
     title: t('Bind Resource'),
     dataIndex: 'server_name',
     render: (serverName, item) => {
       const { device_id: deviceId, device_owner: deviceOwner } = item;
       if (deviceId && deviceOwner === 'compute:nova') {
-        const text = serverName ? `${deviceId} (${serverName})` : deviceId;
         return (
           <>
             {deviceOwner}
-            <br />
-            <Link to={`/compute/instance/detail/${deviceId}?tab=interface`}>{text}</Link>
+            <IdNameCell
+              id={deviceId}
+              name={serverName}
+              href={`/compute/instance/detail/${deviceId}?tab=interface`}
+              bold={false}
+            />
           </>
         );
       }
@@ -451,7 +473,11 @@ export const instancePortTableColumns = () => [
       );
     },
   },
-  { title: t('Network'), dataIndex: 'network_id', render: (v) => networkLink(v, v, false) },
+  {
+    title: t('Network'),
+    dataIndex: 'network_id',
+    render: (v, r) => <IdNameCell id={v} name={r.network_name} href={v ? detailPath('networks', v, false) : undefined} bold={false} />,
+  },
   { title: t('MAC Address'), dataIndex: 'mac_address', render: dash },
   { title: t('Status'), dataIndex: 'status', render: mapText(portStatus()) },
 ];
@@ -470,6 +496,16 @@ export const linkList = (list, linkFn, isAdmin) =>
     <Space direction="vertical" size={0}>
       {list.map((it) => (
         <div key={it.id}>{linkFn(it.id, it.name, isAdmin)}</div>
+      ))}
+    </Space>
+  );
+
+/** Table cell variant of linkList: stack of ID/Name cells linking to `baseName` detail pages */
+export const idNameList = (list, baseName, isAdmin) =>
+  !list?.length ? '-' : (
+    <Space direction="vertical" size={4}>
+      {list.map((it) => (
+        <IdNameCell key={it.id} id={it.id} name={it.name} href={detailPath(baseName, it.id, isAdmin)} bold={false} />
       ))}
     </Space>
   );

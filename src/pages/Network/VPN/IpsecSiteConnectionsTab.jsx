@@ -1,7 +1,14 @@
 /** IPsec Site Connections tab (legacy containers/VPN/IPsecSiteConnection) */
 import React from 'react';
 import { neutronApi } from '@/api/neutron';
-import ResourcePage, { nameColumn, statusColumn, textColumn, projectColumn, useIsAdminPage } from '@/components/ResourcePage';
+import ResourcePage, {
+  nameColumn,
+  statusColumn,
+  textColumn,
+  projectColumn,
+  useIsAdminPage,
+  IdNameCell,
+} from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { detailPath, isIPv4, isIPv6 } from '../common';
@@ -223,8 +230,12 @@ export default function IpsecSiteConnectionsTab() {
           nameColumn({ linkTo: (r) => ipsecDetailPath(r.id, isAdmin) }),
           isAdmin && projectColumn(projectMap),
           textColumn(t('Description'), 'description'),
-          textColumn(t('Local Endpoint Group ID'), 'local_ep_group_id'),
-          textColumn(t('Peer Endpoint Group ID'), 'peer_ep_group_id'),
+          textColumn(t('Local Endpoint Group ID'), 'local_ep_group_id', {
+            render: (v) => (v ? <IdNameCell id={v} bold={false} /> : '-'),
+          }),
+          textColumn(t('Peer Endpoint Group ID'), 'peer_ep_group_id', {
+            render: (v) => (v ? <IdNameCell id={v} bold={false} /> : '-'),
+          }),
           textColumn(t('Peer Address'), 'peer_address'),
           statusColumn({ textMap: vpnStatus() }),
         ].filter(Boolean)

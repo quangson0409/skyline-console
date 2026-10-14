@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { neutronApi } from '@/api/neutron';
 import { keystoneApi } from '@/api/keystone';
-import ResourcePage, { CopyText, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { IdNameCell, deleteAction } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { detailPath, listAll } from '../common';
@@ -204,16 +204,7 @@ export const rbacRowActions = () => ({
 });
 
 /* ---------------- columns ---------------- */
-const idName = (name, id, to) => (
-  <div>
-    {to ? <Link to={to}>{name || '-'}</Link> : <span>{name || '-'}</span>}
-    {id ? (
-      <div style={{ fontSize: 11, color: '#94a3b8' }}>
-        <CopyText value={id} />
-      </div>
-    ) : null}
-  </div>
-);
+const idName = (name, id, to) => <IdNameCell id={id} name={name} href={to || undefined} bold={false} />;
 
 export const rbacPolicyColumns = ({ projectMap = {} } = {}) => [
   {

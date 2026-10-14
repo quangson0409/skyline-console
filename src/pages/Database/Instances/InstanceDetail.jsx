@@ -4,7 +4,7 @@ import { Typography } from 'antd';
 import { troveApi } from '@/api/trove';
 import { novaApi } from '@/api/nova';
 import ResourceDetail from '@/components/ResourceDetail';
-import ResourcePage, { formatTime, textColumn, timeColumn, statusColumn, yesNo, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { formatTime, textColumn, timeColumn, statusColumn, yesNo, deleteAction, nameColumn } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import { passwordRule, confirmPasswordRule } from '@/pages/Identity/common';
 import { t } from '@/core/i18n';
@@ -236,12 +236,7 @@ function BackupsTab({ instanceId, isAdmin }) {
       fetch={async () => (await troveApi.listInstanceBackups(instanceId))?.backups || []}
       deps={[instanceId]}
       columns={[
-        {
-          title: t('Name'),
-          dataIndex: 'name',
-          key: 'name',
-          render: (v, r) => (isAdmin ? v || r.id : <Link to={`/database/backups/detail/${r.id}`}>{v || r.id}</Link>),
-        },
+        nameColumn({ linkTo: (r) => (isAdmin ? null : `/database/backups/detail/${r.id}`) }),
         timeColumn({ dataIndex: 'created' }),
         textColumn(t('Backup File'), 'locationRef'),
         { title: t('Incremental'), dataIndex: 'incremental', key: 'incremental', render: (v) => yesNo(v) },

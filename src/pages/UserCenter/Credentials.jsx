@@ -2,7 +2,7 @@ import React from 'react';
 import { Checkbox, DatePicker, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { keystoneApi } from '@/api/keystone';
-import ResourcePage, { nameColumn, formatTime, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, IdNameCell, formatTime, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { getProfile, currentUserId, downloadJson } from '@/pages/Identity/common';
 
@@ -26,12 +26,7 @@ export const credentialColumns = () => [
     title: t('Project ID/Name'),
     dataIndex: 'project_name',
     key: 'project_name',
-    render: (v, r) => (
-      <div>
-        <div>{v || '-'}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.project_id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.project_id} name={v} bold={false} />,
   },
   { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
   { title: t('Expires At'), dataIndex: 'expires_at', key: 'expires_at', render: (v) => formatTime(v) },

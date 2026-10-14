@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { AutoComplete, Form, Input, Space } from 'antd';
-import { Link } from 'react-router-dom';
+import { IdNameCell } from '@/components/ResourcePage/helpers';
 import { neutronApi, neutronResources } from '@/api/neutron';
 import { quotaApi } from '@/api/quota';
 import { currentProjectId } from '@/api/endpoints';
@@ -98,7 +98,7 @@ export const ruleColumns = ({ isAdmin } = {}) => [
     title: t('Remote Group ID'),
     dataIndex: 'remote_group_id',
     key: 'remote_group_id',
-    render: (v) => (v ? <Link to={detailPath('security-group', v, isAdmin)}>{v}</Link> : '-'),
+    render: (v) => (v ? <IdNameCell id={v} href={detailPath('security-group', v, isAdmin)} bold={false} /> : '-'),
   },
   {
     title: t('ICMP Type/ICMP Code'),

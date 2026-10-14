@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { manilaApi } from '@/api/manila';
-import ResourcePage, { statusColumn, textColumn, timeColumn, deleteAction, CopyText } from '@/components/ResourcePage';
+import ResourcePage, { statusColumn, textColumn, timeColumn, deleteAction, CopyText, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { shareStatus, filterOptions, manilaIsTransition, shareNetworkLink, shareLink } from '../shareShared';
+import { shareStatus, filterOptions, manilaIsTransition } from '../shareShared';
 import { resetShareStatusAction } from '../Share/shareActions';
 
 /* ------------------------------------------------------------------ stores/manila/share-instance */
@@ -36,8 +36,6 @@ export const shareInstanceActionConfigs = () => {
   };
 };
 
-const idLink = (path) => (v) => (v ? <Link to={path(v)}>{v}</Link> : '-');
-
 export const shareInstanceColumns = () => [
   {
     title: t('ID'),
@@ -58,15 +56,15 @@ export const shareInstanceColumns = () => [
     title: t('Share Network'),
     dataIndex: 'share_network_id',
     key: 'share_network_id',
-    render: (v) => shareNetworkLink(v, v, true),
+    render: (v) => <IdNameCell id={v} href={v ? `/share/share-network-admin/detail/${v}` : undefined} bold={false} />,
   },
   {
     title: t('Share Server'),
     dataIndex: 'share_server_id',
     key: 'share_server_id',
-    render: idLink((v) => `/share/share-server-admin/detail/${v}`),
+    render: (v) => <IdNameCell id={v} href={v ? `/share/share-server-admin/detail/${v}` : undefined} bold={false} />,
   },
-  { title: t('Share ID'), dataIndex: 'share_id', key: 'share_id', render: (v) => shareLink(v, v, true) },
+  { title: t('Share ID'), dataIndex: 'share_id', key: 'share_id', render: (v) => <IdNameCell id={v} href={v ? `/share/share-admin/detail/${v}` : undefined} bold={false} /> },
   timeColumn(),
 ];
 

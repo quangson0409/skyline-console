@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Form, Spin } from 'antd';
 import { manilaApi } from '@/api/manila';
 import { neutronApi } from '@/api/neutron';
-import { nameColumn, timeColumn, textColumn, projectColumn, yesNo, deleteAction } from '@/components/ResourcePage';
+import { nameColumn, IdNameCell, timeColumn, textColumn, projectColumn, yesNo, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { networkLink, ResourcePopover, selectTableField, SelectTable } from '../shareShared';
+import { ResourcePopover, selectTableField, SelectTable } from '../shareShared';
 
 /* ------------------------------------------------------------------ stores/manila/share-network */
 export const fetchShareNetworks = async ({ isAdmin } = {}) => {
@@ -48,8 +48,16 @@ export const shareNetworkColumns = ({ isAdmin, projectMap, selectMode = false } 
         return (
           <div>
             {subnets.map((it) => (
-              <div key={it.id || it.neutron_net_id}>
-                {selectMode ? it.neutron_net_id || '-' : networkLink(it.neutron_net_id, it.neutron_net_id, isAdmin)}
+              <div key={it.id || it.neutron_net_id} style={{ marginBottom: 4 }}>
+                <IdNameCell
+                  id={it.neutron_net_id}
+                  href={
+                    !selectMode && it.neutron_net_id
+                      ? `/network/${isAdmin ? 'networks-admin' : 'networks'}/detail/${it.neutron_net_id}`
+                      : undefined
+                  }
+                  bold={false}
+                />
               </div>
             ))}
             {!selectMode ? (
@@ -69,7 +77,9 @@ export const shareNetworkColumns = ({ isAdmin, projectMap, selectMode = false } 
         return (
           <div>
             {subnets.map((it) => (
-              <div key={it.id || it.neutron_subnet_id}>{it.neutron_subnet_id || '-'}</div>
+              <div key={it.id || it.neutron_subnet_id} style={{ marginBottom: 4 }}>
+                <IdNameCell id={it.neutron_subnet_id} bold={false} />
+              </div>
             ))}
             {!selectMode ? (
               <ResourcePopover kind="subnet" ids={subnets.map((it) => it.neutron_subnet_id).filter(Boolean)} />
@@ -129,7 +139,7 @@ function SubnetPicker({ value, onChange, form }) {
         data={subnets}
         disabledFunc={(record) => !record.selectable}
         columns={[
-          { title: t('Name'), dataIndex: 'name', key: 'name', render: (v, r) => v || r.id },
+          nameColumn(),
           { title: t('CIDR'), dataIndex: 'cidr', key: 'cidr' },
           {
             title: t('Allocation Pools'),

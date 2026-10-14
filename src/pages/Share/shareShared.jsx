@@ -8,6 +8,7 @@ import { neutronApi } from '@/api/neutron';
 import { currentProjectId } from '@/api/endpoints';
 import ResourcePage, {
   nameColumn,
+  IdNameCell,
   textColumn,
   boolColumn,
   yesNo,
@@ -355,12 +356,7 @@ export const projectTableColumns = () => [
     title: t('Domain ID/Name'),
     dataIndex: 'domain_id',
     key: 'domain_id',
-    render: (v, r) => (
-      <div>
-        <div>{r.domainName || '-'}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{v}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={v} name={r.domainName} bold={false} />,
   },
   boolColumn(t('Enabled'), 'enabled'),
   textColumn(t('Description'), 'description'),
@@ -392,7 +388,14 @@ export const shareGroupTypeSelectColumns = () => [
     title: t('Share Types'),
     dataIndex: 'shareTypes',
     key: 'shareTypes',
-    render: (v) => ((v || []).length ? (v || []).map((it) => <div key={it.id}>{it.name}</div>) : '-'),
+    render: (v) =>
+      (v || []).length
+        ? (v || []).map((it) => (
+            <div key={it.id} style={{ marginBottom: 4 }}>
+              <IdNameCell id={it.id} name={it.name} bold={false} />
+            </div>
+          ))
+        : '-',
   },
 ];
 
@@ -428,13 +431,13 @@ export function ResourcePopover({ ids = [], kind = 'network' }) {
   const columns =
     kind === 'network'
       ? [
-          { title: t('Network Name'), dataIndex: 'name', key: 'name', render: (v, r) => v || r.id },
+          { title: t('Network Name'), dataIndex: 'name', key: 'name', render: (v, r) => <IdNameCell id={r.id} name={v} /> },
           { title: t('External'), dataIndex: 'router:external', key: 'ext', render: (v) => yesNo(v) },
           { title: t('Shared Network'), dataIndex: 'shared', key: 'shared', render: (v) => yesNo(v) },
           { title: t('Status'), dataIndex: 'status', key: 'status', render: (v) => v || '-' },
         ]
       : [
-          { title: t('Name'), dataIndex: 'name', key: 'name', render: (v, r) => v || r.id },
+          { title: t('ID/Name'), dataIndex: 'name', key: 'name', render: (v, r) => <IdNameCell id={r.id} name={v} /> },
           { title: t('CIDR'), dataIndex: 'cidr', key: 'cidr', render: (v) => v || '-' },
         ];
   return (

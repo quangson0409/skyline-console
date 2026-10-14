@@ -6,7 +6,6 @@ import ResourcePage, {
   nameColumn,
   projectColumn,
   deleteAction,
-  CopyText,
   useIsAdminPage,
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
@@ -156,16 +155,6 @@ export const serverGroupColumns = ({ isAdmin, projectMap }) =>
       dataIndex: 'policy',
       key: 'policy',
       render: (policy) => <PolicyTag policy={policy} />,
-    },
-    {
-      title: 'UUID',
-      dataIndex: 'id',
-      key: 'uuid',
-      render: (id) => (
-        <CopyText value={id}>
-          <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>{id}</span>
-        </CopyText>
-      ),
     },
   ].filter(Boolean);
 

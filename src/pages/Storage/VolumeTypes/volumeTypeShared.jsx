@@ -1,8 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { cinderApi } from '@/api/cinder';
 import { keystoneApi } from '@/api/keystone';
-import { nameColumn, textColumn, boolColumn, deleteAction } from '@/components/ResourcePage';
+import { nameColumn, IdNameCell, textColumn, boolColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { selectTableField, renderSpecs } from '../shared';
 
@@ -235,7 +234,7 @@ export const manageQosAction = () => ({
         label: t('QoS Spec'),
         data: qos,
         columns: [
-          { title: t('Name'), dataIndex: 'name', key: 'name' },
+          nameColumn(),
           { title: t('Consumer'), dataIndex: 'consumer', key: 'consumer', render: (v) => consumerTypes()[v] || v },
           { title: t('Specs'), dataIndex: 'specs', key: 'specs', render: renderSpecs },
         ],
@@ -359,10 +358,7 @@ export const volumeTypeColumns = () => [
     key: 'qos_specs_name',
     render: (v, r) =>
       r.qos_specs_id ? (
-        <div>
-          <Link to={`/storage/volume-type-admin/qos/detail/${r.qos_specs_id}`}>{v || r.qos_specs_id}</Link>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.qos_specs_id}</div>
-        </div>
+        <IdNameCell id={r.qos_specs_id} name={v} href={`/storage/volume-type-admin/qos/detail/${r.qos_specs_id}`} bold={false} />
       ) : (
         '-'
       ),

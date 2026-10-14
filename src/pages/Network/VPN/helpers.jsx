@@ -6,7 +6,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Col, Empty, Form, Input, Row, Spin, Table, Tag } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import Status from '@/components/Status';
-import { CopyText, formatTime } from '@/components/ResourcePage';
+import { CopyText, formatTime, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { listAll, isCidr } from '../common';
 
@@ -191,14 +191,13 @@ export function RouterSelectTable({ value, onChange, projectId, isAdmin, disable
     {
       title: t('ID/Name'),
       dataIndex: 'name',
-      render: (v, r) => (
-        <div>
-          <div style={{ fontWeight: 600 }}>{v || '-'}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-        </div>
-      ),
+      render: (v, r) => <IdNameCell id={r.id} name={v} />,
     },
-    isAdmin && { title: t('Project ID/Name'), dataIndex: 'project_id', render: dash },
+    isAdmin && {
+      title: t('Project ID/Name'),
+      dataIndex: 'project_id',
+      render: (v) => (v ? <IdNameCell id={v} bold={false} /> : '-'),
+    },
     {
       title: t('Status'),
       dataIndex: 'status',
@@ -215,10 +214,7 @@ export function RouterSelectTable({ value, onChange, projectId, isAdmin, disable
       key: 'ext_net',
       render: (v) =>
         v?.network_id ? (
-          <div>
-            <div>{networks[v.network_id] || '-'}</div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>{v.network_id}</div>
-          </div>
+          <IdNameCell id={v.network_id} name={networks[v.network_id]} bold={false} />
         ) : (
           '-'
         ),
@@ -275,14 +271,9 @@ export function SubnetSelectTable({ value, onChange, subnets, loading }) {
       pagination={{ pageSize: 5, size: 'small' }}
       columns={[
         {
-          title: t('Name'),
+          title: t('ID/Name'),
           dataIndex: 'name',
-          render: (v, r) => (
-            <div>
-              <div style={{ fontWeight: 600 }}>{v || '-'}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-            </div>
-          ),
+          render: (v, r) => <IdNameCell id={r.id} name={v} />,
         },
         { title: t('CIDR'), dataIndex: 'cidr', render: dash },
       ]}

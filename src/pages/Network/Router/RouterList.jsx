@@ -7,10 +7,11 @@ import ResourcePage, {
   projectColumn,
   yesNo,
   useIsAdminPage,
+  IdNameCell,
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { detailPath, networkLink, listAll } from '../common';
+import { detailPath, listAll } from '../common';
 import { routerStatus, mapRouter, createRouterAction, deleteRouterAction, routerRowActions } from './actions';
 
 /** legacy RouterStore.updateExternalNetworkForItems */
@@ -54,10 +55,12 @@ export const routerColumns = ({ isAdmin, projectMap }) =>
       key: 'externalNetworkName',
       render: (value, r) =>
         r.externalNetworkId ? (
-          <div>
-            {networkLink(r.externalNetworkId, value || r.externalNetworkId, isAdmin)}
-            {value ? <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.externalNetworkId}</div> : null}
-          </div>
+          <IdNameCell
+            id={r.externalNetworkId}
+            name={value}
+            href={detailPath('networks', r.externalNetworkId, isAdmin)}
+            bold={false}
+          />
         ) : (
           '-'
         ),

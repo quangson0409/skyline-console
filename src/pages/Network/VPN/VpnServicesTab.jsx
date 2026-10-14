@@ -1,7 +1,8 @@
 /** VPN Gateways tab (legacy containers/VPN/VPNGateway) */
 import React from 'react';
 import { neutronApi } from '@/api/neutron';
-import ResourcePage, { nameColumn, statusColumn, textColumn, projectColumn, useIsAdminPage } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, textColumn, projectColumn, useIsAdminPage, IdNameCell } from '@/components/ResourcePage';
+import { detailPath } from '../common';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import {
@@ -82,7 +83,9 @@ export default function VpnServicesTab() {
             dataIndex: 'external_v4_ip',
             render: (_, r) => r.external_v4_ip || r.external_v6_ip || '-',
           },
-          textColumn(t('Router ID'), 'router_id'),
+          textColumn(t('Router ID'), 'router_id', {
+            render: (v) => (v ? <IdNameCell id={v} href={detailPath('router', v, isAdmin)} bold={false} /> : '-'),
+          }),
           statusColumn({ textMap: vpnStatus() }),
         ].filter(Boolean)
       }

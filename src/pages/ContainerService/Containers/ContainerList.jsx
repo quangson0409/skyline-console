@@ -1,8 +1,8 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { zunApi } from '@/api/zun';
 import { neutronApi } from '@/api/neutron';
-import ResourcePage, { nameColumn, statusColumn, projectColumn } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, projectColumn, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { containerStatus, containerTaskStatus, imageDrivers, isContainerTransition, listRender } from '../common';
@@ -91,7 +91,12 @@ export default function ContainerList() {
               listRender(
                 v,
                 (it) => (
-                  <Link to={`/network/${isAdmin ? 'networks-admin' : 'networks'}/detail/${it.id}`}>{it.name || it.id}</Link>
+                  <IdNameCell
+                    id={it.id}
+                    name={it.name !== it.id ? it.name : undefined}
+                    href={`/network/${isAdmin ? 'networks-admin' : 'networks'}/detail/${it.id}`}
+                    bold={false}
+                  />
                 ),
                 (it) => it.id
               ),

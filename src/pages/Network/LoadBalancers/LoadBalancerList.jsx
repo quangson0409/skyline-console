@@ -6,10 +6,11 @@ import ResourcePage, {
   timeColumn,
   projectColumn,
   useIsAdminPage,
+  IdNameCell,
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { networkLink, portLink } from '@/pages/Network/common';
+import { detailPath } from '@/pages/Network/common';
 import {
   operatingStatus,
   provisioningStatus,
@@ -36,7 +37,7 @@ export const lbColumns = ({ isAdmin, projectMap }) =>
       title: t('Network ID'),
       dataIndex: 'vip_network_id',
       key: 'vip_network_id',
-      render: (v) => (v ? networkLink(v, v, isAdmin) : '-'),
+      render: (v) => (v ? <IdNameCell id={v} href={detailPath('networks', v, isAdmin)} bold={false} /> : '-'),
     },
     { title: t('IP'), dataIndex: 'vip_address', key: 'vip_address', render: (v) => v || '-' },
     { title: t('Floating IP'), dataIndex: 'fip', key: 'fip', render: (v) => v || '-' },
@@ -44,7 +45,7 @@ export const lbColumns = ({ isAdmin, projectMap }) =>
       title: t('Port ID'),
       dataIndex: 'vip_port_id',
       key: 'vip_port_id',
-      render: (v) => (v ? portLink(v, v, isAdmin) : '-'),
+      render: (v) => (v ? <IdNameCell id={v} href={detailPath('port', v, isAdmin)} bold={false} /> : '-'),
     },
     {
       ...statusColumn({ dataIndex: 'operating_status', textMap: operatingStatus() }),

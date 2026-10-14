@@ -1,5 +1,5 @@
 import React from 'react';
-import ResourcePage, { nameColumn, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, IdNameCell, yesNo } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { fetchShareGroupTypes, shareGroupTypeActionConfigs } from './shareGroupTypeShared';
 
@@ -11,7 +11,14 @@ export const shareGroupTypeColumns = () => [
     title: t('Share Types'),
     dataIndex: 'shareTypes',
     key: 'shareTypes',
-    render: (v) => ((v || []).length ? v.map((it) => <div key={it.id}>{it.name}</div>) : '-'),
+    render: (v) =>
+      (v || []).length
+        ? v.map((it) => (
+            <div key={it.id} style={{ marginBottom: 4 }}>
+              <IdNameCell id={it.id} name={it.name} bold={false} />
+            </div>
+          ))
+        : '-',
   },
 ];
 

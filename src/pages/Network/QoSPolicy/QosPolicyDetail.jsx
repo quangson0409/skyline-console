@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import ResourcePage, {
@@ -8,12 +7,12 @@ import ResourcePage, {
   projectColumn,
   statusColumn,
   timeColumn,
-  CopyText,
+  IdNameCell,
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
-import { listAll, portLink } from '../common';
+import { listAll, detailPath } from '../common';
 import { fetchQosPolicyDetail, findEgressRule, findIngressRule, findDscpRule, qosRowActions } from './helpers';
 
 /* ---------------- Detail tab (legacy Detail/BaseDetail.jsx) ---------------- */
@@ -127,14 +126,7 @@ function FloatingIpTab({ policyId }) {
             dataIndex: 'floating_ip_address',
             key: 'floating_ip_address',
             render: (v, r) => (
-              <div>
-                <Link to={`/network/floatingip${isAdmin ? '-admin' : ''}/detail/${r.id}`} style={{ fontWeight: 600 }}>
-                  {v || r.id}
-                </Link>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                  <CopyText value={r.id} />
-                </div>
-              </div>
+              <IdNameCell id={r.id} name={v} href={`/network/floatingip${isAdmin ? '-admin' : ''}/detail/${r.id}`} />
             ),
           },
           isAdmin && { ...projectColumn(projectMap), title: t('Project ID/Name') },
@@ -145,10 +137,7 @@ function FloatingIpTab({ policyId }) {
             key: 'port_id',
             render: (v, r) =>
               v ? (
-                <div>
-                  <div>{r.fixed_ip_address || '-'}</div>
-                  <div style={{ fontSize: 11 }}>{portLink(v, v, isAdmin)}</div>
-                </div>
+                <IdNameCell id={v} name={r.fixed_ip_address} href={detailPath('port', v, isAdmin)} bold={false} />
               ) : (
                 '-'
               ),

@@ -7,7 +7,7 @@ import {
   certificateMode,
   certificateStatus,
   certificateDetailPath,
-  renderListeners,
+  renderListenerCells,
   fetchServerCertificates,
   fetchCaCertificates,
 } from './common';
@@ -61,7 +61,7 @@ export default function CertificateList() {
           key: 'domain',
           render: (v) => v || '-',
         },
-        { title: t('Listener'), dataIndex: 'listener', key: 'listener', render: renderListeners },
+        { title: t('Listener'), dataIndex: 'listener', key: 'listener', render: renderListenerCells },
         statusColumn({ textMap: certificateStatus() }),
         timeColumn({ dataIndex: 'created' }),
       ].filter(Boolean)}

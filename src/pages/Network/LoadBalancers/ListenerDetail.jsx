@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Space, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import ResourceDetail from '@/components/ResourceDetail';
-import ResourcePage, { nameColumn, statusColumn, formatTime } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, formatTime, IdNameCell } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import { t } from '@/core/i18n';
 import {
@@ -136,7 +136,7 @@ export const memberColumns = () => [
   { title: t('IP Address'), dataIndex: 'address', key: 'address', render: (v) => v || '-' },
   { title: t('Port'), dataIndex: 'protocol_port', key: 'protocol_port', render: (v) => v ?? '-' },
   { title: t('Weight'), dataIndex: 'weight', key: 'weight', render: (v) => v ?? '-' },
-  { title: t('Subnet ID'), dataIndex: 'subnet_id', key: 'subnet_id', render: (v) => v || '-' },
+  { title: t('Subnet ID'), dataIndex: 'subnet_id', key: 'subnet_id', render: (v) => (v ? <IdNameCell id={v} bold={false} /> : '-') },
 ];
 
 function Members({ listener, isAdmin, projectId, refetchDetail }) {

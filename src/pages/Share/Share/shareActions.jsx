@@ -3,6 +3,7 @@ import { Form } from 'antd';
 import { manilaApi } from '@/api/manila';
 import ResourcePage, {
   nameColumn,
+  IdNameCell,
   statusColumn,
   timeColumn,
   textColumn,
@@ -29,8 +30,6 @@ import {
   selectTableField,
   SelectTable,
   shareTypeSelectColumns,
-  shareNetworkLink,
-  shareGroupLink,
 } from '../shareShared';
 import { shareNetworkColumns, fetchShareNetworks } from '../ShareNetwork/shareNetworkShared';
 import { shareGroupColumns, fetchShareGroups } from '../ShareGroup/shareGroupShared';
@@ -75,7 +74,7 @@ export const shareColumns = ({ isAdmin, projectMap, hide = [] } = {}) =>
       title: t('Share Type'),
       dataIndex: 'share_type_name',
       key: 'share_type_name',
-      render: (v, r) => v || r.share_type || '-',
+      render: (v, r) => <IdNameCell id={r.share_type} name={v} bold={false} />,
     },
     {
       title: t('Size'),
@@ -96,13 +95,17 @@ export const shareColumns = ({ isAdmin, projectMap, hide = [] } = {}) =>
       title: t('Share Network'),
       dataIndex: 'share_network_id',
       key: 'share_network_id',
-      render: (v) => shareNetworkLink(v, v, isAdmin),
+      render: (v) => (
+        <IdNameCell id={v} href={v ? `/share/${isAdmin ? 'share-network-admin' : 'share-network'}/detail/${v}` : undefined} bold={false} />
+      ),
     },
     !hide.includes('share_group_id') && {
       title: t('Share Group'),
       dataIndex: 'share_group_id',
       key: 'share_group_id',
-      render: (v) => shareGroupLink(v, v, isAdmin),
+      render: (v) => (
+        <IdNameCell id={v} href={v ? `/share/${isAdmin ? 'share-group-admin' : 'share-group'}/detail/${v}` : undefined} bold={false} />
+      ),
     },
     timeColumn(),
   ].filter(Boolean);

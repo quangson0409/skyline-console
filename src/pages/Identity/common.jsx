@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { Badge, Form, Select, Table, Tag, Tooltip, Typography } from 'antd';
+import { Badge, Form, Select, Table, Tag, Tooltip } from 'antd';
 import { Link } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import { skylineApi } from '@/api/skyline';
-import { CopyText } from '@/components/ResourcePage';
+import { IdNameCell } from '@/components/ResourcePage';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
 
@@ -47,19 +47,10 @@ export const descriptionColumn = () => ({
   render: (v) => v || '-',
 });
 
-/** "<name>" link + copyable id below (legacy isLink + idKey columns) */
+/** Related-resource id/name cell (copyable short id link + name below) */
 export const IdNameLink = ({ id, name, to }) => {
   if (!id && !name) return '-';
-  return (
-    <div>
-      {to && id ? <Link to={to}>{name || id}</Link> : <span>{name || id || '-'}</span>}
-      {id ? (
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>
-          <CopyText value={id} />
-        </div>
-      ) : null}
-    </div>
-  );
+  return <IdNameCell id={id} name={name && name !== id ? name : undefined} href={to && id ? to : undefined} bold={false} />;
 };
 
 export const domainColumn = () => ({
@@ -354,16 +345,13 @@ export function MemberRoleSelector({
           {
             title: memberTitle || t('ID/Name'),
             dataIndex: 'name',
-            render: (name, r) => (
-              <div>
-                <div>{name || '-'}</div>
-                <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                  {r.id}
-                </Typography.Text>
-              </div>
-            ),
+            render: (name, r) => <IdNameCell id={r.id} name={name !== r.id ? name : undefined} />,
           },
-          { title: t('Domain ID/Name'), dataIndex: 'domainName', render: (v) => v || '-' },
+          {
+            title: t('Domain ID/Name'),
+            dataIndex: 'domainName',
+            render: (v, r) => (r.domain_id ? <IdNameLink id={r.domain_id} name={v} /> : v || '-'),
+          },
           {
             title: roleTitle || t('Select Project Role'),
             dataIndex: 'id',

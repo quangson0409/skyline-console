@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { cinderApi } from '@/api/cinder';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, textColumn, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, IdNameCell, statusColumn, timeColumn, textColumn, deleteAction } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { MetricCards } from '../shared';
@@ -176,12 +175,7 @@ export const snapshotColumns = ({ isAdmin, projectMap = {}, hideVolume } = {}) =
       title: t('Project ID/Name'),
       dataIndex: 'project_name',
       key: 'project_name',
-      render: (v, r) => (
-        <div>
-          <span>{v || projectMap[r.project_id] || '-'}</span>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.project_id}</div>
-        </div>
-      ),
+      render: (v, r) => <IdNameCell id={r.project_id} name={v || projectMap[r.project_id]} bold={false} />,
     },
     isAdmin && textColumn(t('Host'), 'host'),
     { title: t('Size'), dataIndex: 'size', key: 'size', sorter: (a, b) => a.size - b.size, render: (v) => <b>{v} GiB</b> },
@@ -191,10 +185,12 @@ export const snapshotColumns = ({ isAdmin, projectMap = {}, hideVolume } = {}) =
       dataIndex: 'volume_name',
       key: 'volume_name',
       render: (v, r) => (
-        <div>
-          <Link to={`/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.volume_id}`}>{v || r.volume_id || '-'}</Link>
-          {v ? <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.volume_id}</div> : null}
-        </div>
+        <IdNameCell
+          id={r.volume_id}
+          name={v}
+          href={r.volume_id ? `/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.volume_id}` : undefined}
+          bold={false}
+        />
       ),
     },
     timeColumn(),

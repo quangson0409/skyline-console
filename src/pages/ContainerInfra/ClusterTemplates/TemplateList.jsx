@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { magnumApi } from '@/api/magnum';
-import ResourcePage, { nameColumn, projectColumn, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, projectColumn, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { fetchKeypairs } from '../common';
@@ -32,12 +32,7 @@ export const templateColumns = ({ isAdmin, projectMap, inSelect } = {}) =>
           title: t('ID/Name'),
           dataIndex: 'name',
           key: 'name',
-          render: (v, r) => (
-            <div>
-              <div style={{ fontWeight: 600 }}>{v || r.uuid}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.uuid}</div>
-            </div>
-          ),
+          render: (v, r) => <IdNameCell id={r.uuid} name={v} />,
         }
       : nameColumn({ idIndex: 'uuid', linkTo: (r) => templatePath(isAdmin, r.uuid) }),
     isAdmin && projectColumn(projectMap),

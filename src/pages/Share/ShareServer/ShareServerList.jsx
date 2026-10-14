@@ -8,10 +8,11 @@ import ResourcePage, {
   projectColumn,
   deleteAction,
   CopyText,
+  IdNameCell,
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { shareServerStatus, filterOptions, manilaIsTransition, shareNetworkLink } from '../shareShared';
+import { shareServerStatus, filterOptions, manilaIsTransition } from '../shareShared';
 
 /* ------------------------------------------------------------------ stores/manila/share-server */
 export const fetchShareServers = async () => (await manilaApi.listShareServers())?.share_servers || [];
@@ -52,7 +53,14 @@ export const shareServerColumns = ({ projectMap } = {}) => [
     title: t('Share Network'),
     dataIndex: 'share_network_name',
     key: 'share_network_name',
-    render: (v, r) => shareNetworkLink(r.share_network_id, v || r.share_network_id, true),
+    render: (v, r) => (
+      <IdNameCell
+        id={r.share_network_id}
+        name={v}
+        href={r.share_network_id ? `/share/share-network-admin/detail/${r.share_network_id}` : undefined}
+        bold={false}
+      />
+    ),
   },
   timeColumn(),
 ];

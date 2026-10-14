@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { Button, Collapse, Divider, Empty, Space, Spin, Table } from 'antd';
 import { neutronApi } from '@/api/neutron';
 import ResourceDetail from '@/components/ResourceDetail';
-import ResourcePage, { formatTime, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { formatTime, yesNo, IdNameCell } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
@@ -148,7 +148,7 @@ const FixedIpsTab = ({ detail, isAdmin, refetch }) => {
           title: t('Subnet'),
           dataIndex: 'subnet_name',
           key: 'subnet_name',
-          render: (v, r) => v || r.subnet_id || '-',
+          render: (v, r) => (r.subnet_id ? <IdNameCell id={r.subnet_id} name={v} bold={false} /> : v || '-'),
         },
       ]}
       filterParams={[

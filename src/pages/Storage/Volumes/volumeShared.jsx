@@ -8,6 +8,7 @@ import { glanceApi } from '@/api/glance';
 import { useAuthStore } from '@/store/authStore';
 import {
   nameColumn,
+  IdNameCell,
   statusColumn,
   timeColumn,
   textColumn,
@@ -192,7 +193,7 @@ export const fetchVolumeTypeList = async () => {
 };
 
 const volumeTypeColumns = () => [
-  { title: t('Name'), dataIndex: 'name', key: 'name' },
+  nameColumn(),
   textColumn(t('Description'), 'description'),
   { title: t('Read IOPS/GB'), key: 'r', render: (_, r) => r.qos_props?.read_iops_sec_per_gb || '-' },
   { title: t('Write IOPS/GB'), key: 'w', render: (_, r) => r.qos_props?.write_iops_sec_per_gb || '-' },
@@ -201,7 +202,7 @@ const volumeTypeColumns = () => [
 ];
 
 const snapshotSelectColumns = () => [
-  { title: t('Name'), dataIndex: 'name', key: 'name', render: (v, r) => v || r.id },
+  nameColumn(),
   { title: t('Size'), dataIndex: 'size', key: 'size', render: (v) => `${v} GiB` },
   statusColumn({ textMap: volumeStatus() }),
   textColumn(t('Description'), 'description'),
@@ -990,6 +991,22 @@ export const renderAttachments = (value, isAdmin) => {
   ));
 };
 
+/* table cell variant of renderAttachments: one ID/Name cell per attached instance */
+const renderAttachmentCells = (value, isAdmin) => {
+  if (!value || !value.length) return '-';
+  return value.map((it) => (
+    <div key={`${it.server_id}-${it.device}`} style={{ marginBottom: 4 }}>
+      <IdNameCell
+        id={it.server_id}
+        name={it.server_name}
+        href={it.server_id ? `/compute/${isAdmin ? 'instance-admin' : 'instance'}/detail/${it.server_id}` : undefined}
+        bold={false}
+      />
+      {it.device ? <div style={{ fontSize: 11, color: '#94a3b8' }}>{it.device}</div> : null}
+    </div>
+  ));
+};
+
 export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}) =>
   [
     nameColumn({ linkTo: (r) => `/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.id}` }),
@@ -997,12 +1014,7 @@ export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}
       title: t('Project ID/Name'),
       dataIndex: 'project_name',
       key: 'project_name',
-      render: (v, r) => (
-        <div>
-          <span>{v || projectMap[r.project_id] || '-'}</span>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.project_id}</div>
-        </div>
-      ),
+      render: (v, r) => <IdNameCell id={r.project_id} name={v || projectMap[r.project_id]} bold={false} />,
     },
     isAdmin && textColumn(t('Host'), 'host'),
     { title: t('Size'), dataIndex: 'size', key: 'size', sorter: (a, b) => a.size - b.size, render: (v) => <b>{v} GiB</b> },
@@ -1013,7 +1025,7 @@ export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}
       title: t('Attached To'),
       dataIndex: 'attachments',
       key: 'attachments',
-      render: (v) => renderAttachments(v, isAdmin),
+      render: (v) => renderAttachmentCells(v, isAdmin),
     },
     {
       title: titleWithTip(t('Bootable'), bootableTip()),

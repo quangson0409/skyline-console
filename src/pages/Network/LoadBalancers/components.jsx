@@ -5,10 +5,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Checkbox, Col, Input, InputNumber, Row, Select, Space, Table, Tooltip, Typography } from 'antd';
 import { MinusCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
 import { NoFormStyle } from 'antd/es/form/context';
 import SelectTable from '@/pages/Instances/Create/components/SelectTable';
-import { formatTime } from '@/components/ResourcePage';
+import { formatTime, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { isIP } from '@/pages/Network/common';
 import {
@@ -58,7 +57,7 @@ export const insertHeadersFormItem = (name = 'insert_headers', extra = {}) => ({
 /* ---------------- Certificates (legacy getCertificateColumns) ---------------- */
 export const certificateColumns = ({ withDomain = true, isAdmin = false } = {}) =>
   [
-    { title: t('Name'), dataIndex: 'name', key: 'name', render: (v, r) => v || r.id },
+    { title: t('ID/Name'), dataIndex: 'name', key: 'name', render: (v, r) => <IdNameCell id={r.id} name={v} /> },
     {
       title: t('Certificate Type'),
       dataIndex: 'mode',
@@ -74,10 +73,8 @@ export const certificateColumns = ({ withDomain = true, isAdmin = false } = {}) 
       render: (value) =>
         value?.length
           ? value.map((it) => (
-              <div key={it.id}>
-                <Link to={listenerDetailPath(it.lb, it.id, isAdmin)} onClick={(e) => e.stopPropagation()}>
-                  {it.name || it.id}
-                </Link>
+              <div key={it.id} onClick={(e) => e.stopPropagation()}>
+                <IdNameCell id={it.id} name={it.name} href={listenerDetailPath(it.lb, it.id, isAdmin)} bold={false} />
               </div>
             ))
           : '-',
@@ -237,14 +234,16 @@ export function MemberAllocator({ value, onChange, ports = [], loading = false, 
               dataIndex: 'name',
               key: 'name',
               render: (v, r) => (
-                <div>
-                  <Link to={`/network/port${isAdmin ? '-admin' : ''}/detail/${r.id}`}>{v || String(r.id).slice(0, 8)}</Link>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-                </div>
+                <IdNameCell id={r.id} name={v} href={`/network/port${isAdmin ? '-admin' : ''}/detail/${r.id}`} />
               ),
             },
             { title: t('Binding Instance'), dataIndex: 'server_name', key: 'server_name', render: (v) => v || '-' },
-            { title: t('Instance Name'), dataIndex: 'instance_name', key: 'instance_name', render: (v) => v || '-' },
+            {
+              title: t('Instance Name'),
+              dataIndex: 'instance_name',
+              key: 'instance_name',
+              render: (v, r) => (v ? <IdNameCell id={r.device_id} name={v} bold={false} /> : '-'),
+            },
             {
               title: t('IP'),
               dataIndex: 'fixed_ips',

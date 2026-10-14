@@ -1,9 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { troveApi } from '@/api/trove';
 import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
-import ResourcePage, { formatTime, textColumn } from '@/components/ResourcePage';
+import ResourcePage, { formatTime, textColumn, nameColumn } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { deleteConfigurationAction } from './ConfigurationList';
 
@@ -34,13 +33,7 @@ function InstancesTab({ detail }) {
         fetch={async () => (await troveApi.listConfigurationInstances(detail.id))?.instances || []}
         deps={[detail.id]}
         columns={[
-          {
-            title: t('ID/Name'),
-            dataIndex: 'name',
-            key: 'name',
-            render: (v, r) => <Link to={`/database/instances/detail/${r.id}`}>{v || r.id}</Link>,
-          },
-          textColumn(t('ID'), 'id'),
+          nameColumn({ linkTo: (r) => `/database/instances/detail/${r.id}` }),
         ]}
         filterParams={[{ name: 'name', label: t('Name') }]}
       />

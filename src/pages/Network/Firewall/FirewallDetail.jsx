@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useIsAdminPage } from '@/components/ResourcePage/helpers';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import ResourceDetail from '@/components/ResourceDetail';
-import ResourcePage, { textColumn, nameColumn, statusColumn } from '@/components/ResourcePage';
+import ResourcePage, { textColumn, nameColumn, statusColumn, IdNameCell } from '@/components/ResourcePage';
 import DetailCard from '@/components/DetailCard';
 import { t } from '@/core/i18n';
-import { adminSuffix } from '../common';
+import { adminSuffix, detailPath } from '../common';
 import {
   firewallStatus,
   adminState,
@@ -16,8 +16,6 @@ import {
   fetchFirewallPorts,
   firewallTabPath,
   policyLink,
-  networkLink,
-  routerLink,
 } from './helpers';
 import { firewallActions } from './actions';
 
@@ -37,14 +35,22 @@ function FirewallPorts({ detail }) {
           title: t('Network ID/Name'),
           dataIndex: 'network_name',
           key: 'network_name',
-          render: (v, r) => networkLink(r.network?.id || r.network_id, v, isAdmin),
+          render: (v, r) => {
+            const id = r.network?.id || r.network_id;
+            return <IdNameCell id={id} name={v} href={id ? detailPath('networks', id, isAdmin) : undefined} bold={false} />;
+          },
         },
         textColumn(t('Owner'), 'owner', { render: (v, r) => v || r.device_owner || '-' }),
         {
           title: t('Device ID/Name'),
           dataIndex: 'router_name',
           key: 'router_name',
-          render: (v, r) => (r.router ? routerLink(r.router.id, v, isAdmin) : '-'),
+          render: (v, r) =>
+            r.router ? (
+              <IdNameCell id={r.router.id} name={v} href={detailPath('router', r.router.id, isAdmin)} bold={false} />
+            ) : (
+              '-'
+            ),
         },
         statusColumn({ textMap: portStatus() }),
       ]}

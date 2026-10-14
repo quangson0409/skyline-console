@@ -11,6 +11,7 @@ import { octaviaApi } from '@/api/octavia';
 import { neutronApi } from '@/api/neutron';
 import { useAuthStore } from '@/store/authStore';
 import { getErrorMessage } from '@/hooks/useResource';
+import { IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import SelectTable, { col, yesNoCol } from '@/pages/Instances/Create/components/SelectTable';
 import NetworkSelectTable from '@/pages/Instances/Create/components/NetworkSelectTable';
@@ -394,8 +395,7 @@ export default function LoadBalancerCreate() {
                   data={flavors.data}
                   isLoading={flavors.loading}
                   columns={[
-                    col(t('ID'), 'id'),
-                    col(t('Name'), 'name'),
+                    col(t('ID/Name'), 'name', { render: (v, r) => <IdNameCell id={r.id} name={v} /> }),
                     col(t('Description'), 'description', { render: (v) => v || '-' }),
                     yesNoCol(t('Enabled'), 'enabled'),
                   ]}

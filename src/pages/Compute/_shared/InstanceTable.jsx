@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { novaApi } from '@/api/nova';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, projectColumn } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, timeColumn, projectColumn, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { serverIps, serverStatusMap } from './index';
@@ -38,7 +37,12 @@ export default function InstanceTable({ fetchServers, isAdmin, deps = [] }) {
             key: 'image',
             render: (image) =>
               image && image.id ? (
-                <Link to={`/compute/${isAdmin ? 'image-admin' : 'image'}/detail/${image.id}`}>{image.id}</Link>
+                <IdNameCell
+                  id={image.id}
+                  name={image.name}
+                  href={`/compute/${isAdmin ? 'image-admin' : 'image'}/detail/${image.id}`}
+                  bold={false}
+                />
               ) : (
                 '-'
               ),

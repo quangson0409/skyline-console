@@ -1,6 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import ResourcePage, { nameColumn, statusColumn, projectColumn } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, projectColumn, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { adminSuffix, detailPath } from '../common';
@@ -35,19 +34,20 @@ export const portDetailPath = (record, { isAdmin, networkId, subnetId, instanceI
 export const renderBindResource = (record, isAdmin) => {
   const { device_id, device_owner, server_name } = record || {};
   if (!device_owner) return device_id || '-';
-  let link = null;
+  let href;
+  let name;
   if (device_owner === 'compute:nova') {
-    const value = server_name ? `${device_id} (${server_name})` : device_id;
-    link = device_id ? <Link to={`/compute/instance${adminSuffix(isAdmin)}/detail/${device_id}?tab=interface`}>{value}</Link> : null;
+    href = `/compute/instance${adminSuffix(isAdmin)}/detail/${device_id}?tab=interface`;
+    name = server_name;
   } else if (ROUTER_OWNERS.includes(device_owner)) {
-    link = device_id ? <Link to={detailPath('router', device_id, isAdmin)}>{device_id}</Link> : null;
+    href = detailPath('router', device_id, isAdmin);
   } else if (device_owner === 'network:floatingip') {
-    link = device_id ? <Link to={detailPath('floatingip', device_id, isAdmin)}>{device_id}</Link> : null;
+    href = detailPath('floatingip', device_id, isAdmin);
   }
   return (
     <div>
       <div>{device_owner}</div>
-      <div style={{ fontSize: 12 }}>{link || device_id || '-'}</div>
+      {device_id ? <IdNameCell id={device_id} name={name} href={href} bold={false} /> : '-'}
     </div>
   );
 };
@@ -72,10 +72,7 @@ export const portColumns = ({ isAdmin, projectMap, networkId, subnetId, instance
       key: 'network_name',
       render: (v, r) =>
         r.network_id ? (
-          <div>
-            <Link to={detailPath('networks', r.network_id, isAdmin)}>{v || r.network_id}</Link>
-            {v ? <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.network_id}</div> : null}
-          </div>
+          <IdNameCell id={r.network_id} name={v} href={detailPath('networks', r.network_id, isAdmin)} bold={false} />
         ) : (
           '-'
         ),

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { barbicanApi, refId } from '@/api/barbican';
-import { formatTime } from '@/components/ResourcePage';
+import { formatTime, IdNameCell } from '@/components/ResourcePage';
 import Status from '@/components/Status';
 import { t } from '@/core/i18n';
 import {
@@ -31,6 +31,16 @@ export const renderListeners = (value) =>
     ? value.map((it) => (
         <div key={it.id}>
           <Link to={`/network/load-balancers/${it.lb}/listener/${it.id}`}>{it.name || it.id}</Link>
+        </div>
+      ))
+    : '-';
+
+/** Table cell variant: one ID/Name cell per listener */
+export const renderListenerCells = (value) =>
+  Array.isArray(value) && value.length
+    ? value.map((it) => (
+        <div key={it.id}>
+          <IdNameCell id={it.id} name={it.name} href={`/network/load-balancers/${it.lb}/listener/${it.id}`} bold={false} />
         </div>
       ))
     : '-';

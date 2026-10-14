@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { masakariApi } from '@/api/masakari';
-import ResourcePage, { textColumn, boolColumn, deleteAction, CopyText } from '@/components/ResourcePage';
+import ResourcePage, { textColumn, boolColumn, deleteAction, nameColumn, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 
 /** Legacy pages/ha/containers/Hosts (also the "Hosts" tab of the segment detail) */
@@ -61,18 +60,7 @@ export const deleteHostAction = () => ({
 });
 
 export const hostColumns = () => [
-  {
-    title: t('Name'),
-    dataIndex: 'name',
-    key: 'name',
-    sorter: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
-    render: (v, r) => (
-      <Link to={hostDetailPath(r)} style={{ fontWeight: 600 }}>
-        {v || '-'}
-      </Link>
-    ),
-  },
-  { title: t('UUID'), dataIndex: 'uuid', key: 'uuid', render: (v) => (v ? <CopyText value={v} /> : '-') },
+  nameColumn({ idIndex: 'uuid', linkTo: (r) => hostDetailPath(r) }),
   boolColumn(t('Reserved'), 'reserved'),
   textColumn(t('Type'), 'type'),
   textColumn(t('Control Attribute'), 'control_attributes'),
@@ -81,9 +69,17 @@ export const hostColumns = () => [
     title: t('Failover Segment'),
     dataIndex: 'failover_segment',
     key: 'failover_segment',
-    render: (v, r) => (
-      <Link to={`/ha/segments-admin/detail/${r.failover_segment_id}`}>{v?.name || r.failover_segment_id || '-'}</Link>
-    ),
+    render: (v, r) =>
+      r.failover_segment_id ? (
+        <IdNameCell
+          id={r.failover_segment_id}
+          name={v?.name}
+          href={`/ha/segments-admin/detail/${r.failover_segment_id}`}
+          bold={false}
+        />
+      ) : (
+        '-'
+      ),
   },
 ];
 

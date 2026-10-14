@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Popover, List, Tag } from 'antd';
-import { FileTextOutlined, GlobalOutlined } from '@ant-design/icons';
+import { FileTextOutlined } from '@ant-design/icons';
 import { neutronApi, neutronResources } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import ResourcePage, {
   statusColumn,
   timeColumn,
   projectColumn,
-  CopyText,
+  IdNameCell,
   useIsAdminPage,
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
@@ -103,17 +102,7 @@ export const floatingIpColumns = ({ isAdmin, projectMap, hideQos } = {}) =>
       dataIndex: 'floating_ip_address',
       key: 'floating_ip_address',
       sorter: (a, b) => String(a.floating_ip_address || '').localeCompare(String(b.floating_ip_address || '')),
-      render: (ip, r) => (
-        <div>
-          <Link to={detailPath('floatingip', r.id, isAdmin)} style={{ fontWeight: 600 }}>
-            <GlobalOutlined style={{ marginRight: 6 }} />
-            {ip || r.id}
-          </Link>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            <CopyText value={r.id} />
-          </div>
-        </div>
-      ),
+      render: (ip, r) => <IdNameCell id={r.id} name={ip} href={detailPath('floatingip', r.id, isAdmin)} />,
     },
     qosEnabled() &&
       !hideQos && {
@@ -122,10 +111,12 @@ export const floatingIpColumns = ({ isAdmin, projectMap, hideQos } = {}) =>
         key: 'qos_policy_name',
         render: (v, r) =>
           r.qos_policy_id ? (
-            <div>
-              <Link to={detailPath('qos-policy', r.qos_policy_id, isAdmin)}>{v || r.qos_policy_id}</Link>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.qos_policy_id}</div>
-            </div>
+            <IdNameCell
+              id={r.qos_policy_id}
+              name={v && v !== r.qos_policy_id ? v : undefined}
+              href={detailPath('qos-policy', r.qos_policy_id, isAdmin)}
+              bold={false}
+            />
           ) : (
             '-'
           ),

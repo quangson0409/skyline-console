@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Breadcrumb, Input, Space, Table, Tabs, Tag, Tooltip, message } from 'antd';
 import { BlockOutlined } from '@ant-design/icons';
 import { novaApi } from '@/api/nova';
-import ResourcePage, { deleteAction, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { deleteAction, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
 import { KpiCards, sinceTime } from '../_shared';
@@ -294,18 +294,15 @@ export function AggregateTab() {
       )}
       columns={({ refetch }) => [
         {
-          title: t('Name'),
+          title: t('ID/Name'),
           dataIndex: 'name',
           key: 'name',
           sorter: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
           render: (text, r) => (
-            <div>
-              <Space>
-                <BlockOutlined style={{ color: '#0068ff' }} />
-                <span style={{ fontWeight: 600 }}>{text}</span>
-              </Space>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-            </div>
+            <Space align="start">
+              <BlockOutlined style={{ color: '#0068ff', marginTop: 4 }} />
+              <IdNameCell id={r.id === undefined || r.id === null ? undefined : String(r.id)} name={text} />
+            </Space>
           ),
         },
         {

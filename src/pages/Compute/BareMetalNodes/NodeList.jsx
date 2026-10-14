@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tooltip } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, textColumn, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, timeColumn, textColumn, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { powerState, provisioningState, fetchNodes } from './helpers';
 import { createNodeAction, deleteNodeAction, nodeRowActions } from './actions';
@@ -19,7 +19,12 @@ export const nodeColumns = () => [
     title: t('Ironic Instance Name'),
     dataIndex: 'instance_info',
     key: 'instance_info',
-    render: (value) => value?.display_name || '-',
+    render: (value, record) =>
+      record.instance_uuid ? (
+        <IdNameCell id={record.instance_uuid} name={value?.display_name} bold={false} />
+      ) : (
+        value?.display_name || '-'
+      ),
   },
   statusColumn({ title: t('Power State'), dataIndex: 'power_state', textMap: powerState() }),
   statusColumn({ title: t('Provision State'), dataIndex: 'provision_state', textMap: provisioningState() }),

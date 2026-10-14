@@ -151,8 +151,8 @@ export const userColumns = ({ mode = 'list' } = {}) => {
         const list = Object.values(value || {});
         if (!list.length) return '-';
         return list.map(({ project }) => (
-          <div key={project.id}>
-            <Link to={detailPath.project(project.id)}>{project.name || project.id}</Link>
+          <div key={project.id} style={{ marginBottom: 4 }}>
+            <IdNameLink id={project.id} name={project.name} to={detailPath.project(project.id)} />
           </div>
         ));
       },

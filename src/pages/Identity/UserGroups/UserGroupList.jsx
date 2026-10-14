@@ -14,6 +14,7 @@ import {
   withDomainName,
   safeList,
   RoleLinks,
+  IdNameLink,
 } from '../common';
 import { domainFormItems, nameInDomainRule } from '../Projects/ProjectList';
 
@@ -121,13 +122,23 @@ export const groupColumns = ({ mode = 'list' } = {}) => {
         const list = Object.values(r.projects || {});
         if (!list.length) return '-';
         return list.map(({ project }) => (
-          <div key={project.id}>
-            <Link to={detailPath.project(project.id)}>{project.name || project.id}</Link>
+          <div key={project.id} style={{ marginBottom: 4 }}>
+            <IdNameLink id={project.id} name={project.name} to={detailPath.project(project.id)} />
           </div>
         ));
       },
     },
-    { title: t('Domain'), dataIndex: 'domainName', key: 'domainName', render: (v) => v || '-' },
+    {
+      title: t('Domain'),
+      dataIndex: 'domainName',
+      key: 'domainName',
+      render: (v, r) =>
+        r.domain_id ? (
+          <IdNameLink id={r.domain_id} name={v} to={detailPath.domain(r.domain_id)} />
+        ) : (
+          v || '-'
+        ),
+    },
     descriptionColumn(),
   ].filter((c) => !hide.includes(c.dataIndex));
 };

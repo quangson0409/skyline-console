@@ -1,8 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { cinderApi } from '@/api/cinder';
 import ResourcePage, {
   nameColumn,
+  IdNameCell,
   statusColumn,
   timeColumn,
   projectColumn,
@@ -175,10 +175,12 @@ export const backupColumns = ({ isAdmin, projectMap, hideVolume } = {}) =>
       dataIndex: 'volume_name',
       key: 'volume_name',
       render: (value, r) => (
-        <div>
-          <Link to={`/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.volume_id}`}>{value || '-'}</Link>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.volume_id}</div>
-        </div>
+        <IdNameCell
+          id={r.volume_id}
+          name={value}
+          href={r.volume_id ? `/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.volume_id}` : undefined}
+          bold={false}
+        />
       ),
     },
     {

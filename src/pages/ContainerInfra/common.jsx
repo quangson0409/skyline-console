@@ -5,7 +5,7 @@ import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { novaApi } from '@/api/nova';
 import { neutronApi } from '@/api/neutron';
 import { glanceApi } from '@/api/glance';
-import { formatSize } from '@/components/ResourcePage';
+import { formatSize, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 
 /** Legacy resources/magnum/cluster.js */
@@ -151,12 +151,7 @@ export const flavorColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{v || r.id}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   {
     title: t('Architecture'),
@@ -184,12 +179,7 @@ export const networkColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{v || r.id}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   { title: t('Shared'), dataIndex: 'shared', key: 'shared', render: (v) => (v ? t('Yes') : t('No')) },
   { title: t('External'), dataIndex: 'router:external', key: 'external', render: (v) => (v ? t('Yes') : t('No')) },
@@ -207,12 +197,7 @@ export const subnetColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{v || r.id}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   { title: t('CIDR'), dataIndex: 'cidr', key: 'cidr' },
   { title: t('IP Version'), dataIndex: 'ip_version', key: 'ip_version', render: (v) => (v ? `IPv${v}` : '-') },
@@ -224,12 +209,7 @@ export const imageColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{v || r.id}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   { title: t('OS'), dataIndex: 'os_distro', key: 'os_distro', render: (v) => v || '-' },
   { title: t('OS Version'), dataIndex: 'os_version', key: 'os_version', render: (v) => v || '-' },

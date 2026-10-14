@@ -63,15 +63,27 @@ export const CopyText = ({ value, children, style }) => (
 );
 
 /** Legacy short id (utils/table getIdRender): first 8 chars, copy button copies the full id */
-export const ShortId = ({ id, href }) => {
-  if (!id) return null;
-  const short = String(id).substring(0, 8);
+const hasId = (id) => id !== undefined && id !== null && id !== '';
+
+/**
+ * Legacy short id (utils/table getIdRender): first 8 chars, the copy button copies the full id.
+ * `full` shows the whole value (for ids that are not UUIDs). Clicks on the copy icon do not
+ * bubble, so select tables with row-click selection are not toggled.
+ */
+export const ShortId = ({ id, href, full = false }) => {
+  if (!hasId(id)) return null;
+  const value = String(id);
+  const text = full ? value : value.substring(0, 8);
   return (
     <Typography.Paragraph
-      copyable={{ text: String(id) }}
-      style={{ margin: 0, display: 'inline-block', whiteSpace: 'nowrap', fontSize: 12 }}
+      copyable={{ text: value }}
+      onClick={(e) => {
+        const target = e.target;
+        if (target?.closest?.('.ant-typography-copy')) e.stopPropagation();
+      }}
+      style={{ margin: 0, display: 'inline-block', whiteSpace: full ? 'normal' : 'nowrap', wordBreak: 'break-all', fontSize: 12 }}
     >
-      {href ? <Link to={href}>{short}</Link> : short}
+      {href ? <Link to={href}>{text}</Link> : text}
     </Typography.Paragraph>
   );
 };
@@ -80,16 +92,23 @@ export const ShortId = ({ id, href }) => {
  * Standard cell for anything that has an id and a name (legacy getNameRender):
  * copyable short id (link when href is given) on top, name below.
  * Use it for primary ID/Name columns and for related-resource columns (Volume ID/Name, Network ID/Name...).
+ * The name line is omitted when the name is unknown or equal to the id; `extra` renders after the name.
  */
-export const IdNameCell = ({ id, name, href, bold = true }) => {
-  if (!id) {
+export const IdNameCell = ({ id, name, href, bold = true, full = false, extra }) => {
+  if (!hasId(id)) {
     const text = name || '-';
     return href ? <Link to={href}>{text}</Link> : <span>{text}</span>;
   }
+  const showName = name !== undefined && name !== null && name !== '' && String(name) !== String(id);
   return (
     <div style={{ minWidth: 0 }}>
-      <ShortId id={id} href={href} />
-      <div style={{ fontWeight: bold ? 600 : 400, wordBreak: 'break-word' }}>{name || '-'}</div>
+      <ShortId id={id} href={href} full={full} />
+      {showName || extra ? (
+        <div style={{ fontWeight: bold ? 600 : 400, wordBreak: 'break-word' }}>
+          {showName ? name : null}
+          {extra}
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -169,18 +188,11 @@ export const projectColumn = (projectMap = {}, dataIndex = 'project_id') => ({
   title: t('Project'),
   dataIndex,
   key: dataIndex,
+  exportRender: (value, record) => value || record.tenant_id || '',
   render: (value, record) => {
     const pid = value || record.tenant_id;
     if (!pid) return '-';
-    const name = projectMap[pid];
-    return (
-      <div>
-        <span>{name || '-'}</span>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>
-          <Text style={{ fontSize: 11, color: '#94a3b8' }}>{pid}</Text>
-        </div>
-      </div>
-    );
+    return <IdNameCell id={pid} name={projectMap[pid]} bold={false} />;
   },
 });
 

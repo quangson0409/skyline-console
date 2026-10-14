@@ -1,7 +1,7 @@
 import React from 'react';
 import { Breadcrumb, Card, Tabs } from 'antd';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import ResourcePage, { nameColumn, statusColumn, textColumn, projectColumn, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, textColumn, projectColumn, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { useIsAdminPage } from '@/components/ResourcePage/helpers';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
@@ -18,10 +18,7 @@ import {
   fetchPolicies,
   fetchRules,
   fetchRulesByPolicy,
-  policyLink,
-  firewallLink,
-  ruleLink,
-  linkList,
+  idNameList,
 } from './helpers';
 import { firewallActions, policyActions, ruleActions } from './actions';
 
@@ -46,14 +43,32 @@ export function FirewallList() {
             dataIndex: 'ingressPolicyName',
             key: 'ingressPolicyName',
             render: (v, r) =>
-              r.ingress_firewall_policy_id ? policyLink(r.ingress_firewall_policy_id, v, isAdmin) : '-',
+              r.ingress_firewall_policy_id ? (
+                <IdNameCell
+                  id={r.ingress_firewall_policy_id}
+                  name={v}
+                  href={detailPath('firewall-policy', r.ingress_firewall_policy_id, isAdmin)}
+                  bold={false}
+                />
+              ) : (
+                '-'
+              ),
           },
           {
             title: t('Egress Policy'),
             dataIndex: 'egressPolicyName',
             key: 'egressPolicyName',
             render: (v, r) =>
-              r.egress_firewall_policy_id ? policyLink(r.egress_firewall_policy_id, v, isAdmin) : '-',
+              r.egress_firewall_policy_id ? (
+                <IdNameCell
+                  id={r.egress_firewall_policy_id}
+                  name={v}
+                  href={detailPath('firewall-policy', r.egress_firewall_policy_id, isAdmin)}
+                  bold={false}
+                />
+              ) : (
+                '-'
+              ),
           },
           {
             title: t('Associated Ports'),
@@ -101,13 +116,13 @@ export function PolicyList() {
             title: t('Rules'),
             dataIndex: 'rules',
             key: 'rules',
-            render: (v) => linkList(v, ruleLink, isAdmin),
+            render: (v) => idNameList(v, 'firewall-rule', isAdmin),
           },
           {
             title: t('Firewalls'),
             dataIndex: 'firewalls',
             key: 'firewalls',
-            render: (v) => linkList(v, firewallLink, isAdmin),
+            render: (v) => idNameList(v, 'firewall', isAdmin),
           },
           { title: t('Shared'), dataIndex: 'shared', key: 'shared', width: 80, render: yesNo },
           { title: t('Audited'), dataIndex: 'audited', key: 'audited', width: 100, render: yesNo },
@@ -136,7 +151,7 @@ export const ruleColumns = ({ isAdmin, projectMap }) =>
       title: t('Related Policy'),
       dataIndex: 'policies',
       key: 'policies',
-      render: (v) => linkList(v, policyLink, isAdmin),
+      render: (v) => idNameList(v, 'firewall-policy', isAdmin),
     },
     { title: t('Protocol'), dataIndex: 'protocol', key: 'protocol', render: (v) => protocolInfos()[v] || dash(v) },
     textColumn(t('Source IP'), 'source_ip_address'),

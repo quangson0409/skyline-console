@@ -11,6 +11,7 @@ import { serviceBase, hasEndpoint, currentProjectId } from '@/api/endpoints';
 import { neutronApi } from '@/api/neutron';
 import { t } from '@/core/i18n';
 import { isIPv4, listAll } from '@/pages/Network/common';
+import { IdNameCell, ShortId } from '@/components/ResourcePage/helpers';
 
 export const floatingIpStatus = () => ({
   AVAILABLE: t('Available'),
@@ -242,8 +243,20 @@ export const fixedIpColumns = (withMac = true, withNetwork = true, withSubnet = 
   [
     { title: t('IP Address'), dataIndex: 'name', key: 'name' },
     withMac && { title: t('MAC Address'), dataIndex: 'mac_address', key: 'mac_address' },
-    withNetwork && { title: t('Network'), dataIndex: 'network_name', key: 'network_name' },
-    withSubnet && { title: t('Subnet ID'), dataIndex: 'subnet_id', key: 'subnet_id' },
+    withNetwork && {
+      title: t('Network'),
+      dataIndex: 'network_name',
+      key: 'network_name',
+      render: (v, r) => (
+        <IdNameCell id={r.network_id} name={v && v !== r.network_id ? v : undefined} bold={false} />
+      ),
+    },
+    withSubnet && {
+      title: t('Subnet ID'),
+      dataIndex: 'subnet_id',
+      key: 'subnet_id',
+      render: (v) => (v ? <ShortId id={v} /> : '-'),
+    },
     {
       title: t('Reason'),
       dataIndex: 'reason',
@@ -257,12 +270,7 @@ export const portSelectColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div>{v || '-'}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
   {

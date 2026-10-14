@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { troveApi } from '@/api/trove';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, textColumn, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, timeColumn, textColumn, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { backupStatus } from '../shared';
 
@@ -50,7 +49,7 @@ export default function BackupList() {
           title: t('Database Instance'),
           dataIndex: 'instance_id',
           key: 'instance_id',
-          render: (v) => (v ? <Link to={`/database/instances/detail/${v}`}>{v}</Link> : '-'),
+          render: (v) => (v ? <IdNameCell id={v} href={`/database/instances/detail/${v}`} bold={false} /> : '-'),
         },
         { title: t('Datastore'), key: 'datastore', render: (_, r) => [r.datastore?.type, r.datastore?.version].filter(Boolean).join(' ') || '-' },
         { title: t('Size'), dataIndex: 'size', key: 'size', render: (v) => (v === undefined || v === null ? '-' : `${v} GiB`) },

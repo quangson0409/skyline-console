@@ -4,7 +4,7 @@ import { glanceApi } from '@/api/glance';
 import { cinderApi } from '@/api/cinder';
 import apiClient from '@/api/client';
 import { serviceBase, currentProjectId, versionHeaders } from '@/api/endpoints';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { KpiCards } from '@/pages/Compute/_shared';
@@ -184,12 +184,7 @@ export const snapshotColumns = ({ isAdmin, projectMap = {} }) =>
       title: t('Project ID/Name'),
       dataIndex: 'project_id',
       key: 'project_id',
-      render: (value, r) => (
-        <div>
-          <span>{r.project_name || projectMap[value] || '-'}</span>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{value || '-'}</div>
-        </div>
-      ),
+      render: (value, r) => <IdNameCell id={value} name={r.project_name || projectMap[value]} bold={false} />,
     },
     { title: t('Description'), dataIndex: 'description', key: 'description', ellipsis: true, render: (v) => v || '-' },
     {

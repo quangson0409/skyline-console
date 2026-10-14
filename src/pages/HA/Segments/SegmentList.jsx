@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { masakariApi } from '@/api/masakari';
 import { novaApi } from '@/api/nova';
-import ResourcePage, { nameColumn, textColumn, deleteAction, CopyText } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, textColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 
 /** Legacy pages/ha/containers/Segments */
@@ -119,13 +119,7 @@ export const createSegmentAction = (navigate) => ({
 });
 
 export const segmentColumns = () => [
-  nameColumn({ title: t('Name'), idIndex: '__none', linkTo: (r) => `/ha/segments-admin/detail/${r.uuid}` }),
-  {
-    title: t('UUID'),
-    dataIndex: 'uuid',
-    key: 'uuid',
-    render: (v) => (v ? <CopyText value={v} /> : '-'),
-  },
+  nameColumn({ idIndex: 'uuid', linkTo: (r) => `/ha/segments-admin/detail/${r.uuid}` }),
   { title: t('Recovery Method'), dataIndex: 'recovery_method', key: 'recovery_method', render: recoveryMethodText },
   textColumn(t('Service Type'), 'service_type'),
   textColumn(t('Description'), 'description'),

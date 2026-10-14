@@ -3,7 +3,7 @@ import { Tooltip } from 'antd';
 import { skylineApi } from '@/api/skyline';
 import apiClient from '@/api/client';
 import { serviceBase, versionHeaders } from '@/api/endpoints';
-import ResourcePage, { nameColumn, projectColumn, formatTime, useIsAdminPage } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, projectColumn, IdNameCell, formatTime, useIsAdminPage } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { sinceTime } from '@/pages/Configuration/shared';
@@ -79,12 +79,7 @@ export default function RecycleBinList() {
           isAdmin && {
             ...projectColumn(projectMap, 'project_id'),
             title: t('Project ID/Name'),
-            render: (v, r) => (
-              <div>
-                <span>{r.project_name || projectMap[v] || '-'}</span>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>{v}</div>
-              </div>
-            ),
+            render: (v, r) => <IdNameCell id={v} name={r.project_name || projectMap[v]} bold={false} />,
           },
           {
             title: t('Image'),

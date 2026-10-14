@@ -3,7 +3,7 @@ import { Card, Col, Row, Table, Tooltip } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
-import ResourcePage, { formatTime, timeColumn, textColumn, yesNo, CopyText } from '@/components/ResourcePage';
+import ResourcePage, { formatTime, timeColumn, textColumn, yesNo, CopyText, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { powerState, provisioningState, fetchNodeDetail, fetchNodePorts, fetchNodePortGroups, yesNoText } from './helpers';
 import {
@@ -113,7 +113,12 @@ const PortTab = ({ detail }) => (
       { title: t('ID'), dataIndex: 'uuid', key: 'uuid', render: (v) => <CopyText value={v} /> },
       textColumn(t('MAC Address'), 'address'),
       { title: t('PXE Enabled'), dataIndex: 'pxe_enabled', key: 'pxe_enabled', render: (v) => yesNo(v) },
-      textColumn(t('Port Group'), 'portgroup_uuid'),
+      {
+        title: t('Port Group'),
+        dataIndex: 'portgroup_uuid',
+        key: 'portgroup_uuid',
+        render: (v) => (v ? <IdNameCell id={v} bold={false} /> : '-'),
+      },
       timeColumn(),
     ]}
     primaryActions={[createPortAction(detail)]}
@@ -130,8 +135,13 @@ const PortGroupTab = ({ detail }) => (
     deps={[detail]}
     fetch={() => fetchNodePortGroups(detail.uuid)}
     columns={[
-      { title: t('ID'), dataIndex: 'uuid', key: 'uuid', render: (v) => <CopyText value={v} /> },
-      textColumn(t('Name'), 'name'),
+      {
+        title: t('ID/Name'),
+        dataIndex: 'name',
+        key: 'name',
+        sorter: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
+        render: (v, r) => <IdNameCell id={r.uuid} name={v} />,
+      },
       textColumn(t('MAC Address'), 'address'),
       {
         title: t('Stand Alone Ports Supported'),

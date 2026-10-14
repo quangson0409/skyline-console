@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { glanceApi } from '@/api/glance';
-import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
@@ -52,12 +52,7 @@ export const imageColumns = ({ isAdmin, tab, projectMap = {} }) =>
       title: t('Project ID/Name'),
       dataIndex: 'owner',
       key: 'owner',
-      render: (value, r) => (
-        <div>
-          <span>{r.project_name || projectMap[value] || '-'}</span>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{value || '-'}</div>
-        </div>
-      ),
+      render: (value, r) => <IdNameCell id={value} name={r.project_name || projectMap[value]} bold={false} />,
     },
     {
       title: t('Description'),

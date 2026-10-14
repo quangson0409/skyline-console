@@ -1,7 +1,6 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
-import ResourcePage, { CopyText, deleteAction } from '@/components/ResourcePage';
+import ResourcePage, { nameColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { detailPath, descriptionColumn, editableRole } from '../common';
 
@@ -61,18 +60,7 @@ export const roleRowActions = () => ({
 });
 
 export const roleColumns = () => [
-  {
-    title: t('Role Name'),
-    dataIndex: 'name',
-    key: 'name',
-    sorter: (a, b) => String(a.name || '').localeCompare(String(b.name || '')),
-    render: (v, r) => (
-      <Link to={detailPath.role(r.id)} style={{ fontWeight: 600 }}>
-        {v || r.id}
-      </Link>
-    ),
-  },
-  { title: t('ID'), dataIndex: 'id', key: 'id', render: (v) => <CopyText value={v} /> },
+  nameColumn({ title: t('ID/Name'), linkTo: (r) => detailPath.role(r.id) }),
   descriptionColumn(),
 ];
 

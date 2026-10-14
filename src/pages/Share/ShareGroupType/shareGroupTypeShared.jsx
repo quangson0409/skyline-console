@@ -1,5 +1,5 @@
 import { manilaApi } from '@/api/manila';
-import { deleteAction } from '@/components/ResourcePage';
+import { nameColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import {
   fetchProjectsWithDomain,
@@ -76,7 +76,7 @@ export const createShareGroupTypeAction = ({ existingNames = () => [] } = {}) =>
         multiple: true,
         data: types,
         columns: [
-          { title: t('Name'), dataIndex: 'name', key: 'name' },
+          nameColumn(),
           { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
           { title: t('Public'), dataIndex: 'is_public', key: 'is_public', render: (v) => (v ? t('Yes') : t('No')) },
         ],

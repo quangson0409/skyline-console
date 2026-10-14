@@ -5,7 +5,7 @@ import apiClient from '@/api/client';
 import { novaApi } from '@/api/nova';
 import { glanceApi } from '@/api/glance';
 import { keystoneApi } from '@/api/keystone';
-import { nameColumn, textColumn, deleteAction } from '@/components/ResourcePage';
+import { nameColumn, textColumn, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 
 /* ------------------------------------------------------------------ */
@@ -307,22 +307,12 @@ export const projectSelectColumns = () => [
   {
     title: t('Project ID/Name'),
     dataIndex: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-        <div>{v}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   {
     title: t('Domain ID/Name'),
     dataIndex: 'domainName',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.domain_id}</div>
-        <div>{v || '-'}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.domain_id} name={v} bold={false} />,
   },
   { title: t('Enabled'), dataIndex: 'enabled', render: (v) => (v ? <Tag color="green">{t('Yes')}</Tag> : <Tag>{t('No')}</Tag>) },
   { title: t('Description'), dataIndex: 'description', render: (v) => v || '-' },

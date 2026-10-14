@@ -3,6 +3,7 @@ import { Form } from 'antd';
 import { manilaApi } from '@/api/manila';
 import {
   nameColumn,
+  IdNameCell,
   statusColumn,
   timeColumn,
   textColumn,
@@ -12,7 +13,6 @@ import {
 import { t } from '@/core/i18n';
 import {
   shareGroupStatus,
-  shareNetworkLink,
   selectTableField,
   SelectTable,
   shareTypeSelectColumns,
@@ -66,7 +66,13 @@ export const shareGroupColumns = ({ isAdmin, projectMap, selectMode = false } = 
       title: t('Share Network'),
       dataIndex: 'share_network_id',
       key: 'share_network_id',
-      render: (v) => (selectMode ? v || '-' : shareNetworkLink(v, v, isAdmin)),
+      render: (v) => (
+        <IdNameCell
+          id={v}
+          href={!selectMode && v ? `/share/${isAdmin ? 'share-network-admin' : 'share-network'}/detail/${v}` : undefined}
+          bold={false}
+        />
+      ),
     },
     statusColumn({ textMap: shareGroupStatus() }),
     timeColumn(),

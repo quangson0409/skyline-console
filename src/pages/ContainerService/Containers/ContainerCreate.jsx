@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import SelectTable from '@/pages/Instances/Create/components/SelectTable';
 import NetworkSelectTable from '@/pages/Instances/Create/components/NetworkSelectTable';
 import QuotaPanel from '@/pages/Instances/Create/components/QuotaPanel';
+import { IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import StepWizard, { selectRequired, firstKey } from '@/pages/ContainerInfra/StepWizard';
 import {
@@ -129,14 +130,9 @@ const portColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{v || '-'}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
-  { title: t('Network'), dataIndex: 'network_id', key: 'network_id' },
+  { title: t('Network'), dataIndex: 'network_id', key: 'network_id', render: (v) => <IdNameCell id={v} bold={false} /> },
   {
     title: t('IP Address'),
     dataIndex: 'fixed_ips',
@@ -152,12 +148,7 @@ const securityGroupColumns = () => [
     title: t('ID/Name'),
     dataIndex: 'name',
     key: 'name',
-    render: (v, r) => (
-      <div>
-        <div style={{ fontWeight: 600 }}>{v || '-'}</div>
-        <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-      </div>
-    ),
+    render: (v, r) => <IdNameCell id={r.id} name={v} />,
   },
   { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
 ];

@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { Checkbox, Form, Radio, Select, Space, Typography } from 'antd';
-import { Link } from 'react-router-dom';
+import { IdNameCell } from '@/components/ResourcePage/helpers';
 import { neutronApi, neutronResources } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import { keystoneApi } from '@/api/keystone';
@@ -358,12 +358,7 @@ function AssociateTarget({ fip, value, onChange }) {
       title: t('ID/Name'),
       dataIndex: 'name',
       key: 'name',
-      render: (v, r) => (
-        <div>
-          <div>{v || '-'}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.id}</div>
-        </div>
-      ),
+      render: (v, r) => <IdNameCell id={r.id} name={v} />,
     },
     { title: t('Status'), dataIndex: 'status', key: 'status' },
     {
@@ -590,7 +585,15 @@ function PfTarget({ fip, initial, value, onChange }) {
       dataIndex: 'device_id',
       key: 'device_id',
       render: (v, r) =>
-        v && r.device_owner === 'compute:nova' ? <Link to={`/compute/instance/detail/${v}`}>{v}</Link> : v || '-',
+        v ? (
+          <IdNameCell
+            id={v}
+            href={r.device_owner === 'compute:nova' ? `/compute/instance/detail/${v}` : undefined}
+            bold={false}
+          />
+        ) : (
+          '-'
+        ),
     },
   ];
 

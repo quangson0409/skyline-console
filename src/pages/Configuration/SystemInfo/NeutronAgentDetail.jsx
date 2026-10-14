@@ -1,12 +1,11 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Col, Row } from 'antd';
 import apiClient from '@/api/client';
 import { serviceBase } from '@/api/endpoints';
 import { neutronApi } from '@/api/neutron';
 import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
-import ResourcePage, { formatTime, nameColumn, statusColumn, projectColumn, yesNo } from '@/components/ResourcePage';
+import ResourcePage, { formatTime, nameColumn, statusColumn, projectColumn, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { JsonBlock, SelectTable, selectTableRequired, sinceTime } from '../shared';
@@ -59,10 +58,12 @@ const routerColumns = (projectMap, { link = true } = {}) => [
     key: 'externalNetworkName',
     render: (v, r) =>
       r.externalNetworkId ? (
-        <div>
-          {link ? <Link to={`/network/networks-admin/detail/${r.externalNetworkId}`}>{v || '-'}</Link> : v || '-'}
-          <div style={{ fontSize: 11, color: '#94a3b8' }}>{r.externalNetworkId}</div>
-        </div>
+        <IdNameCell
+          id={r.externalNetworkId}
+          name={v}
+          href={link ? `/network/networks-admin/detail/${r.externalNetworkId}` : undefined}
+          bold={false}
+        />
       ) : (
         '-'
       ),
