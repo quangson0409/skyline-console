@@ -118,27 +118,37 @@ export const ShortId = ({ id, href, full = false }) => {
  * Use it for primary ID/Name columns and for related-resource columns (Volume ID/Name, Network ID/Name...).
  * The name line is omitted when the name is unknown or equal to the id; `extra` renders after the name.
  */
-export const IdNameCell = ({ id, name, href, bold = true, full = false, extra }) => {
+/** default width of the name line in id+name cells; longer names end with "…" and show a tooltip */
+export const NAME_MAX_WIDTH = 220;
+
+/** single-line name with ellipsis + full-name tooltip */
+export const EllipsisName = ({ children, maxWidth = NAME_MAX_WIDTH, bold = false, style }) => (
+  <Typography.Text
+    ellipsis={{ tooltip: children }}
+    style={{ display: 'block', maxWidth, fontWeight: bold ? 600 : 400, fontSize: 'inherit', color: 'inherit', ...style }}
+  >
+    {children}
+  </Typography.Text>
+);
+
+export const IdNameCell = ({ id, name, href, bold = true, full = false, extra, maxWidth = NAME_MAX_WIDTH }) => {
   if (!hasId(id)) {
     const text = name || '-';
-    return href ? <Link to={href}>{text}</Link> : <span>{text}</span>;
+    const node = <EllipsisName maxWidth={maxWidth}>{text}</EllipsisName>;
+    return href ? <Link to={href}>{node}</Link> : node;
   }
   const showName = name !== undefined && name !== null && name !== '' && String(name) !== String(id);
   return (
-    <div style={{ minWidth: 0 }}>
+    <div style={{ minWidth: 0, maxWidth }}>
       <ShortId id={id} href={href} full={full} />
-      {showName || extra ? (
-        <div style={{ fontWeight: bold ? 600 : 400, wordBreak: 'break-word' }}>
-          {showName ? name : null}
-          {extra}
-        </div>
-      ) : null}
+      {showName ? <EllipsisName maxWidth={maxWidth} bold={bold}>{name}</EllipsisName> : null}
+      {extra ? <div>{extra}</div> : null}
     </div>
   );
 };
 
 /** Legacy "ID/Name" column (utils/table getNameRender): short id link on top, bold name below */
-export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, width } = {}) => ({
+export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, width, nameMaxWidth } = {}) => ({
   title: title || t('ID/Name'),
   dataIndex,
   key: dataIndex,
@@ -150,6 +160,7 @@ export const nameColumn = ({ title, dataIndex = 'name', idIndex = 'id', linkTo, 
       id={record[idIndex]}
       name={value}
       href={typeof linkTo === 'function' ? linkTo(record) : null}
+      maxWidth={nameMaxWidth}
     />
   ),
 });
