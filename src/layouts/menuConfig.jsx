@@ -304,7 +304,6 @@ export const getAdminMenu = (t = (s) => s) => [
         key: '/compute/instance-admin',
         path: '/compute/instance-admin',
         label: t('Instances'),
-        badge: 28,
       },
       {
         key: '/compute/instance-snapshot-admin',
