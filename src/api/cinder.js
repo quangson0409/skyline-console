@@ -1,7 +1,7 @@
 import apiClient from './client';
 import { useAuthStore } from '@/store/authStore';
 import { serviceBase, versionHeaders } from './endpoints';
-import { getAllPages } from './paging';
+import { getAllPages, getPage } from './paging';
 
 /**
  * OpenStack Cinder Block Storage API (v3) - port of legacy src/client/cinder
@@ -182,3 +182,20 @@ export const cinderApi = {
 };
 
 export default cinderApi;
+
+/** Single pages for server-side lists (legacy fetchListByPage); resolve to { items, total, hasNext, marker } */
+const extConfig = { paramsSerializer: { indexes: null } };
+Object.assign(cinderApi, {
+  /** skyline /extension/volumes (limit, marker, sort_keys, sort_dirs, all_projects, filters) -> count */
+  listVolumesExtensionPage: (params) => getPage(`${SKYLINE_EXT}/volumes`, { key: 'volumes', params, config: extConfig }),
+  /** skyline /extension/volume_snapshots */
+  listSnapshotsExtensionPage: (params) =>
+    getPage(`${SKYLINE_EXT}/volume_snapshots`, { key: 'volume_snapshots', params, config: extConfig }),
+  /** cinder /volumes/detail page (limit, marker, sort=key:dir, all_tenants, filters) */
+  listVolumesPage: (params) => getPage(`${p()}/volumes/detail`, { key: 'volumes', params, config: vh() }),
+  listSnapshotsPage: (params) => getPage(`${p()}/snapshots/detail`, { key: 'snapshots', params, config: vh() }),
+  listBackupsPage: (params) => getPage(`${p()}/backups/detail`, { key: 'backups', params, config: vh() }),
+  listVolumeTypesPage: (params) => getPage(`${p()}/types`, { key: 'volume_types', params, config: vh() }),
+  /** GET /volumes/summary (3.12+): { 'volume-summary': { total_size, total_count } } */
+  getVolumesSummary: (params) => apiClient.get(`${p()}/volumes/summary`, withParams(params)),
+});

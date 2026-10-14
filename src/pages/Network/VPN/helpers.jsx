@@ -102,6 +102,25 @@ const safeList = async (promise, key) => {
 /** Legacy fetchDataByCurrentProject: tenant pages filter by project_id, admin pages list everything */
 export const listParams = ({ isAdmin, projectId }) => (!isAdmin && projectId ? { project_id: projectId } : {});
 
+/**
+ * Server-side VPN lists (legacy VPN containers isFilterByBackend, not backend sorted, stores with
+ * listFilterByProject + fetchDataByCurrentProject): neutron /<resource>?limit&marker + project_id on
+ * the project page and the MagicInput filters; in-page browser sort; no count -> "has next" paging.
+ */
+const vpnPage = (path, key) => ({
+  clientSort: true,
+  fetchPage: ({ ctx = {}, limit, marker, filters = {} }) =>
+    neutronApi.listPage(path, key, { ...(limit ? { limit } : {}), ...(marker ? { marker } : {}), ...listParams(ctx), ...filters }),
+});
+
+export const vpnServerSide = {
+  services: vpnPage('vpnservices', 'vpnservices'),
+  ikePolicies: vpnPage('ikepolicies', 'ikepolicies'),
+  ipsecPolicies: vpnPage('ipsecpolicies', 'ipsecpolicies'),
+  connections: vpnPage('ipsec_site_connections', 'ipsec_site_connections'),
+  endpointGroups: vpnPage('endpoint-groups', 'endpoint_groups'),
+};
+
 export const vpnLists = {
   services: (params) => safeList(neutronApi.listVpnServices(params), 'vpnservices'),
   ikePolicies: (params) => safeList(neutronApi.listIkePolicies(params), 'ikepolicies'),

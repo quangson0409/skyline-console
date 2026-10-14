@@ -18,6 +18,7 @@ import {
   statusOptions,
   lbDetailPath,
   fetchLoadBalancers,
+  fetchLoadBalancersPage,
   TitleWithTip,
 } from './helpers';
 import { createLoadBalancerAction, deleteLoadBalancerAction, lbRowActions } from './actions';
@@ -71,6 +72,7 @@ export default function LoadBalancerList() {
       breadcrumb={[t('Network'), t('Load Balancers')]}
       description={t('Octavia load balancers distribute traffic across back-end members through listeners and pools.')}
       fetch={fetchLoadBalancers}
+      serverSide={{ fetchPage: fetchLoadBalancersPage, clientSort: true }}
       isTransition={isLbTransition}
       columns={(ctx) => lbColumns({ isAdmin: ctx.isAdmin, projectMap })}
       filterParams={[

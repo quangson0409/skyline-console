@@ -8,7 +8,7 @@ import { t } from '@/core/i18n';
 import {
   vpnStatus,
   vpnStatusOptions,
-  vpnLists,
+  vpnLists, vpnServerSide,
   listParams,
   nameField,
   descriptionField,
@@ -75,6 +75,7 @@ export default function VpnServicesTab() {
       embedded
       title={t('VPN Gateways')}
       fetch={(ctx) => vpnLists.services(listParams(ctx))}
+      serverSide={vpnServerSide.services}
       columns={({ isAdmin }) =>
         [
           nameColumn(),

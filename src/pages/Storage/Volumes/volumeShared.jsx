@@ -18,6 +18,7 @@ import {
   formatTime,
 } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import { volumeLabel, downloadText, ConfirmCheckbox } from '../shared';
 import { KeysSelectTable as SelectTable, selectTableField } from '@/components/SelectTable';
 import { quotaItem, withQuota } from '@/components/Quota/utils';
@@ -1039,7 +1040,8 @@ const renderAttachmentCells = (value, isAdmin) => {
 
 export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}) =>
   [
-    nameColumn({ linkTo: (r) => `/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.id}` }),
+    // sortKey: legacy backend sort keys (skyline /extension/volumes sort_keys)
+    { ...nameColumn({ linkTo: (r) => `/storage/${isAdmin ? 'volume-admin' : 'volume'}/detail/${r.id}` }), sortKey: 'name' },
     isAdmin && {
       title: t('Project ID/Name'),
       dataIndex: 'project_name',
@@ -1047,8 +1049,15 @@ export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}
       render: (v, r) => <IdNameCell id={r.project_id} name={v || projectMap[r.project_id]} bold={false} />,
     },
     isAdmin && textColumn(t('Host'), 'host'),
-    { title: t('Size'), dataIndex: 'size', key: 'size', sorter: (a, b) => a.size - b.size, render: (v) => <b>{v} GiB</b> },
-    statusColumn({ textMap: volumeStatus() }),
+    {
+      title: t('Size'),
+      dataIndex: 'size',
+      key: 'size',
+      sortKey: 'size',
+      sorter: (a, b) => a.size - b.size,
+      render: (v) => <b>{v} GiB</b>,
+    },
+    { ...statusColumn({ textMap: volumeStatus() }), sortKey: 'status' },
     textColumn(t('Type'), 'volume_type', { width: 110 }),
     { title: t('Disk Tag'), dataIndex: 'disk_tag', key: 'disk_tag', render: (v) => diskTag()[v] || '-' },
     !hideAttachments && {
@@ -1061,6 +1070,7 @@ export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}
       title: titleWithTip(t('Bootable'), bootableTip()),
       dataIndex: 'bootable',
       key: 'bootable',
+      sortKey: 'bootable',
       render: (v) => bootableType()[String(v)] || '-',
     },
     {
@@ -1070,7 +1080,7 @@ export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}
       width: 90,
       render: (v) => yesNo(v),
     },
-    timeColumn(),
+    { ...timeColumn(), sortKey: 'created_at' },
   ].filter(Boolean);
 
 export const volumeFilters = () => [
@@ -1089,3 +1099,45 @@ export const volumeFilters = () => [
     ],
   },
 ];
+
+/**
+ * Server-side list (legacy Volume container isFilterByBackend / isSortByBackend, VolumeStore):
+ * skyline /extension/volumes?limit&marker&sort_keys&sort_dirs (+ all_projects on the admin page)
+ * with the MagicInput filters (name, status, multiattach) as query params; count -> total.
+ * Falls back to cinder /volumes/detail paging when the extension is unavailable.
+ */
+export const fetchVolumesPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir, extraParams = {} } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...extraParams, ...sortParams('skyline', sortKey, sortDir) };
+  if (ctx.isAdmin) params.all_projects = true;
+  let res;
+  let localMultiattach;
+  try {
+    try {
+      res = await cinderApi.listVolumesExtensionPage(params);
+    } catch (err) {
+      // cinder rejects `multiattach` unless allowed in its resource_filters: filter the page locally then
+      const detail = JSON.stringify(err?.response?.data || '');
+      if (err?.response?.status !== 400 || params.multiattach === undefined || !/multiattach/i.test(detail)) throw err;
+      localMultiattach = String(params.multiattach);
+      delete params.multiattach;
+      res = await cinderApi.listVolumesExtensionPage(params);
+    }
+  } catch (err) {
+    if (err?.response?.status && err.response.status < 404) throw err;
+    const { all_projects, sort_keys, sort_dirs, ...rest } = params;
+    res = await cinderApi.listVolumesPage({
+      ...rest,
+      ...(all_projects ? { all_tenants: 1 } : {}),
+      ...sortParams('cinder', sortKey, sortDir),
+    });
+  }
+  let items = res.items.map(updateVolume);
+  if (localMultiattach !== undefined) {
+    items = items.filter((v) => String(Boolean(v.multiattach)) === localMultiattach);
+    const last = res.items[res.items.length - 1];
+    return { ...res, items, total: undefined, hasNext: res.items.length >= limit, marker: res.marker ?? last?.id };
+  }
+  return { ...res, items };
+};
+
+export const volumeServerSide = { defaultSortKey: 'created_at', fetchPage: fetchVolumesPage };

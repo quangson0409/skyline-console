@@ -9,6 +9,7 @@ import {
   qosPolicyColumns,
   qosPolicyFilters,
   fetchQosPolicies,
+  fetchQosPoliciesPage,
   createQosPolicyAction,
   deleteQosPolicyAction,
   qosRowActions,
@@ -38,6 +39,7 @@ function QosPolicyTable({ tab, embedded }) {
       description={t(DESCRIPTION)}
       deps={[tab]}
       fetch={({ projectId }) => fetchQosPolicies({ tab, projectId })}
+      serverSide={{ defaultSortKey: 'name', fetchPage: (args) => fetchQosPoliciesPage({ ...args, tab }) }}
       columns={({ isAdmin }) => qosPolicyColumns({ isAdmin, showProject: isAdmin || tab === 'all', projectMap })}
       filterParams={qosPolicyFilters({ shared: isShared, hasAdminRole })}
       primaryActions={({ isAdmin, projectId }) =>

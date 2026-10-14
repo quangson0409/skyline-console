@@ -12,6 +12,7 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import { detailPath, listAll } from '@/pages/Network/common';
 import { floatingIpStatus, getLoadBalancer, getPortForwardingName, qosEnabled, fetchPfwEnabled } from './helpers';
 import {
@@ -68,6 +69,36 @@ export const fetchFloatingIps = async ({ isAdmin, projectId, params = {} } = {})
   }));
 };
 
+/**
+ * Server-side list (legacy FloatingIp container isFilterByBackend / isSortByBackend, FloatingIpStore):
+ * neutron /floatingips?limit&marker&sort_key&sort_dir + project_id (project page, legacy
+ * fetchDataByCurrentProject) and the filters; resource / QoS names resolved for the page rows only.
+ * Neutron returns no count -> "has next" paging (floatingips_links).
+ */
+export const fetchFloatingIpsPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir, extraParams = {} } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...extraParams, ...sortParams('neutron', sortKey, sortDir) };
+  if (!ctx.isAdmin && ctx.projectId && !params.project_id) params.project_id = ctx.projectId;
+  const res = await neutronApi.listPage('floatingips', 'floatingips', params);
+  let items = res.items;
+  if (qosEnabled() && items.some((it) => it.qos_policy_id)) {
+    const policies = await listAll.qosPolicies();
+    const map = Object.fromEntries(policies.map((p) => [p.id, p.name]));
+    items = items.map((it) => (it.qos_policy_id ? { ...it, qos_policy_name: map[it.qos_policy_id] } : it));
+  }
+  const names = await Promise.all(items.map(resolveResourceName));
+  return {
+    ...res,
+    items: items.map((it, idx) => ({
+      ...it,
+      name: it.floating_ip_address,
+      project_id: it.project_id || it.tenant_id,
+      resource_name: names[idx],
+    })),
+  };
+};
+
+export const floatingIpServerSide = { defaultSortKey: 'status', fetchPage: fetchFloatingIpsPage };
+
 /* ---------------- columns ---------------- */
 const sortedPfs = (record) =>
   [...(record?.port_forwardings || [])].sort((a, b) => (a.external_port || 0) - (b.external_port || 0));
@@ -101,6 +132,7 @@ export const floatingIpColumns = ({ isAdmin, projectMap, hideQos } = {}) =>
       title: t('ID/Floating IP'),
       dataIndex: 'floating_ip_address',
       key: 'floating_ip_address',
+      sortKey: 'floating_ip_address',
       sorter: (a, b) => String(a.floating_ip_address || '').localeCompare(String(b.floating_ip_address || '')),
       render: (ip, r) => <IdNameCell id={r.id} name={ip} href={detailPath('floatingip', r.id, isAdmin)} />,
     },
@@ -121,7 +153,7 @@ export const floatingIpColumns = ({ isAdmin, projectMap, hideQos } = {}) =>
             '-'
           ),
       },
-    isAdmin && projectColumn(projectMap),
+    isAdmin && { ...projectColumn(projectMap), sortKey: 'project_id' },
     { title: t('Description'), dataIndex: 'description', key: 'description', render: (v) => v || '-' },
     {
       title: t('Fixed IP (Mapped)'),
@@ -136,7 +168,7 @@ export const floatingIpColumns = ({ isAdmin, projectMap, hideQos } = {}) =>
       key: 'resource_name',
       render: (v, r) => (v && v !== '-' ? v : <PortForwardingPopover record={r} />),
     },
-    statusColumn({ textMap: floatingIpStatus() }),
+    { ...statusColumn({ textMap: floatingIpStatus() }), sortKey: 'status' },
     timeColumn(),
   ].filter(Boolean);
 
@@ -179,6 +211,7 @@ export default function FloatingIpList() {
       breadcrumb={[t('Network'), t('Floating IPs')]}
       description={t('Public IP addresses routed from external networks to cloud compute instances.')}
       fetch={fetchFloatingIps}
+      serverSide={floatingIpServerSide}
       columns={({ isAdmin }) => floatingIpColumns({ isAdmin, projectMap })}
       filterParams={floatingIpFilters({ isAdmin: isAdminPage })}
       primaryActions={[allocateAction()]}

@@ -3,7 +3,7 @@ import ResourcePage, { nameColumn, statusColumn, projectColumn, IdNameCell } fro
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { adminSuffix, detailPath } from '../common';
-import { portStatus, deviceOwnerOptions, fetchPorts, ROUTER_OWNERS } from './helpers';
+import { portStatus, deviceOwnerOptions, fetchPorts, ROUTER_OWNERS, fetchPortsPage, portServerSide } from './helpers';
 import {
   createPortAction,
   editPortAction,
@@ -17,7 +17,7 @@ import {
 } from './actions';
 
 export * from './actions';
-export { portStatus, fetchPorts, fetchPortDetail, fetchFixedIps, normalizePort, deviceOwnerOptions } from './helpers';
+export { portStatus, fetchPorts, fetchPortDetail, fetchFixedIps, normalizePort, deviceOwnerOptions, fetchPortsPage, portServerSide } from './helpers';
 
 /** Detail route of a port depending on where the list is rendered (legacy getPortDetailRoute) */
 export const portDetailPath = (record, { isAdmin, networkId, subnetId, instanceId } = {}) => {
@@ -58,8 +58,9 @@ const ipList = (value) =>
 export const portColumns = ({ isAdmin, projectMap, networkId, subnetId, instanceId } = {}) => {
   const networkMode = Boolean(networkId) && !subnetId;
   return [
-    nameColumn({ linkTo: (r) => portDetailPath(r, { isAdmin, networkId, subnetId, instanceId }) }),
-    isAdmin && { ...projectColumn(projectMap), title: t('Project ID/Name') },
+    // sortKey: legacy backend sort keys (skyline /extension/ports sort_keys)
+    { ...nameColumn({ linkTo: (r) => portDetailPath(r, { isAdmin, networkId, subnetId, instanceId }) }), sortKey: 'name' },
+    isAdmin && { ...projectColumn(projectMap), title: t('Project ID/Name'), sortKey: 'project_id' },
     !instanceId && {
       title: t('Bind Resource'),
       dataIndex: 'server_name',
@@ -83,11 +84,13 @@ export const portColumns = ({ isAdmin, projectMap, networkId, subnetId, instance
       title: t('MAC Address'),
       dataIndex: 'mac_address',
       key: 'mac_address',
+      sortKey: 'mac_address',
       sorter: (a, b) => String(a.mac_address || '').localeCompare(String(b.mac_address || '')),
       render: (v) => v || '-',
     },
     {
       ...statusColumn({ textMap: portStatus() }),
+      sortKey: 'status',
       sorter: (a, b) => String(a.status || '').localeCompare(String(b.status || '')),
     },
   ].filter(Boolean);
@@ -165,11 +168,18 @@ export function PortsEmbedded({ filters = {}, networkId, subnetId, instanceId, r
   if (networkId && !query.network_id) query.network_id = networkId;
   if (instanceId && !query.device_id) query.device_id = instanceId;
   const key = JSON.stringify(query);
+  // legacy: backend paged in instance / network detail, client side in subnet detail (fixed_ips filter)
+  const remote = !subnetId && !query.fixed_ips && !query.subnetId;
   return (
     <ResourcePage
       embedded
       deps={[key, subnetId]}
       fetch={(ctx) => fetchPorts({ ...ctx, filters: query, subnetId })}
+      serverSide={
+        remote
+          ? { ...portServerSide, fetchPage: (args) => fetchPortsPage({ ...args, extraParams: query }) }
+          : undefined
+      }
       columns={({ isAdmin }) => portColumns({ isAdmin, projectMap, networkId: netId, subnetId, instanceId })}
       filterParams={portFilters({ networkId: netId, subnetId, instanceId })}
       primaryActions={({ isAdmin }) => portActionSets({ isAdmin, networkId: netId, instanceId, readOnly }).primary}
@@ -187,6 +197,7 @@ export default function PortList() {
       breadcrumb={[t('Network'), t('Ports')]}
       description={t('Port mainly used for binding instance and other operations, occupying the quota of the port.')}
       fetch={(ctx) => fetchPorts(ctx)}
+      serverSide={portServerSide}
       columns={({ isAdmin }) => portColumns({ isAdmin, projectMap })}
       filterParams={portFilters()}
       primaryActions={({ isAdmin }) => portActionSets({ isAdmin }).primary}

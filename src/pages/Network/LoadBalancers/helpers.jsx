@@ -13,6 +13,7 @@ import { octaviaApi } from '@/api/octavia';
 import { neutronApi } from '@/api/neutron';
 import { novaApi } from '@/api/nova';
 import { t } from '@/core/i18n';
+import { pageParams } from '@/api/paging';
 import { adminSuffix } from '@/pages/Network/common';
 
 /* ---------------- status maps ---------------- */
@@ -229,6 +230,30 @@ export const fetchLoadBalancers = async ({ isAdmin, projectId } = {}) => {
   let items = res?.loadbalancers || [];
   if (!isAdmin && projectId) items = items.filter((it) => !it.project_id || it.project_id === projectId);
   return attachFips(items);
+};
+
+/**
+ * Server-side list (legacy LoadBalancerInstance container isFilterByBackend, LbaasStore
+ * fetchListByPageWithFip): octavia /lbaas/loadbalancers?limit&marker + project_id (project page)
+ * and the filters; floating IPs joined for the page rows. Not backend sorted (legacy), no count.
+ */
+export const fetchLoadBalancersPage = async ({ ctx = {}, limit, marker, filters = {} } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters };
+  if (!ctx.isAdmin && ctx.projectId && !params.project_id) params.project_id = ctx.projectId;
+  const res = await octaviaApi.listPage('loadbalancers', params);
+  return { ...res, items: await attachFips(res.items) };
+};
+
+/** legacy Listener container isFilterByBackend: /lbaas/listeners?loadbalancer_id&limit&marker + name filter */
+export const fetchListenersPage = async ({ lbId, limit, marker, filters = {} } = {}) => {
+  const res = await octaviaApi.listPage('listeners', { ...pageParams({ limit, marker }), ...filters, loadbalancer_id: lbId });
+  return {
+    ...res,
+    items: res.items
+      .map((it) => ({ ...it, lbIds: (it.loadbalancers || []).map((lb) => lb.id) }))
+      .filter((it) => !lbId || !it.lbIds.length || it.lbIds.includes(lbId)),
+    marker: res.marker ?? res.items[res.items.length - 1]?.id,
+  };
 };
 
 export const fetchLoadBalancerDetail = async (id) => {

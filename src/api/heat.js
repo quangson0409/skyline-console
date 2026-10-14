@@ -1,6 +1,7 @@
 import apiClient from './client';
 import { useAuthStore } from '@/store/authStore';
 import { serviceBase, currentProjectId } from './endpoints';
+import { getPage } from './paging';
 
 /**
  * OpenStack Heat Orchestration API (v1) - port of legacy src/client/heat.
@@ -48,3 +49,8 @@ export const heatApi = {
 };
 
 export default heatApi;
+
+/** One page of GET /stacks (legacy fetchListByPage): { items, total (with_count), hasNext, marker } */
+Object.assign(heatApi, {
+  listStacksPage: (params) => getPage(`${base()}/stacks`, { key: 'stacks', params }),
+});

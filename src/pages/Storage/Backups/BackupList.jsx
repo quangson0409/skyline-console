@@ -10,6 +10,7 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import { withQuota } from '@/components/Quota/utils';
 import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems, backupQuotaItems } from '@/components/Quota/services';
 
@@ -191,14 +192,19 @@ export const deleteBackupAction = () => ({
 
 export const backupColumns = ({ isAdmin, projectMap, hideVolume } = {}) =>
   [
-    nameColumn({
-      linkTo: (r) => `/storage/${isAdmin ? 'backup-admin' : 'backup'}/detail/${r.id}`,
-    }),
-    isAdmin && projectColumn(projectMap),
+    // sortKey: legacy Backup container sort keys (cinder sort=key:dir)
+    {
+      ...nameColumn({
+        linkTo: (r) => `/storage/${isAdmin ? 'backup-admin' : 'backup'}/detail/${r.id}`,
+      }),
+      sortKey: 'id',
+    },
+    isAdmin && { ...projectColumn(projectMap), sortKey: 'project_id' },
     !hideVolume && {
       title: t('Volume ID/Name'),
       dataIndex: 'volume_name',
       key: 'volume_name',
+      sortKey: 'volume_id',
       render: (value, r) => (
         <IdNameCell
           id={r.volume_id}
@@ -215,8 +221,8 @@ export const backupColumns = ({ isAdmin, projectMap, hideVolume } = {}) =>
       render: (v) => (v ? t('Incremental Backup') : t('Full Backup')),
     },
     { title: t('Size'), dataIndex: 'size', key: 'size', render: (v) => `${v ?? '-'} GiB` },
-    statusColumn({ textMap: backupStatus() }),
-    timeColumn(),
+    { ...statusColumn({ textMap: backupStatus() }), sortKey: 'status' },
+    { ...timeColumn(), sortKey: 'created_at' },
   ].filter(Boolean);
 
 export const fetchBackups = async ({ isAdmin, params = {} } = {}) => {
@@ -234,6 +240,42 @@ export const fetchBackups = async ({ isAdmin, params = {} } = {}) => {
   }));
 };
 
+/**
+ * Server-side list (legacy Backup container isFilterByBackend / isSortByBackend, BackupStore):
+ * cinder /backups/detail?limit&marker&sort=key:dir (+ all_tenants on the admin page) with the
+ * MagicInput filters as query params. Cinder returns no count -> "has next" paging (backups_links).
+ * Volume names of the page are resolved with one skyline /extension/volumes?uuid=... call.
+ */
+export const fetchBackupsPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir, extraParams = {} } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...extraParams, ...sortParams('cinder', sortKey, sortDir) };
+  if (ctx.isAdmin) params.all_tenants = true;
+  const res = await cinderApi.listBackupsPage(params);
+  const ids = [...new Set(res.items.map((b) => b.volume_id).filter(Boolean))];
+  let volumeMap = {};
+  if (ids.length) {
+    try {
+      const vols = await cinderApi.listVolumesExtensionPage({
+        uuid: ids,
+        limit: ids.length,
+        ...(ctx.isAdmin ? { all_projects: true } : {}),
+      });
+      volumeMap = Object.fromEntries(vols.items.map((v) => [v.id, v.name]));
+    } catch {
+      volumeMap = {};
+    }
+  }
+  return {
+    ...res,
+    items: res.items.map((b) => ({
+      ...b,
+      project_id: b['os-backup-project-attr:project_id'] || b.project_id,
+      volume_name: volumeMap[b.volume_id] || '',
+    })),
+  };
+};
+
+export const backupServerSide = { defaultSortKey: 'created_at', fetchPage: fetchBackupsPage };
+
 export default function BackupList() {
   const projectMap = useProjectMap();
 
@@ -243,6 +285,7 @@ export default function BackupList() {
       breadcrumb={[t('Storage'), t('Volume Backups')]}
       description={t('Full and incremental backups of block storage volumes.')}
       fetch={fetchBackups}
+      serverSide={backupServerSide}
       columns={({ isAdmin }) => backupColumns({ isAdmin, projectMap })}
       filterParams={[
         { name: 'name', label: t('Name') },

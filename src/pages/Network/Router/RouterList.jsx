@@ -11,6 +11,7 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import { detailPath, listAll } from '../common';
 import { routerStatus, mapRouter, createRouterAction, deleteRouterAction, routerRowActions } from './actions';
 
@@ -38,11 +39,28 @@ export const fetchRouters = async ({ isAdmin, projectId }) => {
   return items.map(mapRouter);
 };
 
+/**
+ * Server-side list (legacy Router container isFilterByBackend / isSortByBackend, RouterStore):
+ * neutron /routers?limit&marker&sort_key&sort_dir + project_id unless administrator, name / status
+ * (/ project_id) filters; external network names for the page rows. No count -> "has next" paging.
+ */
+export const fetchRoutersPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...sortParams('neutron', sortKey, sortDir) };
+  if (!ctx.isAdmin && ctx.projectId) params.project_id = ctx.projectId;
+  const res = await neutronApi.listPage('routers', 'routers', params);
+  const items = res.items.map((it) => ({ ...it }));
+  await fillExternalNetworkNames(items);
+  return { ...res, items: items.map(mapRouter) };
+};
+
+export const routerServerSide = { defaultSortKey: 'status', fetchPage: fetchRoutersPage };
+
 export const routerColumns = ({ isAdmin, projectMap }) =>
   [
-    nameColumn({ linkTo: (r) => detailPath('router', r.id, isAdmin) }),
-    isAdmin && projectColumn(projectMap),
-    statusColumn({ textMap: routerStatus() }),
+    // sortKey: legacy backend sort keys (neutron sort_key)
+    { ...nameColumn({ linkTo: (r) => detailPath('router', r.id, isAdmin) }), sortKey: 'name' },
+    isAdmin && { ...projectColumn(projectMap), sortKey: 'project_id' },
+    { ...statusColumn({ textMap: routerStatus() }), sortKey: 'status' },
     {
       title: t('External Gateway'),
       dataIndex: 'hasExternalGateway',
@@ -84,6 +102,7 @@ export default function RouterList() {
       breadcrumb={[t('Network'), t('Routers')]}
       description={t('Virtual routers connect subnets to each other and to external networks.')}
       fetch={fetchRouters}
+      serverSide={routerServerSide}
       columns={(ctx) => routerColumns({ isAdmin: ctx.isAdmin, projectMap })}
       filterParams={[
         { name: 'name', label: t('Name') },

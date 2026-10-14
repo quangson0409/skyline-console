@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Drawer, Tag } from 'antd';
-import { neutronResources } from '@/api/neutron';
+import { neutronResources, neutronApi } from '@/api/neutron';
+import { pageParams } from '@/api/paging';
 import ResourcePage, { nameColumn, timeColumn, projectColumn } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { keystoneApi } from '@/api/keystone';
@@ -39,6 +40,38 @@ export const fetchSecurityGroups = async ({ isAdmin, projectId, params = {} } = 
         rules_count: (sg.security_group_rules || []).length,
       };
     });
+};
+
+/**
+ * Server-side list (legacy SecurityGroup container isFilterByBackend, not backend sorted):
+ * neutron /security-groups?limit&marker + project_id (project page) and name / description filters.
+ * Columns keep the in-page browser sort like legacy. No count -> "has next" paging.
+ */
+export const fetchSecurityGroupsPage = async ({ ctx = {}, limit, marker, filters = {} } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters };
+  if (!ctx.isAdmin && ctx.projectId) params.project_id = ctx.projectId;
+  const [res, projects] = await Promise.all([
+    neutronApi.listPage('security-groups', 'security_groups', params),
+    ctx.isAdmin
+      ? keystoneApi
+          .listProjects()
+          .then((r) => r?.projects || [])
+          .catch(() => [])
+      : Promise.resolve([]),
+  ]);
+  const projectNames = Object.fromEntries(projects.map((p) => [p.id, p.name]));
+  return {
+    ...res,
+    items: res.items.map((sg) => {
+      const pid = sg.project_id || sg.tenant_id;
+      return {
+        ...sg,
+        project_id: pid,
+        project_name: ctx.isAdmin ? projectNames[pid] || '-' : undefined,
+        rules_count: (sg.security_group_rules || []).length,
+      };
+    }),
+  };
 };
 
 export const securityGroupColumns = ({ isAdmin, projectMap }) =>
@@ -88,6 +121,7 @@ export default function SecurityGroupList() {
       breadcrumb={[t('Network'), t('Security Groups')]}
       description={t('Virtual firewalls controlling inbound and outbound network traffic for compute instances.')}
       fetch={fetchSecurityGroups}
+      serverSide={{ fetchPage: fetchSecurityGroupsPage, clientSort: true }}
       columns={({ isAdmin }) => securityGroupColumns({ isAdmin, projectMap })}
       filterParams={[
         { name: 'name', label: t('Name') },

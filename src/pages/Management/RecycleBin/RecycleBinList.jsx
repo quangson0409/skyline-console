@@ -7,6 +7,7 @@ import ResourcePage, { nameColumn, projectColumn, IdNameCell, formatTime, useIsA
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { sinceTime } from '@/components/ResourcePage/helpers';
+import { sortParams, pageParams } from '@/api/paging';
 
 /** Legacy pages/management/containers/RecycleBin (soft-deleted instances, tenant + administrator) */
 
@@ -20,18 +21,34 @@ export const recycleApi = {
   forceDelete: (id) => serverAction(id, { forceDelete: null }),
 };
 
+const normalizeRecycleServer = (it) => ({
+  ...it,
+  fixed_addresses: it.fixed_addresses || [],
+  floating_addresses: it.floating_addresses || [],
+  reclaim_timestamp: it.reclaim_timestamp ? Number(it.reclaim_timestamp) * 1000 : it.reclaim_timestamp,
+});
+
 export const fetchRecycleServers = async ({ isAdmin } = {}) => {
   const params = { limit: 1000, sort_keys: 'updated_at', sort_dirs: 'desc' };
   if (isAdmin) params.all_projects = true;
   const res = await skylineApi.listRecycleServers(params);
   const list = res?.recycle_servers || res?.servers || [];
-  return list.map((it) => ({
-    ...it,
-    fixed_addresses: it.fixed_addresses || [],
-    floating_addresses: it.floating_addresses || [],
-    reclaim_timestamp: it.reclaim_timestamp ? Number(it.reclaim_timestamp) * 1000 : it.reclaim_timestamp,
-  }));
+  return list.map(normalizeRecycleServer);
 };
+
+/**
+ * Server-side list (legacy RecycleBin container isFilterByBackend / isSortByBackend, RecycleBinStore):
+ * skyline /extension/recycle_servers?limit&marker&sort_keys&sort_dirs (+ all_projects) with the
+ * name / project_name filters. No count -> "has next" paging.
+ */
+export const fetchRecycleServersPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...sortParams('skyline', sortKey, sortDir) };
+  if (ctx.isAdmin) params.all_projects = true;
+  const res = await skylineApi.extensionPage('recycle_servers', 'recycle_servers', params);
+  return { ...res, items: res.items.map(normalizeRecycleServer) };
+};
+
+export const recycleServerSide = { defaultSortKey: 'updated_at', fetchPage: fetchRecycleServersPage };
 
 const runEach = (fn) => async (target) => {
   const list = Array.isArray(target) ? target : [target];
@@ -72,14 +89,20 @@ export default function RecycleBinList() {
       breadcrumb={[t('Maintenance'), t('Recycle Bin')]}
       description={t('Soft-deleted instances can be recovered until their reclaim time expires.')}
       fetch={fetchRecycleServers}
+      serverSide={recycleServerSide}
       searchFields={['name', 'id', 'project_name']}
       columns={({ isAdmin }) =>
         [
-          nameColumn({
-            linkTo: (r) => `/management/${isAdmin ? 'recycle-bin-admin' : 'recycle-bin'}/detail/${r.id}`,
-          }),
+          // sortKey: legacy backend sort keys (skyline /extension/recycle_servers sort_keys)
+          {
+            ...nameColumn({
+              linkTo: (r) => `/management/${isAdmin ? 'recycle-bin-admin' : 'recycle-bin'}/detail/${r.id}`,
+            }),
+            sortKey: 'display_name',
+          },
           isAdmin && {
             ...projectColumn(projectMap, 'project_id'),
+            sortKey: 'project_id',
             title: t('Project ID/Name'),
             render: (v, r) => <IdNameCell id={v} name={r.project_name || projectMap[v]} bold={false} />,
           },
@@ -111,6 +134,7 @@ export default function RecycleBinList() {
             title: t('Deleted At'),
             dataIndex: 'deleted_at',
             key: 'deleted_at',
+            sortKey: 'updated_at',
             sorter: (a, b) => new Date(a.deleted_at || 0) - new Date(b.deleted_at || 0),
             render: (v) => <Tooltip title={formatTime(v)}>{sinceTime(v)}</Tooltip>,
           },

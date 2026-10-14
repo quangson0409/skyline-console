@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import BaseTable from '@/components/Tables/BaseTable';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useResource } from '@/hooks/useResource';
+import { useServerPaging } from '@/hooks/useServerPaging';
 import { useAutoRefresh, defaultIsTransition } from '@/hooks/useAutoRefresh';
 import { useAuthStore } from '@/store/authStore';
 import { useTranslation } from '@/core/i18n';
@@ -19,6 +20,15 @@ import { useIsAdminPage } from './helpers';
  *   batchActions(ctx)     -> actions applied to selected rows (receive record[])
  *   rowActions(ctx)       -> { firstAction, moreActions }
  * Actions follow useActionRunner schema (type confirm / modal / custom).
+ *
+ * serverSide (opt-in, legacy isFilterByBackend / isSortByBackend): see hooks/useServerPaging.
+ *   { fetchPage: async ({ ctx, page, pageSize, limit, marker, offset, filters, sortKey, sortOrder, sortDir })
+ *       => { items, total?, hasNext?, marker? } | array,
+ *     defaultSortKey, defaultSortOrder, markerKey, pageSizeOptions,
+ *     clientSort (backend paging + in-page browser sorting, legacy isFilterByBackend only) }
+ *   `fetch` is ignored; MagicInput filters and the columns declaring `sortKey` go to the backend,
+ *   the page / size / filters / sort survive refresh and auto refresh.
+ *   ctx also gets `total` (backend count when known) and `countBy(filters)`.
  */
 export default function ResourcePage({
   title,
@@ -43,6 +53,7 @@ export default function ResourcePage({
   getCheckboxProps,
   isTransition,
   autoRefreshEnabled = true,
+  serverSide,
 }) {
   const { t } = useTranslation();
   const isAdmin = useIsAdminPage();
@@ -55,7 +66,13 @@ export default function ResourcePage({
     [isAdmin, projectId, hasAdminRole, t]
   );
 
-  const { data, loading, refetch, setData } = useResource(() => fetch(ctx), [ctx, ...deps]);
+  const remoteMode = Boolean(serverSide && serverSide.fetchPage);
+  const local = useResource(() => (remoteMode ? Promise.resolve([]) : fetch(ctx)), [ctx, remoteMode, ...deps]);
+  const paging = useServerPaging({ serverSide, ctx, deps, initialFilters, enabled: remoteMode });
+  const data = remoteMode ? paging.items : local.data;
+  const loading = remoteMode ? paging.loading : local.loading;
+  const refetch = remoteMode ? paging.refetch : local.refetch;
+  const setData = remoteMode ? paging.setItems : local.setData;
   const list = Array.isArray(data) ? data : [];
 
   // Legacy list watcher: 10s while something is in transition, else 30s auto refresh (10 min budget).
@@ -73,7 +90,44 @@ export default function ResourcePage({
     enabled: autoRefreshEnabled,
   });
 
-  const fullCtx = useMemo(() => ({ ...ctx, data: list, refetch, setData }), [ctx, list, refetch, setData]);
+  const remoteTotal = remoteMode ? paging.total : undefined;
+  const countBy = remoteMode ? paging.countBy : undefined;
+  const fullCtx = useMemo(
+    () => ({ ...ctx, data: list, refetch, setData, total: remoteTotal, countBy, serverSide: remoteMode }),
+    [ctx, list, refetch, setData, remoteTotal, countBy, remoteMode]
+  );
+
+  // legacy fetchListByPage clears the selection on every non silent load (page / filter / sort)
+  const remote = remoteMode
+    ? {
+        page: paging.page,
+        pageSize: paging.pageSize,
+        pageSizeOptions: paging.pageSizeOptions,
+        total: paging.total,
+        hasNext: paging.hasNext,
+        sortKey: paging.sortKey,
+        sortOrder: paging.sortOrder,
+        fetchAll: paging.fetchAll,
+        clientSort: Boolean(serverSide.clientSort),
+        onPageChange: (page, size) => {
+          setSelectedRowKeys([]);
+          resetAutoRefresh();
+          paging.setPage(page, size);
+        },
+        onSortChange: (sorter) => {
+          setSelectedRowKeys([]);
+          resetAutoRefresh();
+          paging.setSorter(sorter);
+        },
+      }
+    : undefined;
+  const onRemoteFilterChange = remoteMode
+    ? (filters) => {
+        setSelectedRowKeys([]);
+        resetAutoRefresh();
+        paging.setFilters(filters);
+      }
+    : undefined;
 
   const onRefresh = useCallback(() => {
     setSelectedRowKeys([]);
@@ -141,6 +195,8 @@ export default function ResourcePage({
         resourceName={typeof title === 'string' ? title : undefined}
         filterParams={filterParams}
         filters={initialFilters}
+        onFilterChange={onRemoteFilterChange}
+        remote={remote}
         getCheckboxProps={getCheckboxProps}
         searchFields={searchFields}
         onRefresh={onRefresh}

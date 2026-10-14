@@ -109,7 +109,16 @@ const saveHiddenColumns = (tableKey, keys) => {
 export const isHideable = (col, index) =>
   col.hideable !== false && index !== 0 && col.key !== 'action' && col.dataIndex !== 'action';
 
-export function TableTools({ columns, hidden, onHiddenChange, tableKey, currentRows, allRows, resourceName }) {
+export function TableTools({
+  columns,
+  hidden,
+  onHiddenChange,
+  tableKey,
+  currentRows,
+  allRows,
+  resourceName,
+  fetchAllRows, // server-side lists: async (onProgress) => { items, total, truncated } (legacy page-by-page download)
+}) {
   const hideable = columns.map((c, i) => ({ col: c, i })).filter(({ col, i }) => isHideable(col, i));
 
   const download = (rows) => {
@@ -120,6 +129,38 @@ export function TableTools({ columns, hidden, onHiddenChange, tableKey, currentR
     const visible = columns.filter((c) => !hidden.includes(columnKey(c)));
     const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
     exportCsv(visible, rows, `${(resourceName || 'data').replace(/[\\/:*?"<>|\s]+/g, '-')}-${stamp}.csv`);
+  };
+
+  // legacy Tables/Base/Download getDownloadDataForAll: fetch every page (100 per page, max 10000)
+  const downloadAll = async () => {
+    if (!fetchAllRows) {
+      download(allRows);
+      return;
+    }
+    const key = 'table-download-all';
+    message.loading({ key, content: t('Downloading...'), duration: 0 });
+    try {
+      const { items, total, truncated, max } = await fetchAllRows(({ loaded, total: count }) => {
+        message.loading({
+          key,
+          duration: 0,
+          content: count ? `${t('Downloading...')} ${Math.min(loaded, count)}/${count}` : `${t('Downloading...')} ${loaded}`,
+        });
+      });
+      message.destroy(key);
+      if (truncated) {
+        message.warning(
+          t(
+            'The total amount of data is { total }, and the interface can support downloading { totalMax } pieces of data. If you need to download all the data, please contact the administrator.',
+            { total: total ?? `${items.length}+`, totalMax: max ?? items.length }
+          )
+        );
+      }
+      download(items);
+    } catch (err) {
+      message.destroy(key);
+      message.error(err?.message || t('Download failed'));
+    }
   };
 
   const columnMenu = {
@@ -151,7 +192,7 @@ export function TableTools({ columns, hidden, onHiddenChange, tableKey, currentR
         menu={{
           items: [
             { key: 'page', label: t('Download Current Page'), onClick: () => download(currentRows) },
-            { key: 'all', label: t('Download All Data'), onClick: () => download(allRows) },
+            { key: 'all', label: t('Download All Data'), onClick: downloadAll },
           ],
         }}
       >

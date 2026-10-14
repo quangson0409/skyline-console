@@ -1,3 +1,8 @@
 {
-  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "配额：{ name } 配额不足，无法创建资源，请进行资源数量或配额的调整（剩余{ left }，输入{ input }）。"
+  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "配额：{ name } 配额不足，无法创建资源，请进行资源数量或配额的调整（剩余{ left }，输入{ input }）。",
+  "Downloading...": "下载中...",
+  "Download failed": "下载失败",
+  "The total amount of data is { total }, and the interface can support downloading { totalMax } pieces of data. If you need to download all the data, please contact the administrator.": "数据总量为{ total }，界面可支持下载{ totalMax }条数据，如需下载全部数据，请联系管理员。",
+  "Total Size (current page)": "总大小（当前页）",
+  "Total Capacity (current page)": "总容量（当前页）"
 }

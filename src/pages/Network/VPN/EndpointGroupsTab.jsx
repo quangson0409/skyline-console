@@ -8,7 +8,7 @@ import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { listAll } from '../common';
 import {
-  vpnLists,
+  vpnLists, vpnServerSide,
   listParams,
   nameField,
   descriptionField,
@@ -179,6 +179,7 @@ export default function EndpointGroupsTab() {
       embedded
       title={t('VPN Endpoint Groups')}
       fetch={(ctx) => vpnLists.endpointGroups(listParams(ctx))}
+      serverSide={vpnServerSide.endpointGroups}
       columns={({ isAdmin }) =>
         [
           nameColumn(),

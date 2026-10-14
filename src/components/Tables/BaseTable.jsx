@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Table, Input, Button, Space, Card, Dropdown, Tooltip, Typography, Switch } from 'antd';
+import { Table, Input, Button, Space, Card, Dropdown, Tooltip, Typography, Switch, Pagination } from 'antd';
 import {
   SearchOutlined,
   ReloadOutlined,
@@ -47,6 +47,13 @@ export default function BaseTable({
   tableKey,
   resourceName,
   showTools = true,
+  // Server-side mode (legacy isFilterByBackend / isSortByBackend), see hooks/useServerPaging:
+  // { page, pageSize, pageSizeOptions, total, hasNext, onPageChange(page, size),
+  //   sortKey, sortOrder, onSortChange({ sortKey, sortOrder }), fetchAll(onProgress), clientSort }
+  // Rows are not filtered / sliced locally; columns declaring `sortKey` sort on the backend.
+  // clientSort: list paged by the backend but sorted in the browser (legacy isFilterByBackend
+  // without isSortByBackend): columns keep their own `sorter`, applied to the current page.
+  remote,
 }) {
   const [searchText, setSearchText] = useState('');
   const [internalFilters, setInternalFilters] = useState(filters);
@@ -73,6 +80,8 @@ export default function BaseTable({
   // Search and multi-criteria filtering
   const filteredData = useMemo(() => {
     let result = dataSource;
+    // server-side mode: the backend already filtered the current page
+    if (remote) return result;
 
     // 1. If using MagicInput filterParams
     if (filterParams && filterParams.length > 0) {
@@ -115,7 +124,7 @@ export default function BaseTable({
     }
 
     return result;
-  }, [dataSource, searchText, internalFilters, filterParams, searchFields]);
+  }, [dataSource, searchText, internalFilters, filterParams, searchFields, remote]);
 
   // Combine columns with rowActions if provided and not already present
   const finalColumns = useMemo(() => {
@@ -141,11 +150,53 @@ export default function BaseTable({
     return [...columns, actionColumn];
   }, [columns, rowActions, isAdmin, onActionClick]);
 
-  const shownColumns = useMemo(
-    () => finalColumns.filter((c, i) => !(isHideable(c, i) && hiddenColumns.includes(columnKey(c)))),
-    [finalColumns, hiddenColumns]
-  );
-  const currentPageRows = filteredData.slice((page.current - 1) * page.pageSize, page.current * page.pageSize);
+  const remoteSortKey = remote?.sortKey;
+  const remoteSortOrder = remote?.sortOrder;
+  const shownColumns = useMemo(() => {
+    const visible = finalColumns.filter((c, i) => !(isHideable(c, i) && hiddenColumns.includes(columnKey(c))));
+    if (!remote) return visible;
+    // legacy backend sort: only columns with a sort key are sortable, the order is controlled
+    return visible.map((c) => {
+      if (c.sortKey) {
+        return {
+          ...c,
+          sorter: true,
+          sortOrder: remoteSortKey === c.sortKey ? remoteSortOrder || null : null,
+          sortDirections: ['ascend', 'descend', 'ascend'],
+        };
+      }
+      if ((c.sorter || c.sortOrder) && !remote.clientSort) {
+        const { sorter, sortOrder, defaultSortOrder, ...rest } = c;
+        return rest;
+      }
+      return c;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalColumns, hiddenColumns, Boolean(remote), remote?.clientSort, remoteSortKey, remoteSortOrder]);
+  const currentPageRows = remote
+    ? filteredData
+    : filteredData.slice((page.current - 1) * page.pageSize, page.current * page.pageSize);
+
+  // remote pagination: real total when the backend counts, else legacy "has next" paging
+  const remotePagination = remote
+    ? (() => {
+        const { page: current = 1, pageSize = 10, total, hasNext } = remote;
+        const known = typeof total === 'number';
+        const computed = (current - 1) * pageSize + filteredData.length;
+        let displayTotal = computed;
+        if (known) displayTotal = Math.max(total, computed);
+        else if (hasNext) displayTotal = current * pageSize + 1;
+        return {
+          current,
+          pageSize,
+          total: displayTotal,
+          showSizeChanger: true,
+          pageSizeOptions: (remote.pageSizeOptions || [10, 20, 50, 100]).map(String),
+          showTotal: () => (known || !hasNext ? `${t('Total')}: ${known ? total : computed}` : null),
+          onChange: (p, size) => remote.onPageChange && remote.onPageChange(p, size),
+        };
+      })()
+    : null;
 
   // Row selection configuration
   const rowSelection = onSelectChange
@@ -194,7 +245,15 @@ export default function BaseTable({
               placeholder={searchPlaceholder || t('Search')}
               prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                if (remote && !e.target.value && onFilterChange) onFilterChange({});
+              }}
+              onPressEnter={
+                remote && onFilterChange
+                  ? () => onFilterChange(searchText.trim() ? { name: searchText.trim() } : {})
+                  : undefined
+              }
               style={{ width: 280, borderRadius: 6 }}
               allowClear
             />
@@ -248,6 +307,7 @@ export default function BaseTable({
               currentRows={currentPageRows}
               allRows={filteredData}
               resourceName={resourceName}
+              fetchAllRows={remote?.fetchAll}
             />
           )}
           {extraActions}
@@ -288,7 +348,18 @@ export default function BaseTable({
           loading={loading}
           rowKey={rowKey}
           rowSelection={rowSelection}
-          pagination={{
+          onChange={
+            remote
+              ? (_pagination, _filters, sorter, extra) => {
+                  if (extra?.action !== 'sort' || !remote.onSortChange) return;
+                  const s = Array.isArray(sorter) ? sorter[0] : sorter;
+                  if (remote.clientSort && !s?.column?.sortKey) return;
+                  const sortKey = s?.order ? s?.column?.sortKey : undefined;
+                  remote.onSortChange({ sortKey, sortOrder: sortKey ? s.order : undefined });
+                }
+              : undefined
+          }
+          pagination={remote ? false : {
             showSizeChanger: true,
             showTotal: (total) => `${t('Total')}: ${total}`,
             ...pagination,
@@ -311,6 +382,11 @@ export default function BaseTable({
           scroll={{ x: 'max-content' }}
           tableLayout="auto"
         />
+        {remotePagination && (filteredData.length > 0 || remotePagination.current > 1) ? (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '16px' }}>
+            <Pagination {...remotePagination} />
+          </div>
+        ) : null}
       </Card>
     </div>
   );

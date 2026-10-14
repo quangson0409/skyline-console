@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { serviceBase, versionHeaders, currentProjectId } from './endpoints';
+import { getPage } from './paging';
 
 /**
  * OpenStack Manila Shared File Systems API (v2) - port of legacy src/client/manila
@@ -102,3 +103,9 @@ export const manilaApi = {
 };
 
 export default manilaApi;
+
+/** Single pages for server-side lists (legacy fetchListByPage): { items, total (count), hasNext, marker } */
+Object.assign(manilaApi, {
+  listSharesPage: (params) => getPage(`${p()}/shares/detail`, { key: 'shares', params, config: vh() }),
+  listShareGroupsPage: (params) => getPage(`${p()}/share-groups/detail`, { key: 'share_groups', params, config: vh() }),
+});

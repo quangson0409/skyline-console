@@ -14,6 +14,7 @@ import ResourcePage, {
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import { sortParams } from '@/api/paging';
 import { withQuota } from '@/components/Quota/utils';
 import { fetchManilaQuota, shareQuotaItems } from '@/components/Quota/services';
 import {
@@ -44,6 +45,29 @@ export const fetchShares = async ({ isAdmin, params = {} } = {}) => {
   return (res?.shares || []).map(mapShare);
 };
 
+/**
+ * Server-side list (legacy Share container isFilterByBackend / isSortByBackend, ShareStore
+ * paramsFuncPage): manila /shares/detail?limit&offset&sort_key&sort_dir&all_tenants=0|1&is_public=true
+ * + name / status filters (legacy pages manila by offset). with_count=true is added so manila
+ * (2.42+) returns `count` for the total; without it the list falls back to "has next" paging.
+ */
+export const fetchSharesPage = async ({ ctx = {}, limit, offset, filters = {}, sortKey, sortDir, extraParams = {} } = {}) => {
+  const params = {
+    ...filters,
+    ...extraParams,
+    ...sortParams('manila', sortKey, sortDir),
+    all_tenants: ctx.isAdmin ? 1 : 0,
+    is_public: true,
+    limit,
+    with_count: true,
+  };
+  if (offset) params.offset = offset;
+  const res = await manilaApi.listSharesPage(params);
+  return { ...res, items: res.items.map(mapShare) };
+};
+
+export const shareServerSide = { defaultSortKey: 'created_at', fetchPage: fetchSharesPage };
+
 /** ShareStore.detailDidFetch */
 export const fetchShareDetail = async (id) => {
   const item = (await manilaApi.getShare(id))?.share;
@@ -67,20 +91,23 @@ export const fetchShareDetail = async (id) => {
 /* ------------------------------------------------------------------ columns */
 export const shareColumns = ({ isAdmin, projectMap, hide = [] } = {}) =>
   [
-    nameColumn({ linkTo: (r) => `/share/${isAdmin ? 'share-admin' : 'share'}/detail/${r.id}` }),
-    isAdmin && projectColumn(projectMap),
+    // sortKey: legacy backend sort keys (manila sort_key)
+    { ...nameColumn({ linkTo: (r) => `/share/${isAdmin ? 'share-admin' : 'share'}/detail/${r.id}` }), sortKey: 'name' },
+    isAdmin && { ...projectColumn(projectMap), sortKey: 'project_id' },
     textColumn(t('Description'), 'description'),
     textColumn(t('Availability Zone'), 'availability_zone'),
     !hide.includes('share_type_name') && {
       title: t('Share Type'),
       dataIndex: 'share_type_name',
       key: 'share_type_name',
+      sortKey: 'share_type_id',
       render: (v, r) => <IdNameCell id={r.share_type} name={v} bold={false} />,
     },
     {
       title: t('Size'),
       dataIndex: 'size',
       key: 'size',
+      sortKey: 'size',
       sorter: (a, b) => (a.size || 0) - (b.size || 0),
       render: (v) => (v === undefined || v === null ? '-' : `${v} GiB`),
     },
@@ -88,14 +115,16 @@ export const shareColumns = ({ isAdmin, projectMap, hide = [] } = {}) =>
       title: t('Protocol'),
       dataIndex: 'share_proto',
       key: 'share_proto',
+      sortKey: 'share_proto',
       render: (v) => shareProtocol()[v] || v || '-',
     },
     { title: t('Public'), dataIndex: 'is_public', key: 'is_public', render: (v) => yesNo(v) },
-    statusColumn({ textMap: shareStatus() }),
+    { ...statusColumn({ textMap: shareStatus() }), sortKey: 'status' },
     !hide.includes('share_network_id') && {
       title: t('Share Network'),
       dataIndex: 'share_network_id',
       key: 'share_network_id',
+      sortKey: 'share_network_id',
       render: (v) => (
         <IdNameCell id={v} href={v ? `/share/${isAdmin ? 'share-network-admin' : 'share-network'}/detail/${v}` : undefined} bold={false} />
       ),
@@ -104,11 +133,12 @@ export const shareColumns = ({ isAdmin, projectMap, hide = [] } = {}) =>
       title: t('Share Group'),
       dataIndex: 'share_group_id',
       key: 'share_group_id',
+      sortKey: 'share_group_id',
       render: (v) => (
         <IdNameCell id={v} href={v ? `/share/${isAdmin ? 'share-group-admin' : 'share-group'}/detail/${v}` : undefined} bold={false} />
       ),
     },
-    timeColumn(),
+    { ...timeColumn(), sortKey: 'created_at' },
   ].filter(Boolean);
 
 export const shareFilters = () => [

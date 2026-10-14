@@ -1,3 +1,8 @@
 {
-  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input })."
+  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).",
+  "Downloading...": "Downloading...",
+  "Download failed": "Download failed",
+  "The total amount of data is { total }, and the interface can support downloading { totalMax } pieces of data. If you need to download all the data, please contact the administrator.": "The total amount of data is { total }, and the interface can support downloading { totalMax } pieces of data. If you need to download all the data, please contact the administrator.",
+  "Total Size (current page)": "Total Size (current page)",
+  "Total Capacity (current page)": "Total Capacity (current page)"
 }

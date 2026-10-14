@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { serviceBase } from './endpoints';
+import { getPage } from './paging';
 import { useAuthStore } from '@/store/authStore';
 
 /**
@@ -247,3 +248,12 @@ export const neutronApi = {
 };
 
 export default neutronApi;
+
+/**
+ * One page of a neutron list (legacy fetchListByPage): GET /v2.0/<path>?limit&marker&sort_key&sort_dir
+ * + filters (repeated keys for arrays). Resolves to { items, hasNext (<key>_links rel=next), marker }.
+ */
+Object.assign(neutronApi, {
+  listPage: (path, responseKey, params) =>
+    getPage(`${base()}/${path}`, { key: responseKey, params, config: { paramsSerializer: { indexes: null } } }),
+});

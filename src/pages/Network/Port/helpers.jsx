@@ -10,6 +10,8 @@ import { novaApi } from '@/api/nova';
 import { hasEndpoint } from '@/api/endpoints';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import { skylineApi } from '@/api/skyline';
+import { sortParams, pageParams } from '@/api/paging';
 import { isIPv4, isIPv6, isCidr } from '../common';
 
 /* ---------------- resources/neutron/port.jsx ---------------- */
@@ -377,3 +379,35 @@ export const loadQosPolicyOptions = async ({ disabledId } = {}) => {
 
 /* Associate floating IP data loader moved to src/components/network (re-exported for existing imports) */
 export { loadAssociateFipData } from '@/components/network/associateFip';
+
+/**
+ * Server-side list (legacy Port container isFilterByBackend / isSortByBackend, PortStore):
+ * skyline /extension/ports?limit&marker&sort_keys&sort_dirs with all_projects (admin) or
+ * tenant_id = current project, name / network_name / status filters and the Device Owner option
+ * as repeated device_owner params ('none' -> device_owner=''). No count -> "has next" paging.
+ * Floating IPs of the page are joined with one neutron ?port_id=... call (legacy associatedDetail).
+ *  extraParams: parent filters of an embedded list (network_id, device_id)
+ */
+export const fetchPortsPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir, extraParams = {} } = {}) => {
+  const { device_owner_group: ownerGroup, ...rest } = filters;
+  const params = { ...pageParams({ limit, marker }), ...rest, ...extraParams, ...sortParams('skyline', sortKey, sortDir) };
+  const owner = ownerGroup || params.device_owner;
+  if (typeof owner === 'string' && owner) params.device_owner = owner === 'none' ? [''] : owner.split(',');
+  if (ctx.isAdmin) params.all_projects = true;
+  else if (!params.tenant_id && !params.project_id) params.tenant_id = ctx.projectId || currentProjectId();
+  const res = await skylineApi.extensionPage('ports', 'ports', params);
+  const items = res.items.map(normalizePort);
+  const ids = items.map((it) => it.id).filter(Boolean);
+  const fips = ids.length ? await safeList(neutronApi.listFloatingIps({ port_id: ids }), 'floatingips') : [];
+  return {
+    ...res,
+    items: items.map((it) => ({
+      ...it,
+      associatedDetail: fips.filter(
+        (f) => f.port_id === it.id && it.fixed_ips.some((ff) => ff.ip_address === f.fixed_ip_address)
+      ),
+    })),
+  };
+};
+
+export const portServerSide = { defaultSortKey: 'status', fetchPage: fetchPortsPage };

@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Breadcrumb, Card, Col, Row, Tooltip, message, notification } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useInstances } from '@/hooks/useInstances';
+import { useInstances, instanceServerSide } from '@/hooks/useInstances';
+import { useServerPaging } from '@/hooks/useServerPaging';
 import { useAuthStore } from '@/store/authStore';
 import { hasEndpoint } from '@/api/endpoints';
 import Status from '@/components/Status';
@@ -37,9 +38,17 @@ export default function InstanceList() {
   const projectMap = useProjectMap();
   const actions = getInstanceActions(isAdminPage);
 
-  const { instances: rawInstances, loading, actionLoading, quotaMetrics, refetch } = useInstances({
+  // KPI counts + quota only; the list is paged on the backend like legacy (isFilterByBackend)
+  const { actionLoading, quotaMetrics, refetch: refetchCounts } = useInstances({
     allProjects: isAdminPage,
+    remote: true,
   });
+  const currentProjectId = useAuthStore((st) => st.currentProject?.id);
+  const pagingCtx = useMemo(() => ({ isAdmin: isAdminPage, projectId: currentProjectId }), [isAdminPage, currentProjectId]);
+  const paging = useServerPaging({ serverSide: instanceServerSide, ctx: pagingCtx });
+  const rawInstances = paging.items;
+  const loading = paging.loading;
+  const refetch = paging.refetch;
 
   // project name for the admin "Project ID/Name" column and the "Project Name" filter
   const instances = useMemo(
@@ -93,7 +102,8 @@ export default function InstanceList() {
     setSelectedRowKeys([]);
     resetAutoRefresh();
     refetch();
-  }, [refetch, resetAutoRefresh]);
+    refetchCounts();
+  }, [refetch, refetchCounts, resetAutoRefresh]);
 
   // Unified Skyline Action Runner (handles confirm, modal forms, etc.)
   const { handleAction, actionModal } = useActionRunner({ onRefresh });
@@ -116,15 +126,17 @@ export default function InstanceList() {
   const columns = useMemo(
     () =>
       [
-        nameColumn({ linkTo: (r) => instanceDetailPath(r.id, isAdminPage) }),
+        // sortKey: legacy backend sort keys (skyline /extension/servers sort_keys)
+        { ...nameColumn({ linkTo: (r) => instanceDetailPath(r.id, isAdminPage) }), sortKey: 'display_name' },
         isAdminPage && {
           title: t('Project ID/Name'),
           dataIndex: 'project_name',
           key: 'project_name',
+          sortKey: 'project_id',
           sorter: (a, b) => String(a.project_id || '').localeCompare(String(b.project_id || '')),
           render: (v, r) => <IdNameCell id={r.project_id} name={v || projectMap[r.project_id]} bold={false} />,
         },
-        isAdminPage && { title: t('Host'), dataIndex: 'host', key: 'host', render: (v) => v || '-' },
+        isAdminPage && { title: t('Host'), dataIndex: 'host', key: 'host', sortKey: 'host', render: (v) => v || '-' },
         // Image column temporarily hidden (flip SHOW_IMAGE_COLUMN to bring it back)
         SHOW_IMAGE_COLUMN && {
           title: t('Image'),
@@ -164,11 +176,12 @@ export default function InstanceList() {
         },
         // hidden by default like legacy; can be shown from the column settings
         { title: t('Tags'), dataIndex: 'tags', key: 'tags', defaultHidden: true, render: (tags) => renderTags(tags) },
-        { title: t('Locked'), dataIndex: 'locked', key: 'locked', width: 80, render: lockRender },
+        { title: t('Locked'), dataIndex: 'locked', key: 'locked', sortKey: 'locked', width: 80, render: lockRender },
         {
           title: t('Created At'),
           dataIndex: 'created_at',
           key: 'created_at',
+          sortKey: 'created_at',
           sorter: (a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')),
           render: (v) => (
             <Tooltip title={formatTime(v)}>
@@ -277,7 +290,32 @@ export default function InstanceList() {
         rowKey="id"
         filterParams={filterParams}
         filters={magicFilters}
-        onFilterChange={setMagicFilters}
+        onFilterChange={(next) => {
+          setMagicFilters(next);
+          setSelectedRowKeys([]);
+          resetAutoRefresh();
+          paging.setFilters(next);
+        }}
+        remote={{
+          page: paging.page,
+          pageSize: paging.pageSize,
+          pageSizeOptions: paging.pageSizeOptions,
+          total: paging.total,
+          hasNext: paging.hasNext,
+          sortKey: paging.sortKey,
+          sortOrder: paging.sortOrder,
+          fetchAll: paging.fetchAll,
+          onPageChange: (page, size) => {
+            setSelectedRowKeys([]);
+            resetAutoRefresh();
+            paging.setPage(page, size);
+          },
+          onSortChange: (sorter) => {
+            setSelectedRowKeys([]);
+            resetAutoRefresh();
+            paging.setSorter(sorter);
+          },
+        }}
         onRefresh={onRefresh}
         autoRefresh={autoRefresh}
         onAutoRefreshChange={setAutoRefresh}

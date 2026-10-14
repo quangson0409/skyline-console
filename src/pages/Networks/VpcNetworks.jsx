@@ -19,6 +19,7 @@ import { useProjectMap } from '@/hooks/useProjectMap';
 import { useAuthStore } from '@/store/authStore';
 import { detailPath, networkStatus } from '@/pages/Network/common';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import {
   createNetworkAction,
   quickCreateNetworkAction,
@@ -40,14 +41,9 @@ const tabParams = (tab, { isAdmin, projectId }) => {
   return {};
 };
 
-export const fetchNetworks = async (tab, ctx) => {
-  const params = tabParams(tab, ctx);
-  const [netsRes, subsRes] = await Promise.all([
-    neutronApi.listNetworks(params),
-    neutronApi.listSubnets().catch(() => ({})),
-  ]);
-  const subMap = Object.fromEntries((subsRes?.subnets || []).map((s) => [s.id, s]));
-  return (netsRes?.networks || []).map((n) => {
+const mapNetworks = (networks, subnets, ctx) => {
+  const subMap = Object.fromEntries((subnets || []).map((s) => [s.id, s]));
+  return (networks || []).map((n) => {
     const subnetDetails = (n.subnets || []).map((id) => subMap[id]).filter(Boolean);
     const external = Boolean(n['router:external']);
     const pid = n.project_id || n.tenant_id;
@@ -65,6 +61,36 @@ export const fetchNetworks = async (tab, ctx) => {
       project_range: pid === ctx.projectId ? 'all current' : 'all',
     };
   });
+};
+
+export const fetchNetworks = async (tab, ctx) => {
+  const params = tabParams(tab, ctx);
+  const [netsRes, subsRes] = await Promise.all([
+    neutronApi.listNetworks(params),
+    neutronApi.listSubnets().catch(() => ({})),
+  ]);
+  return mapNetworks(netsRes?.networks, subsRes?.subnets, ctx);
+};
+
+/**
+ * Server-side list (legacy Network container isFilterByBackend / isSortByBackend, NetworkStore):
+ * neutron /networks?limit&marker&sort_key&sort_dir + the tab scope (project_id / shared /
+ * router:external; nothing on the admin and "all" lists - legacy drops all_projects) and the
+ * name / shared / router:external / project_id filters. New-console filters are mapped to
+ * neutron params: Type -> router:external, Project Range "current" -> project_id, keyword -> name.
+ * Subnets are loaded for the page networks only. No count -> "has next" paging.
+ */
+export const fetchNetworksPage = async (tab, { ctx = {}, limit, marker, filters = {}, sortKey, sortDir } = {}) => {
+  const { network_type_label: type, project_range: range, keyword, ...rest } = filters;
+  const { all_projects, ...scope } = tabParams(tab, ctx);
+  const params = { ...pageParams({ limit, marker }), ...scope, ...rest, ...sortParams('neutron', sortKey, sortDir) };
+  if (type && params['router:external'] === undefined) params['router:external'] = type === 'external';
+  if (range === 'current' && ctx.projectId) params.project_id = ctx.projectId;
+  if (keyword && !params.name) params.name = keyword;
+  const res = await neutronApi.listPage('networks', 'networks', params);
+  const ids = res.items.map((n) => n.id);
+  const subsRes = ids.length ? await neutronApi.listSubnets({ network_id: ids }).catch(() => ({})) : {};
+  return { ...res, items: mapNetworks(res.items, subsRes?.subnets, ctx) };
 };
 
 const SubnetCount = ({ record }) => {
@@ -93,8 +119,9 @@ const SubnetCount = ({ record }) => {
 export const networkColumns = ({ isAdmin, projectId, tab, projectMap }) => {
   const showProject = isAdmin || tab === 'allNetwork';
   return [
-    nameColumn({ linkTo: (r) => detailPath('networks', r.id, isAdmin) }),
-    showProject && { ...projectColumn(projectMap), title: t('Project ID/Name') },
+    // sortKey: legacy backend sort keys (neutron sort_key)
+    { ...nameColumn({ linkTo: (r) => detailPath('networks', r.id, isAdmin) }), sortKey: 'name' },
+    showProject && { ...projectColumn(projectMap), title: t('Project ID/Name'), sortKey: 'project_id' },
     !isAdmin &&
       tab !== 'projectNetwork' && {
         title: t('Is Current Project'),
@@ -121,7 +148,7 @@ export const networkColumns = ({ isAdmin, projectId, tab, projectMap }) => {
       key: 'shared',
       render: (v) => yesNo(v),
     },
-    statusColumn({ textMap: networkStatus() }),
+    { ...statusColumn({ textMap: networkStatus() }), sortKey: 'status' },
     {
       title: t('Subnet Count'),
       dataIndex: 'subnets',
@@ -173,6 +200,7 @@ function NetworkTable({ tab, embedded, projectMap }) {
       breadcrumb={[t('Network'), t('Networks')]}
       description={t('Software-defined networks (SDN) powered by OpenStack Neutron.')}
       fetch={(ctx) => fetchNetworks(tab, ctx)}
+      serverSide={{ defaultSortKey: 'status', fetchPage: (args) => fetchNetworksPage(tab, args) }}
       deps={[tab]}
       columns={(ctx) => networkColumns({ ...ctx, tab, projectMap })}
       filterParams={networkFilters(tab)}

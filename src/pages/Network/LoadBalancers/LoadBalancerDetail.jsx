@@ -15,6 +15,7 @@ import {
   onOff,
   fetchLoadBalancerDetail,
   fetchListeners,
+  fetchListenersPage,
 } from './helpers';
 import { lbRowActions, listenerRowActions, listenerPrimaryActions } from './actions';
 
@@ -53,6 +54,7 @@ function Listeners({ lb, isAdmin, refetchDetail }) {
       embedded
       deps={[lb.id, lb.provisioning_status]}
       fetch={() => fetchListeners(lb.id)}
+      serverSide={{ fetchPage: (args) => fetchListenersPage({ ...args, lbId: lb.id }), clientSort: true }}
       isTransition={isLbTransition}
       columns={listenerColumns({ lbId: lb.id, isAdmin })}
       filterParams={[

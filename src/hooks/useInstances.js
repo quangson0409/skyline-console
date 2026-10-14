@@ -3,6 +3,8 @@ import { message } from 'antd';
 import { t } from '@/core/i18n';
 import { novaApi } from '@/api/nova';
 import { glanceApi } from '@/api/glance';
+import { skylineApi } from '@/api/skyline';
+import { sortParams, pageParams } from '@/api/paging';
 import { useAuthStore } from '@/store/authStore';
 import { normalizeServer } from '@/pages/Instances/resources';
 
@@ -26,16 +28,134 @@ export const listAllServers = async (params = {}, maxPages = 20) => {
   return all;
 };
 
-export function useInstances({ allProjects = false } = {}) {
+/** number of servers matching `params` from the light /servers list (ids only), following markers */
+export const countServers = async (params = {}, maxPages = 50) => {
+  let count = 0;
+  let query = { limit: 1000, ...params };
+  for (let i = 0; i < maxPages; i += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const res = await novaApi.listServersBriefV(query);
+    const servers = Array.isArray(res?.servers) ? res.servers : [];
+    count += servers.length;
+    const next = (res?.servers_links || []).find((l) => l.rel === 'next');
+    if (!next || !servers.length) break;
+    query = { ...query, marker: servers[servers.length - 1].id };
+  }
+  return count;
+};
+
+/** skyline /extension/servers item -> the list/detail shape of normalizeServer (origin_data is the nova server) */
+export const normalizeExtensionServer = (ext = {}, { imageMap = {} } = {}) => {
+  const origin = ext.origin_data && typeof ext.origin_data === 'object' ? ext.origin_data : {};
+  const srv = { ...origin };
+  if (!srv.id) srv.id = ext.id;
+  if (srv.name === undefined) srv.name = ext.name;
+  if (!srv.status && ext.status) srv.status = String(ext.status).toUpperCase();
+  if (!srv.created && ext.created_at) srv.created = ext.created_at;
+  if (srv.locked === undefined) srv.locked = ext.locked;
+  if (!srv.tenant_id && !srv.project_id) srv.tenant_id = ext.project_id;
+  if (!srv['OS-EXT-SRV-ATTR:host'] && ext.host) srv['OS-EXT-SRV-ATTR:host'] = ext.host;
+  if (!srv['OS-EXT-STS:task_state'] && ext.task_state) srv['OS-EXT-STS:task_state'] = ext.task_state;
+  if (!srv['OS-EXT-STS:vm_state'] && ext.vm_state) srv['OS-EXT-STS:vm_state'] = ext.vm_state;
+  if (!srv['OS-EXT-SRV-ATTR:root_device_name'] && ext.root_device_name) {
+    srv['OS-EXT-SRV-ATTR:root_device_name'] = ext.root_device_name;
+  }
+  if (!srv.image && ext.image) srv.image = ext.image;
+  const info = ext.flavor_info && typeof ext.flavor_info === 'object' ? ext.flavor_info : null;
+  if (info && (!srv.flavor || typeof srv.flavor !== 'object' || !srv.flavor.original_name)) {
+    srv.flavor = {
+      ...(srv.flavor && typeof srv.flavor === 'object' ? srv.flavor : {}),
+      ...info,
+      original_name: ext.flavor || info.original_name || info.name,
+    };
+  }
+  const item = normalizeServer(srv, { imageMap });
+  const fixed = Array.isArray(ext.fixed_addresses) && ext.fixed_addresses.length ? ext.fixed_addresses : item.fixed_addresses;
+  const floating =
+    Array.isArray(ext.floating_addresses) && ext.floating_addresses.length ? ext.floating_addresses : item.floating_addresses;
+  return {
+    ...item,
+    project_name: ext.project_name || item.project_name,
+    image_name: ext.image_name || item.image_name,
+    image_os_distro: ext.image_os_distro || item.image_os_distro,
+    flavor: typeof ext.flavor === 'string' && ext.flavor ? ext.flavor : item.flavor,
+    fixed_addresses: fixed,
+    floating_addresses: floating,
+    ip: [...fixed, ...floating].join(' '),
+    floatingIp: floating[0] || null,
+    host: item.host || ext.host || '',
+  };
+};
+
+/** new-console "Flavor" filter (name or id) -> skyline flavor_id */
+const resolveFlavorId = async (value) => {
+  const q = String(value || '').trim().toLowerCase();
+  const res = await novaApi.listFlavorsV({ is_public: 'None' }).catch(() => novaApi.listFlavorsV().catch(() => null));
+  const flavors = res?.flavors || [];
+  const found =
+    flavors.find((f) => String(f.name).toLowerCase() === q) ||
+    flavors.find((f) => String(f.id).toLowerCase() === q) ||
+    flavors.find((f) => String(f.name).toLowerCase().includes(q));
+  return found?.id;
+};
+
+/**
+ * Server-side instance list (legacy Instance container isFilterByBackend / isSortByBackend, ServerStore):
+ * skyline /extension/servers?limit&marker&sort_keys&sort_dirs (+ all_projects on the admin page) with
+ * name / ip / project_name / project_id / host / status (and flavor -> flavor_id) as query params.
+ * The extension returns no count -> "has next" paging. Like legacy listDidFetch, ISO-booted servers
+ * are flagged from the glance iso image list.
+ */
+export const fetchServersPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir, extraParams = {} } = {}) => {
+  const { flavor, ...rest } = filters;
+  const params = { ...pageParams({ limit, marker }), ...rest, ...extraParams, ...sortParams('skyline', sortKey, sortDir) };
+  if (ctx.isAdmin) params.all_projects = true;
+  if (flavor && !params.flavor_id) {
+    const flavorId = await resolveFlavorId(flavor);
+    if (!flavorId) return { items: [], hasNext: false };
+    params.flavor_id = flavorId;
+  }
+  const [res, isoRes] = await Promise.all([
+    skylineApi.extensionPage('servers', 'servers', params),
+    glanceApi.listImages({ disk_format: 'iso' }).catch(() => null),
+  ]);
+  const imageMap = Object.fromEntries((isoRes?.images || []).map((img) => [img.id, img]));
+  return { ...res, items: res.items.map((it) => normalizeExtensionServer(it, { imageMap })) };
+};
+
+export const instanceServerSide = { defaultSortKey: 'created_at', fetchPage: fetchServersPage };
+
+/**
+ * remote: the caller pages the list itself (fetchServersPage); the hook then only loads the
+ * KPI counts (light /servers lists) and the quota, and refetch() refreshes those.
+ */
+export function useInstances({ allProjects = false, remote = false } = {}) {
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [isLiveApi, setIsLiveApi] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [remoteCounts, setRemoteCounts] = useState(null);
 
   // Fetch servers from Live OpenStack Nova API
   const fetchServers = useCallback(async ({ quiet = false } = {}) => {
+    if (remote) {
+      const scope = allProjects ? { all_tenants: 1 } : {};
+      try {
+        const [total, active, building, shutoff] = await Promise.all([
+          countServers(scope),
+          countServers({ ...scope, status: 'ACTIVE' }),
+          countServers({ ...scope, status: 'BUILD' }),
+          countServers({ ...scope, status: 'SHUTOFF' }),
+        ]);
+        setRemoteCounts({ total, active, building, shutoff });
+        setIsLiveApi(true);
+      } catch {
+        setRemoteCounts(null);
+      }
+      return;
+    }
     if (!quiet) setLoading(true);
     try {
       // microversion 2.79 (legacy apiVersionMaps): embedded flavor with original_name / vcpus / ram / extra_specs
@@ -65,7 +185,7 @@ export function useInstances({ allProjects = false } = {}) {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [allProjects]);
+  }, [allProjects, remote]);
 
   useEffect(() => {
     fetchServers();
@@ -114,9 +234,9 @@ export function useInstances({ allProjects = false } = {}) {
     const limitRam = quota?.ram?.limit;
     const maxVcpus = limitVcpus === undefined ? '-' : limitVcpus === -1 ? '∞' : limitVcpus;
     const maxRam = limitRam === undefined ? '-' : limitRam === -1 ? '∞' : Math.round(limitRam / 1024);
-    const activeCount = instances.filter((i) => i.status === 'ACTIVE').length;
-    const buildingCount = instances.filter((i) => i.status === 'BUILD').length;
-    const shutoffCount = instances.filter((i) => i.status === 'SHUTOFF').length;
+    const activeCount = remoteCounts ? remoteCounts.active : instances.filter((i) => i.status === 'ACTIVE').length;
+    const buildingCount = remoteCounts ? remoteCounts.building : instances.filter((i) => i.status === 'BUILD').length;
+    const shutoffCount = remoteCounts ? remoteCounts.shutoff : instances.filter((i) => i.status === 'SHUTOFF').length;
 
     return {
       totalVcpus,
@@ -128,9 +248,9 @@ export function useInstances({ allProjects = false } = {}) {
       activeCount,
       buildingCount,
       shutoffCount,
-      totalCount: instances.length,
+      totalCount: remoteCounts ? remoteCounts.total : instances.length,
     };
-  }, [instances, quota]);
+  }, [instances, quota, remoteCounts]);
 
   // Actions
   const startInstance = useCallback(

@@ -6,7 +6,41 @@ import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { MetricCards } from '@/components/MetricCards';
 import { manilaIsTransition } from '../shareShared';
-import { fetchShares, shareColumns, shareFilters, shareActionConfigs, createShareAction } from './shareActions';
+import { useRemoteCounts } from '@/hooks/useServerPaging';
+import { fetchShares, shareColumns, shareFilters, shareActionConfigs, createShareAction, shareServerSide } from './shareActions';
+
+/** KPI cards: manila counts (with_count) when available, the current page otherwise */
+function ShareMetrics({ data, countBy, isAdmin, projectId, total }) {
+  const counts = useRemoteCounts(
+    countBy,
+    { total: {}, available: { status: 'available' }, error: { status: 'error' } },
+    `${isAdmin}-${projectId}-${total}-${Math.floor(Date.now() / 30000)}`
+  );
+  const pick = (value, fallback) => (typeof value === 'number' ? value : fallback);
+  return (
+    <MetricCards
+      items={[
+        { label: t('Total Shares'), value: pick(counts.total, data.length) },
+        {
+          label: countBy ? t('Total Capacity (current page)') : t('Total Capacity'),
+          value: data.reduce((acc, it) => acc + (it.size || 0), 0),
+          unit: 'GiB',
+          color: '#0068ff',
+        },
+        {
+          label: t('Available'),
+          value: pick(counts.available, data.filter((it) => it.status === 'available').length),
+          color: '#10b981',
+        },
+        {
+          label: t('Error'),
+          value: pick(counts.error, data.filter((it) => /error/.test(it.status || '')).length),
+          color: '#ef4444',
+        },
+      ]}
+    />
+  );
+}
 
 /** Route share/share/create (legacy FormAction page): opens the create modal on top of the list */
 function AutoOpenCreate({ refetch }) {
@@ -30,24 +64,9 @@ export default function ShareList({ autoCreate = false }) {
       breadcrumb={[t('Share File Storage'), t('Shares')]}
       description={t('Shared file systems (NFS, CIFS, CephFS...) provided by OpenStack Manila.')}
       fetch={fetchShares}
-      header={({ data }) => (
-        <MetricCards
-          items={[
-            { label: t('Total Shares'), value: data.length },
-            {
-              label: t('Total Capacity'),
-              value: data.reduce((acc, it) => acc + (it.size || 0), 0),
-              unit: 'GiB',
-              color: '#0068ff',
-            },
-            { label: t('Available'), value: data.filter((it) => it.status === 'available').length, color: '#10b981' },
-            {
-              label: t('Error'),
-              value: data.filter((it) => /error/.test(it.status || '')).length,
-              color: '#ef4444',
-            },
-          ]}
-        />
+      serverSide={shareServerSide}
+      header={({ data, countBy, isAdmin, projectId, total }) => (
+        <ShareMetrics data={data} countBy={countBy} isAdmin={isAdmin} projectId={projectId} total={total} />
       )}
       columns={({ isAdmin }) => shareColumns({ isAdmin, projectMap })}
       filterParams={shareFilters()}

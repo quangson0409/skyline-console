@@ -1,3 +1,8 @@
 {
-  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "Hạn mức: Không đủ hạn mức { name } để tạo tài nguyên, vui lòng điều chỉnh số lượng tài nguyên hoặc hạn mức (còn lại { left }, nhập { input })."
+  "Quota: Insufficient { name } quota to create resources, please adjust resource quantity or quota (available { left }, input { input }).": "Hạn mức: Không đủ hạn mức { name } để tạo tài nguyên, vui lòng điều chỉnh số lượng tài nguyên hoặc hạn mức (còn lại { left }, nhập { input }).",
+  "Downloading...": "Đang tải xuống...",
+  "Download failed": "Tải xuống thất bại",
+  "The total amount of data is { total }, and the interface can support downloading { totalMax } pieces of data. If you need to download all the data, please contact the administrator.": "Tổng số dữ liệu là { total }, giao diện chỉ hỗ trợ tải xuống { totalMax } bản ghi. Nếu cần tải xuống toàn bộ dữ liệu, vui lòng liên hệ quản trị viên.",
+  "Total Size (current page)": "Tổng dung lượng (trang hiện tại)",
+  "Total Capacity (current page)": "Tổng dung lượng (trang hiện tại)"
 }

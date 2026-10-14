@@ -1,4 +1,5 @@
 import apiClient from './client';
+import { getPage } from './paging';
 
 /**
  * OpenStack Skyline API Gateway (v1)
@@ -36,4 +37,18 @@ Object.assign(skylineApi, {
   /** Soft-deleted servers (legacy skylineClient.extension.recycleServers) */
   listRecycleServers: (params) =>
     apiClient.get('/openstack/skyline/api/v1/extension/recycle_servers', { params }),
+});
+
+/**
+ * One page of a skyline apiserver extension list (legacy skylineClient.extension.* used by
+ * fetchListByPage): limit, marker, sort_keys, sort_dirs, all_projects + resource filters.
+ * Resolves to { items, total (count when returned), hasNext, marker, raw }.
+ */
+Object.assign(skylineApi, {
+  extensionPage: (resource, key, params) =>
+    getPage(`/openstack/skyline/api/v1/extension/${resource}`, {
+      key: key || resource,
+      params,
+      config: { paramsSerializer: { indexes: null } },
+    }),
 });

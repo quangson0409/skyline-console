@@ -5,6 +5,7 @@ import { designateApi } from '@/api/designate';
 import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import ResourcePage, { nameColumn, statusColumn, timeColumn, formatTime } from '@/components/ResourcePage';
+import { sortParams, pageParams } from '@/api/paging';
 import { t } from '@/core/i18n';
 import {
   zoneTypes,
@@ -76,12 +77,21 @@ function RecordSets({ zone, isAdmin }) {
       embedded
       deps={[zone.id]}
       fetch={() => designateApi.listRecordsets(zone.id, {}, { allProjects: isAdmin })}
+      // legacy RecordSets isFilterByBackend / isSortByBackend: designate limit / marker / sort_key / sort_dir
+      serverSide={{
+        fetchPage: ({ limit, marker, filters = {}, sortKey, sortDir }) =>
+          designateApi.listRecordsetsPage(
+            zone.id,
+            { ...pageParams({ limit, marker }), ...filters, ...sortParams('designate', sortKey, sortDir) },
+            { allProjects: isAdmin }
+          ),
+      }}
       columns={[
-        nameColumn({ linkTo: (r) => recordSetDetailPath(r.zone_id || zone.id, r.id, isAdmin) }),
-        { title: t('Type'), dataIndex: 'type', key: 'type', render: (v) => getRecordSetType(v) },
+        { ...nameColumn({ linkTo: (r) => recordSetDetailPath(r.zone_id || zone.id, r.id, isAdmin) }), sortKey: 'id' },
+        { title: t('Type'), dataIndex: 'type', key: 'type', sortKey: 'type', render: (v) => getRecordSetType(v) },
         { title: t('Records'), dataIndex: 'records', key: 'records', render: renderRecords },
         statusColumn({ textMap: recordStatus() }),
-        timeColumn(),
+        { ...timeColumn(), sortKey: 'created_at' },
       ]}
       filterParams={[
         { name: 'name', label: t('Name') },

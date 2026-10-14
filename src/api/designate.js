@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { serviceBase } from './endpoints';
+import { getPage } from './paging';
 
 /**
  * OpenStack Designate (DNS) API v2 - port of legacy src/client/designate + stores/designate
@@ -88,3 +89,14 @@ export const designateApi = {
 };
 
 export default designateApi;
+
+/**
+ * Single pages for server-side lists (legacy DNSBaseStore fetchListByPage): limit, marker,
+ * sort_key, sort_dir + filters; total from metadata.total_count, next from links.next.
+ */
+Object.assign(designateApi, {
+  listZonesPage: (params = {}, { allProjects = false } = {}) =>
+    getPage(`${base()}/zones`, { key: 'zones', params, config: projectHeaders(allProjects) }),
+  listRecordsetsPage: (zoneId, params = {}, { allProjects = false } = {}) =>
+    getPage(`${base()}/zones/${zoneId}/recordsets`, { key: 'recordsets', params, config: projectHeaders(allProjects) }),
+});

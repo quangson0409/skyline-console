@@ -10,6 +10,7 @@ import { neutronApi } from '@/api/neutron';
 import { keystoneApi } from '@/api/keystone';
 import { nameColumn, projectColumn, timeColumn, yesNo, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import { detailPath } from '../common';
 
 /* ---------------- rules helpers ---------------- */
@@ -50,14 +51,15 @@ export const qosPolicyLink = (id, name, isAdmin) =>
  */
 export const qosPolicyColumns = ({ isAdmin, showProject, projectMap } = {}) =>
   [
-    nameColumn({ linkTo: (r) => detailPath('qos-policy', r.id, isAdmin) }),
+    // sortKey: legacy backend sort keys (neutron sort_key)
+    { ...nameColumn({ linkTo: (r) => detailPath('qos-policy', r.id, isAdmin) }), sortKey: 'name' },
     {
       title: t('Description'),
       dataIndex: 'description',
       key: 'description',
       render: (v) => v || '-',
     },
-    (showProject ?? isAdmin) && { ...projectColumn(projectMap), title: t('Project ID/Name') },
+    (showProject ?? isAdmin) && { ...projectColumn(projectMap), title: t('Project ID/Name'), sortKey: 'project_id' },
     {
       title: t('Rules Number'),
       dataIndex: 'rulesNumber',
@@ -120,6 +122,26 @@ export const fetchQosPolicies = async ({ tab, projectId, params = {} } = {}) => 
     project_id: p.project_id || p.tenant_id,
     standard_attr_id: p.created_at,
   }));
+};
+
+const mapQosPolicy = (p) => ({
+  ...p,
+  rules: Array.isArray(p.rules) ? p.rules : [],
+  project_id: p.project_id || p.tenant_id,
+  standard_attr_id: p.created_at,
+});
+
+/**
+ * Server-side list (legacy QoSPolicy container isFilterByBackend / isSortByBackend, QoSPolicyStore):
+ * neutron /qos/policies?limit&marker&sort_key&sort_dir + tab scope (project_id / shared) and the
+ * name / description / shared / tenant_id filters. No count -> "has next" paging.
+ */
+export const fetchQosPoliciesPage = async ({ tab, ctx = {}, limit, marker, filters = {}, sortKey, sortDir } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...sortParams('neutron', sortKey, sortDir) };
+  if (tab === 'project' && ctx.projectId) params.project_id = ctx.projectId;
+  if (tab === 'shared') params.shared = true;
+  const res = await neutronApi.listPage('qos/policies', 'policies', params);
+  return { ...res, items: res.items.map(mapQosPolicy) };
 };
 
 export const fetchQosPolicyDetail = async (id, { isAdmin } = {}) => {

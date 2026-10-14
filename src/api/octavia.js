@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { serviceBase } from './endpoints';
+import { getPage } from './paging';
 
 /**
  * OpenStack Octavia Load Balancer API (v2) - port of legacy src/client/octavia.
@@ -75,3 +76,13 @@ export const octaviaApi = {
 };
 
 export default octaviaApi;
+
+/** One page of /lbaas/<key> (legacy fetchListByPage): { items, hasNext (<key>_links), marker } */
+Object.assign(octaviaApi, {
+  listPage: (key, params) =>
+    getPage(`${base()}/lbaas/${key}`, {
+      key,
+      params,
+      config: { headers: { accept: 'application/json' }, paramsSerializer: { indexes: null } },
+    }),
+});

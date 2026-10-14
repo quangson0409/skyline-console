@@ -7,7 +7,7 @@ import ResourcePage, { nameColumn, textColumn, projectColumn, useIsAdminPage, fo
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import {
-  vpnLists,
+  vpnLists, vpnServerSide,
   listParams,
   nameField,
   descriptionField,
@@ -177,6 +177,7 @@ export function IkePoliciesTab() {
       embedded
       title={t('IKE Policies')}
       fetch={(ctx) => vpnLists.ikePolicies(listParams(ctx))}
+      serverSide={vpnServerSide.ikePolicies}
       columns={({ isAdmin }) =>
         [
           policyNameColumn(ikeDetailFields()),
@@ -309,6 +310,7 @@ export function IpsecPoliciesTab() {
       embedded
       title={t('IPsec Policies')}
       fetch={(ctx) => vpnLists.ipsecPolicies(listParams(ctx))}
+      serverSide={vpnServerSide.ipsecPolicies}
       columns={({ isAdmin }) =>
         [
           policyNameColumn(ipsecDetailFields()),

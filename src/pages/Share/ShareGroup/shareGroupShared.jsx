@@ -11,6 +11,7 @@ import {
   deleteAction,
 } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { sortParams, pageParams } from '@/api/paging';
 import {
   shareGroupStatus,
   selectTableField,
@@ -30,6 +31,19 @@ export const fetchShareGroups = async ({ isAdmin, params = {} } = {}) => {
   const res = await manilaApi.listShareGroups(query);
   return res?.share_groups || [];
 };
+
+/**
+ * Server-side list (legacy ShareGroup container isFilterByBackend / isSortByBackend, ShareGroupStore):
+ * manila /share-groups/detail?limit&marker&sort_key&sort_dir (+ all_tenants=1 on the admin page)
+ * + name / status filters. No count -> "has next" paging.
+ */
+export const fetchShareGroupsPage = async ({ ctx = {}, limit, marker, filters = {}, sortKey, sortDir } = {}) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...sortParams('manila', sortKey, sortDir) };
+  if (ctx.isAdmin) params.all_tenants = 1;
+  return manilaApi.listShareGroupsPage(params);
+};
+
+export const shareGroupServerSide = { defaultSortKey: 'created_at', fetchPage: fetchShareGroupsPage };
 
 /** ShareGroupStore.detailDidFetch */
 export const fetchShareGroupDetail = async (id, { isAdmin } = {}) => {
@@ -58,14 +72,18 @@ export const shareGroupColumns = ({ isAdmin, projectMap, selectMode = false } = 
   [
     selectMode
       ? nameColumn()
-      : nameColumn({ linkTo: (r) => `/share/${isAdmin ? 'share-group-admin' : 'share-group'}/detail/${r.id}` }),
-    !selectMode && isAdmin && projectColumn(projectMap),
+      : {
+          ...nameColumn({ linkTo: (r) => `/share/${isAdmin ? 'share-group-admin' : 'share-group'}/detail/${r.id}` }),
+          sortKey: 'name',
+        },
+    !selectMode && isAdmin && { ...projectColumn(projectMap), sortKey: 'project_id' },
     textColumn(t('Description'), 'description'),
     textColumn(t('Availability Zone'), 'availability_zone'),
     {
       title: t('Share Network'),
       dataIndex: 'share_network_id',
       key: 'share_network_id',
+      sortKey: 'share_network_id',
       render: (v) => (
         <IdNameCell
           id={v}
@@ -74,8 +92,8 @@ export const shareGroupColumns = ({ isAdmin, projectMap, selectMode = false } = 
         />
       ),
     },
-    statusColumn({ textMap: shareGroupStatus() }),
-    timeColumn(),
+    { ...statusColumn({ textMap: shareGroupStatus() }), sortKey: 'status' },
+    { ...timeColumn(), sortKey: 'created_at' },
   ].filter(Boolean);
 
 /* ------------------------------------------------------------------ actions */

@@ -16,7 +16,7 @@ import { isIPv4, isIPv6 } from '@/components/network/ip';
 import {
   vpnStatus,
   vpnStatusOptions,
-  vpnLists,
+  vpnLists, vpnServerSide,
   listParams,
   nameField,
   descriptionField,
@@ -229,6 +229,7 @@ export default function IpsecSiteConnectionsTab() {
       embedded
       title={t('IPsec Site Connections')}
       fetch={(ctx) => vpnLists.connections(listParams(ctx))}
+      serverSide={vpnServerSide.connections}
       columns={({ isAdmin }) =>
         [
           nameColumn({ linkTo: (r) => ipsecDetailPath(r.id, isAdmin) }),
