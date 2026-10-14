@@ -134,6 +134,7 @@ export const keypairColumns = () => [
 export default function KeypairList() {
   return (
     <ResourcePage
+      policy="os_compute_api:os-keypairs:index"
       title={t('Keypairs')}
       breadcrumb={[t('Compute'), t('Keypairs')]}
       description={t('Manage SSH public keys for secure passwordless login to instances.')}

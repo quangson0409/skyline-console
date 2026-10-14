@@ -13,6 +13,9 @@ import {
   fetchQosSpecs,
 } from './volumeTypeShared';
 import { renderSpecs } from '../shared';
+import { filterTabsByPolicy } from '@/pages/Compute/_shared';
+
+const QOS_GET_POLICY = 'volume_extension:qos_specs_manage:get';
 
 function QosKeyTab({ qosId }) {
   const { create, edit, del } = qosKeyActions(qosId);
@@ -36,6 +39,8 @@ export default function QosSpecDetail() {
     <ResourceDetail
       breadcrumb={[t('Storage'), { title: t('Volume Types'), path: '/storage/volume-type-admin' }, { title: t('QoS Specs'), path: back }]}
       backPath={back}
+      title={t('QoS Spec')}
+      policy={QOS_GET_POLICY}
       fetch={async (id) => {
         let qos = (await cinderApi.getQosSpec(id))?.qos_specs;
         if (!qos || Array.isArray(qos)) qos = (await fetchQosSpecs()).find((it) => it.id === id);
@@ -48,7 +53,11 @@ export default function QosSpecDetail() {
         { label: t('Consumer'), value: consumerTypes()[d.consumer] || d.consumer },
         { label: t('Specs'), value: d.specs, render: () => renderSpecs(d.specs) },
       ]}
-      tabs={(d) => [{ key: 'ExtraSpec', label: t('Extra Specs'), render: () => <QosKeyTab qosId={d.id} /> }]}
+      tabs={(d) =>
+        filterTabsByPolicy([
+          { key: 'ExtraSpec', label: t('Extra Specs'), policy: QOS_GET_POLICY, render: () => <QosKeyTab qosId={d.id} /> },
+        ])
+      }
       actions={() => ({ firstAction: editConsumerAction(), moreActions: [{ action: deleteQosAction() }] })}
     />
   );

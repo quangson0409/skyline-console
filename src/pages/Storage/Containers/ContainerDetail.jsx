@@ -452,6 +452,9 @@ export default function ContainerDetail() {
         rowKey="name"
         deps={[container, prefix]}
         fetch={() => fetchObjects(container, prefix)}
+        // legacy ableAutoFresh = false and getCheckboxProps: folders cannot be selected
+        autoRefreshEnabled={false}
+        getCheckboxProps={(record) => (isFolder(record) ? { disabled: true, name: record.shortName } : { name: record.shortName })}
         columns={[
           {
             title: t('Name'),

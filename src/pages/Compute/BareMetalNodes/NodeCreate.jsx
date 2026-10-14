@@ -6,6 +6,7 @@ import { placementApi } from '@/api/placement';
 import { glanceApi } from '@/api/glance';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
+import { nameRule } from '../_shared/nameRules';
 import { KeyValueList, keyValueRule, ipRule, objToKV, kvToObj, getDifFromKV, hasValue, isEqual, fetchNodeDetail } from './helpers';
 
 const LIST_PATH = '/compute/baremetal-node-admin';
@@ -35,7 +36,7 @@ const customTraitRule = () => ({
 });
 
 const nodeInfoFields = (traitOptions) => [
-  { name: 'name', label: t('Node Name'), node: <Input /> },
+  { name: 'name', label: t('Node Name'), rules: [nameRule()], node: <Input /> },
   {
     name: 'driver',
     label: t('Node Driver'),

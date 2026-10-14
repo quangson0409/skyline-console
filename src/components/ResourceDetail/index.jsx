@@ -105,7 +105,10 @@ export default function ResourceDetail({
 
   const name = detail ? (typeof title === 'function' ? title(detail) : detail[nameField] || detail.id) : id;
   const actionCfg = typeof actions === 'function' ? actions(fullCtx) : actions;
-  const tabList = detail && tabs ? (typeof tabs === 'function' ? tabs(detail, fullCtx) : tabs) : [];
+  // tabs may declare `policy` / `aliasPolicy` (legacy tab-level get policy()): hidden when denied
+  const tabList = (detail && tabs ? (typeof tabs === 'function' ? tabs(detail, fullCtx) : tabs) : [])
+    .filter(Boolean)
+    .filter((tab) => checkActionPolicy(tab, { item: detail }));
   const infoItems = detail && info ? info(detail, fullCtx) : [];
 
   const crumbs = [

@@ -1,5 +1,6 @@
 import { t } from '@/core/i18n';
 import { sinceTimeClamp } from '@/components/ResourcePage/helpers';
+import { checkActionPolicy as checkTab } from '@/core/policy';
 
 export { KpiCards } from '@/components/MetricCards';
 
@@ -55,3 +56,15 @@ export const getGiBValue = (mb) => {
   const v = Number(mb) || 0;
   return Number((v / 1024).toFixed(2));
 };
+
+/* ------------------------------------------------------------------ */
+/* Page / tab policies (legacy List / TabDetail `get policy()`)        */
+/* ------------------------------------------------------------------ */
+export { checkActionPolicy } from '@/core/policy';
+
+/** legacy tab component policy: the tab is hidden when its list/detail policy is denied */
+export const canSeeTab = (policy, aliasPolicy) => checkTab({ policy, aliasPolicy });
+
+/** keeps the tabs whose `policy` passes (tabs without a policy are always kept) */
+export const filterTabsByPolicy = (tabs = []) =>
+  (tabs || []).filter(Boolean).filter((tab) => !tab.policy || checkTab({ policy: tab.policy, aliasPolicy: tab.aliasPolicy }));

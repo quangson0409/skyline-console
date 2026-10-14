@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { glanceApi } from '@/api/glance';
@@ -118,7 +118,8 @@ export default function ImageList() {
   const navigate = useNavigate();
   const projectMap = useProjectMap();
   const { hasAdminRole } = useAuthStore();
-  const [tab, setTab] = useState('project');
+  // legacy TabList: the active tab follows ?tab=
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const tabOptions = [
     { value: 'project', label: t('Current Project Images') },
@@ -126,6 +127,13 @@ export default function ImageList() {
     { value: 'shared', label: t('Shared Images') },
     hasAdminRole && { value: 'all', label: t('All Images') },
   ].filter(Boolean);
+  const requestedTab = searchParams.get('tab');
+  const tab = tabOptions.some((o) => o.value === requestedTab) ? requestedTab : 'project';
+  const setTab = (key) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', key);
+    setSearchParams(next, { replace: true });
+  };
 
   const filterParams = [
     { name: 'name', label: t('Name') },
@@ -139,6 +147,7 @@ export default function ImageList() {
   return (
     <ResourcePage
       title={t('Images')}
+      policy="get_images"
       breadcrumb={[t('Compute'), t('Images')]}
       description={t('Manage operating system templates (Golden Images) used to create instances quickly.')}
       fetch={(ctx) => fetchImages({ ...ctx, tab })}

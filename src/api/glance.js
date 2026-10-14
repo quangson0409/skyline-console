@@ -55,7 +55,7 @@ export const glanceApi = {
   // Metadata definitions
   listNamespaces: (params) => apiClient.get(`${base()}/metadefs/namespaces`, { params }),
   getNamespace: (namespace, params) =>
-    apiClient.get(`${base()}/metadefs/namespaces/${namespace}`, { params }),
+    apiClient.get(`${base()}/metadefs/namespaces/${encodeURIComponent(namespace)}`, { params }),
   listResourceTypes: () => apiClient.get(`${base()}/metadefs/resource_types`),
 };
 

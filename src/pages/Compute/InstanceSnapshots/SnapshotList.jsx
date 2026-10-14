@@ -7,6 +7,7 @@ import { serviceBase, currentProjectId, versionHeaders } from '@/api/endpoints';
 import ResourcePage, { nameColumn, statusColumn, timeColumn, formatSize, deleteAction, IdNameCell } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
+import { nameRule } from '../_shared/nameRules';
 import { withQuota } from '@/components/Quota/utils';
 import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems } from '@/components/Quota/services';
 import { KpiCards } from '@/components/MetricCards';
@@ -77,7 +78,7 @@ export const editSnapshotAction = () => ({
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => {
@@ -146,7 +147,7 @@ export const createVolumeFromSnapshotAction = () => {
       minSizeCache = minSize;
       return [
         { name: 'snapshot', label: t('Volume Snapshot'), type: 'label' },
-        { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name') },
+        { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
         {
           name: 'size',
           label: t('Capacity (GiB)'),
@@ -228,6 +229,7 @@ export default function SnapshotList() {
 
   return (
     <ResourcePage
+      policy="get_images"
       title={t('Instance Snapshots')}
       breadcrumb={[t('Compute'), t('Instance Snapshots')]}
       description={t('Manage instance disk snapshots created from compute virtual machines.')}

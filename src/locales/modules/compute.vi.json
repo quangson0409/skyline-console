@@ -1,0 +1,4 @@
+{
+  "Name can not be duplicated": "Tên không được trùng lặp",
+  "The name should start with upper letter, lower letter or chinese, and be a string of 1 to 128, characters can only contain \"0-9, a-z, A-Z, \"-'_()[].\".": "Tên phải bắt đầu bằng chữ hoa, chữ thường hoặc chữ Hán, có độ dài từ 1 đến 128 ký tự, chỉ được chứa \"0-9, a-z, A-Z, \"-'_()[].\"."
+}

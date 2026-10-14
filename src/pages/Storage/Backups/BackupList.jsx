@@ -13,6 +13,12 @@ import { t } from '@/core/i18n';
 import { sortParams, pageParams } from '@/api/paging';
 import { withQuota } from '@/components/Quota/utils';
 import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems, backupQuotaItems } from '@/components/Quota/services';
+import { novaApi } from '@/api/nova';
+import { useIsAdminPage } from '@/components/ResourcePage/helpers';
+import { nameRule } from '@/pages/Compute/_shared/nameRules';
+import { instanceStatusText } from '@/pages/Instances/resources';
+import { volumeStatus, fetchVolumesPage } from '../Volumes/volumeShared';
+import { pagedSelectTableField } from '@/pages/Compute/_shared/PagedSelectTable';
 
 export const backupStatus = () => ({
   available: t('Available'),
@@ -29,66 +35,109 @@ const backupModeOptions = () => [
   { value: true, label: t('Incremental Backup') },
 ];
 
-const fetchVolumeOptions = async () => {
-  const res = await cinderApi.listVolumes();
-  return (res?.volumes || [])
-    .filter((v) => ['available', 'in-use'].includes(v.status))
-    .map((v) => ({
-      value: v.id,
-      size: v.size,
-      label: `${v.name || v.id} (${v.size} GiB, ${v.status})`,
-      status: v.status,
-    }));
-};
+/** legacy volumeSelectTablePropsBackend columns */
+const backupVolumeColumns = () => [
+  nameColumn(),
+  { title: t('Size'), dataIndex: 'size', key: 'size', render: (v) => `${v ?? '-'} GiB` },
+  statusColumn({ textMap: volumeStatus() }),
+  { title: t('Type'), dataIndex: 'volume_type', key: 'volume_type', render: (v) => v || '-' },
+  timeColumn(),
+];
 
-export const createBackupAction = ({ volumeId } = {}) => ({
-  id: 'create',
-  type: 'modal',
-  policy: 'backup:create',
-  aliasPolicy: 'cinder:backup:create',
-  title: t('Create Volume Backup'),
-  description: t(
-    'When you do online backup of the volume that has been bound, you need to pay attention to the following points:'
-  ),
-  getDefaultValues: () => ({ incremental: false, volume_id: volumeId }),
-  // legacy Backup/actions/Create showQuota: backups + backup capacity of the chosen volume
-  quota: withQuota(
-    async () => {
-      const [quota, volumes] = await Promise.all([fetchCinderQuotaData(), fetchVolumeOptions()]);
-      return { quota, volumes };
+export const createBackupAction = ({ volumeId } = {}) => {
+  // rows seen in the backend paged volume table (size for the quota chart)
+  const seen = {};
+  let quotaRaw = null;
+  const sizeOf = (values) => {
+    const id = Array.isArray(values.volume_id) ? values.volume_id[0] : values.volume_id;
+    return seen[id]?.size || 0;
+  };
+  return {
+    id: 'create',
+    type: 'modal',
+    policy: 'backup:create',
+    aliasPolicy: 'cinder:backup:create',
+    title: t('Create Volume Backup'),
+    width: volumeId ? undefined : 900,
+    description: t(
+      'When you do online backup of the volume that has been bound, you need to pay attention to the following points:'
+    ),
+    getDefaultValues: () => ({ incremental: false, volume_id: volumeId ? [volumeId] : [] }),
+    // legacy Backup/actions/Create showQuota: backups + backup capacity of the chosen volume
+    quota: withQuota(
+      async () => {
+        const quota = await fetchCinderQuotaData();
+        quotaRaw = quota;
+        if (volumeId) {
+          try {
+            const v = (await cinderApi.getVolume(volumeId))?.volume;
+            if (v) seen[v.id] = v;
+          } catch {
+            // volume label only
+          }
+        }
+        return quota;
+      },
+      (quota, values) => backupQuotaItems(quota, sizeOf(values))
+    ),
+    getFormItems: async () => {
+      let volumeLabelText = volumeId;
+      if (volumeId) {
+        try {
+          const v = (await cinderApi.getVolume(volumeId))?.volume;
+          if (v) {
+            seen[v.id] = v;
+            volumeLabelText = `${v.name || v.id} (${v.size} GiB, ${volumeStatus()[v.status] || v.status})`;
+          }
+        } catch {
+          volumeLabelText = volumeId;
+        }
+      }
+      // legacy disabledVolume: not available / in-use, or no backup quota left for its size
+      const disabledVolume = (v) => {
+        if (!['available', 'in-use'].includes(v.status)) return true;
+        const backups = quotaRaw?.backups;
+        const gigabytes = quotaRaw?.backup_gigabytes;
+        if (backups && backups.left === 0) return true;
+        if (!gigabytes || gigabytes.left === -1 || gigabytes.left === undefined) return false;
+        return gigabytes.left < (v.size || 0);
+      };
+      return [
+        { name: 'name', label: t('Volume Backup Name'), type: 'input', required: true, rules: [nameRule()] },
+        {
+          name: 'incremental',
+          label: t('Backup Mode'),
+          type: 'radio',
+          options: backupModeOptions(),
+          tip: t(
+            'Incremental backup requires a previous full backup of the volume; the system will create a full backup automatically if none exists.'
+          ),
+        },
+        volumeId
+          ? { name: 'volumeLabel', label: t('Volume'), render: () => <div style={{ padding: '6px 0', fontWeight: 600 }}>{volumeLabelText}</div> }
+          : pagedSelectTableField({
+              name: 'volume_id',
+              label: t('Volume'),
+              required: true,
+              columns: backupVolumeColumns(),
+              disabledFunc: disabledVolume,
+              fetchPage: ({ limit, marker, filters }) => fetchVolumesPage({ ctx: {}, limit, marker, filters, sortKey: 'created_at', sortDir: 'desc' }),
+              onRowsChange: (rows) =>
+                rows.forEach((r) => {
+                  seen[r.id] = r;
+                }),
+            }),
+        { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
+      ];
     },
-    ({ quota, volumes }, values) => backupQuotaItems(quota, volumes.find((v) => v.value === values.volume_id)?.size || 0)
-  ),
-  getFormItems: async () => {
-    const volumes = await fetchVolumeOptions();
-    return [
-      { name: 'name', label: t('Volume Backup Name'), type: 'input', required: true },
-      {
-        name: 'incremental',
-        label: t('Backup Mode'),
-        type: 'radio',
-        options: backupModeOptions(),
-        tip: t(
-          'Incremental backup requires a previous full backup of the volume; the system will create a full backup automatically if none exists.'
-        ),
-      },
-      {
-        name: 'volume_id',
-        label: t('Volume'),
-        type: 'select',
-        required: true,
-        disabled: Boolean(volumeId),
-        options: volumes,
-      },
-      { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
-    ];
-  },
-  onSubmit: async (values) => {
-    const volume = await cinderApi.getVolume(values.volume_id);
-    const force = volume?.volume?.status === 'in-use';
-    return cinderApi.createBackup({ ...values, force });
-  },
-});
+    onSubmit: async ({ volumeLabel: _label, volume_id: selected, ...values }) => {
+      const id = volumeId || (Array.isArray(selected) ? selected[0] : selected);
+      const volume = await cinderApi.getVolume(id);
+      const force = volume?.volume?.status === 'in-use';
+      return cinderApi.createBackup({ ...values, volume_id: id, force });
+    },
+  };
+};
 
 export const editBackupAction = () => ({
   id: 'edit-backup',
@@ -99,33 +148,136 @@ export const editBackupAction = () => ({
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true },
+    { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => cinderApi.updateBackup(item.id, values),
 });
 
-export const restoreBackupAction = () => ({
-  id: 'restore-backup',
-  type: 'modal',
-  policy: 'backup:restore',
-  title: t('Restore Backup'),
-  description: t(
-    'Restoring overwrites the data of the source volume. The volume must be available, or every instance it is attached to must be shut off.'
-  ),
-  getDefaultValues: async (item) => {
-    let volumeText = item.volume_name || item.volume_id;
-    try {
-      const res = await cinderApi.getVolume(item.volume_id);
-      volumeText = `${res?.volume?.name || item.volume_id} (${t('Status')}: ${res?.volume?.status || '-'})`;
-    } catch {
-      // source volume may be gone; restore will create a new one
-    }
-    return { volumeName: volumeText };
-  },
-  formItems: [{ name: 'volumeName', label: t('Volume'), type: 'label' }],
-  onSubmit: (_values, item) => cinderApi.restoreBackup(item.id, { volume_id: item.volume_id }),
-});
+/* ------------------------------------------------------------------ Restore (legacy Backup/actions/Restore) */
+const volumeStatusText = (status) => volumeStatus()[status] || status || '-';
+
+/** read-only form value (Form.Item injects `value`) */
+function LabelValue({ value }) {
+  return <div style={{ padding: '6px 0', fontWeight: 600, color: '#0f172a', wordBreak: 'break-all' }}>{value || '-'}</div>;
+}
+
+/**
+ * Legacy Restore.getVolume: the source volume and, when it is in-use, its attached instances.
+ * enable = volume available, or in-use with every attached instance SHUTOFF.
+ */
+export const loadRestoreState = async (item = {}) => {
+  let volume = null;
+  try {
+    volume = (await cinderApi.getVolume(item.volume_id))?.volume || null;
+  } catch {
+    volume = null;
+  }
+  const status = volume?.status;
+  let instances = [];
+  if (status === 'in-use') {
+    const ids = [...new Set((volume.attachments || []).map((it) => it.server_id).filter(Boolean))];
+    instances = await Promise.all(
+      ids.map((sid) =>
+        novaApi
+          .getServer(sid)
+          .then((r) => r?.server || { id: sid, name: sid, status: '' })
+          .catch(() => {
+            const att = (volume.attachments || []).find((a) => a.server_id === sid) || {};
+            return { id: sid, name: att.server_name || sid, status: '' };
+          })
+      )
+    );
+  }
+  const allShutOff = instances.every((it) => String(it.status || '').toLowerCase() === 'shutoff');
+  const enable = status === 'available' || (status === 'in-use' && allShutOff);
+  const volumeText = `${item.volume_name || volume?.name || item.volume_id}(${t('Status')}: ${volumeStatusText(status)})`;
+  const instanceText = instances
+    .map((it) => `${it.name || it.id}(${t('Status')}: ${instanceStatusText(it.status)})`)
+    .join(' | ');
+  return { volume, status, instances, allShutOff, enable, volumeText, instanceText };
+};
+
+const restoreTip = () => (
+  <div>
+    <div style={{ fontWeight: 600 }}>{t('When you restore a backup, you need to meet one of the following conditions:')}</div>
+    <div>{t('1. The volume associated with the backup is available.')}</div>
+    <div>{t('2. The volume associated with the backup has been mounted, and the instance is shut down.')}</div>
+  </div>
+);
+
+export const restoreBackupAction = () => {
+  // getFormItems runs before getDefaultValues for the same opening (useActionRunner)
+  let state = null;
+  const volumeRule = {
+    validator: () =>
+      state && ['available', 'in-use'].includes(state.status)
+        ? Promise.resolve()
+        : Promise.reject(new Error(t('The volume associated with the backup is not available, unable to restore.'))),
+  };
+  const instanceRule = {
+    validator: () =>
+      !state || state.allShutOff
+        ? Promise.resolve()
+        : Promise.reject(new Error(t('The instance is not shut down, unable to restore.'))),
+  };
+  return {
+    id: 'restore-backup',
+    type: 'modal',
+    policy: 'backup:restore',
+    title: t('Restore Backup'),
+    buttonText: t('Restore Backup'),
+    description: t(
+      'Restoring overwrites the data of the source volume. The volume must be available, or every instance it is attached to must be shut off.'
+    ),
+    getFormItems: async (item) => {
+      state = await loadRestoreState(item);
+      const items = [
+        { type: 'alert', name: 'restore-tip', alertType: 'info', message: restoreTip() },
+        !state.enable && {
+          type: 'alert',
+          name: 'restore-blocked',
+          alertType: 'error',
+          message: !['available', 'in-use'].includes(state.status)
+            ? t('The volume associated with the backup is not available, unable to restore.')
+            : t('The instance is not shut down, unable to restore.'),
+        },
+        {
+          name: 'volumeName',
+          label: t('Volume'),
+          rules: [volumeRule],
+          render: () => <LabelValue />,
+        },
+      ];
+      if (state.instanceText) {
+        items.push({
+          name: 'instanceNames',
+          label: t('Instance'),
+          rules: [instanceRule],
+          render: () => <LabelValue />,
+        });
+      }
+      return items.filter(Boolean);
+    },
+    getDefaultValues: async (item) => {
+      if (!state) state = await loadRestoreState(item);
+      return { volumeName: state.volumeText, instanceNames: state.instanceText };
+    },
+    onSubmit: async (_values, item) => {
+      // legacy onSubmit: re-check right before restoring, reject when not allowed
+      const fresh = await loadRestoreState(item);
+      state = fresh;
+      if (!fresh.enable) {
+        throw new Error(
+          !['available', 'in-use'].includes(fresh.status)
+            ? t('The volume associated with the backup is not available, unable to restore.')
+            : t('The instance is not shut down, unable to restore.')
+        );
+      }
+      return cinderApi.restoreBackup(item.id, { volume_id: item.volume_id });
+    },
+  };
+};
 
 export const createVolumeFromBackupAction = () => ({
   id: 'create-volume',
@@ -136,7 +288,7 @@ export const createVolumeFromBackupAction = () => ({
   allowed: (item) => item.status === 'available',
   getDefaultValues: (item) => ({ backupName: item.name || item.id, size: item.size, availability_zone: 'noSelect' }),
   // legacy Backup/actions/CreateVolume showQuota: volume / capacity / volume-type quota
-  quota: withQuota(fetchCinderQuotaData, (quota, values) =>
+  quota: withQuota(() => fetchCinderQuotaData(), (quota, values) =>
     volumeQuotaItems(quota, { count: 1, size: values.size, typeName: values.volume_type })
   ),
   getFormItems: async (item) => {
@@ -146,7 +298,7 @@ export const createVolumeFromBackupAction = () => ({
     ]);
     return [
       { name: 'backupName', label: t('Volume Backup'), type: 'label' },
-      { name: 'name', label: t('Name'), type: 'input', required: true },
+      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
       {
         name: 'size',
         label: t('Capacity (GiB)'),
@@ -276,35 +428,46 @@ export const fetchBackupsPage = async ({ ctx = {}, limit, marker, filters = {}, 
 
 export const backupServerSide = { defaultSortKey: 'created_at', fetchPage: fetchBackupsPage };
 
+/** legacy Backup searchFilters (+ the admin "Project ID" filter of adminPageHasProjectFilter) */
+export const backupFilters = ({ isAdmin } = {}) =>
+  [
+    { name: 'name', label: t('Name') },
+    { name: 'status', label: t('Status'), options: Object.entries(backupStatus()).map(([key, label]) => ({ key, label })) },
+    isAdmin && { name: 'project_id', label: t('Project ID') },
+  ].filter(Boolean);
+
+/** legacy Backup container `get policy()` */
+export const BACKUP_LIST_POLICY = 'backup:get_all';
+
+export const backupRowActions = ({ isAdmin } = {}) =>
+  isAdmin
+    ? { firstAction: deleteBackupAction(), moreActions: [] }
+    : {
+        firstAction: editBackupAction(),
+        moreActions: [
+          { action: restoreBackupAction() },
+          { action: createVolumeFromBackupAction() },
+          { action: deleteBackupAction() },
+        ],
+      };
+
 export default function BackupList() {
   const projectMap = useProjectMap();
+  const isAdminPage = useIsAdminPage();
 
   return (
     <ResourcePage
       title={t('Volume Backups')}
       breadcrumb={[t('Storage'), t('Volume Backups')]}
       description={t('Full and incremental backups of block storage volumes.')}
+      policy={BACKUP_LIST_POLICY}
       fetch={fetchBackups}
       serverSide={backupServerSide}
       columns={({ isAdmin }) => backupColumns({ isAdmin, projectMap })}
-      filterParams={[
-        { name: 'name', label: t('Name') },
-        { name: 'status', label: t('Status'), options: Object.entries(backupStatus()).map(([key, label]) => ({ key, label })) },
-      ]}
+      filterParams={backupFilters({ isAdmin: isAdminPage })}
       primaryActions={({ isAdmin }) => (isAdmin ? [] : [createBackupAction()])}
       batchActions={[deleteBackupAction()]}
-      rowActions={({ isAdmin }) =>
-        isAdmin
-          ? { firstAction: deleteBackupAction(), moreActions: [] }
-          : {
-              firstAction: editBackupAction(),
-              moreActions: [
-                { action: restoreBackupAction() },
-                { action: createVolumeFromBackupAction() },
-                { action: deleteBackupAction() },
-              ],
-            }
-      }
+      rowActions={({ isAdmin }) => backupRowActions({ isAdmin })}
       interval={15000}
     />
   );

@@ -1,0 +1,11 @@
+{
+  "1. The volume associated with the backup is available.": "1. 备份关联的云硬盘处于可用状态。",
+  "2. The volume associated with the backup has been mounted, and the instance is shut down.": "2. 备份关联的云硬盘已被挂载，且云主机处于关机状态。",
+  "The instance is not shut down, unable to restore.": "云主机不处于关机状态，不支持恢复备份操作。",
+  "The volume associated with the backup is not available, unable to restore.": "云硬盘不处于可用状态，不支持恢复备份操作。",
+  "The volume status must be available or in-use.": "云硬盘状态必须为可用或使用中。",
+  "Unbootable": "不可启动",
+  "Volume ID": "云硬盘ID",
+  "Volume Info": "云硬盘信息",
+  "When you restore a backup, you need to meet one of the following conditions:": "当您恢复备份时，需要满足以下条件之一："
+}

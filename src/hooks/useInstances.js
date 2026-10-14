@@ -126,10 +126,43 @@ export const fetchServersPage = async ({ ctx = {}, limit, marker, filters = {}, 
 export const instanceServerSide = { defaultSortKey: 'created_at', fetchPage: fetchServersPage };
 
 /**
+ * Servers by id (legacy ServerGroupInstanceStore: one skyline /extension/servers?uuid= request per
+ * member, all_projects on administrator pages); a member the extension does not return is read
+ * from nova so the list still shows it.
+ */
+export const fetchServersByUuids = async (ids = [], { isAdmin = false } = {}) => {
+  const list = [...new Set((ids || []).filter(Boolean))];
+  if (!list.length) return [];
+  const isoRes = await glanceApi.listImages({ disk_format: 'iso' }).catch(() => null);
+  const imageMap = Object.fromEntries((isoRes?.images || []).map((img) => [img.id, img]));
+  const results = await Promise.all(
+    list.map(async (uuid) => {
+      try {
+        const res = await skylineApi.extensionPage('servers', 'servers', {
+          uuid,
+          limit: 1,
+          ...(isAdmin ? { all_projects: true } : {}),
+        });
+        if (res.items.length) return normalizeExtensionServer(res.items[0], { imageMap });
+      } catch {
+        // fall back to nova below
+      }
+      try {
+        const srv = (await novaApi.getServerV(uuid))?.server;
+        return srv ? normalizeServer(srv, { imageMap }) : null;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return results.filter(Boolean);
+};
+
+/**
  * remote: the caller pages the list itself (fetchServersPage); the hook then only loads the
  * KPI counts (light /servers lists) and the quota, and refetch() refreshes those.
  */
-export function useInstances({ allProjects = false, remote = false } = {}) {
+export function useInstances({ allProjects = false, remote = false, enabled = true } = {}) {
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -140,6 +173,8 @@ export function useInstances({ allProjects = false, remote = false } = {}) {
 
   // Fetch servers from Live OpenStack Nova API
   const fetchServers = useCallback(async ({ quiet = false } = {}) => {
+    // embedded instance lists (flavor / hypervisor / server group tabs) need no KPI counts
+    if (!enabled) return;
     if (remote) {
       const scope = allProjects ? { all_tenants: 1 } : {};
       try {
@@ -185,7 +220,7 @@ export function useInstances({ allProjects = false, remote = false } = {}) {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [allProjects, remote]);
+  }, [allProjects, remote, enabled]);
 
   useEffect(() => {
     fetchServers();
@@ -217,12 +252,12 @@ export function useInstances({ allProjects = false, remote = false } = {}) {
   const projectId = useAuthStore((st) => st.currentProject?.id);
   const [quota, setQuota] = useState(null);
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || !enabled) return;
     novaApi
       .getQuotaSet(projectId)
       .then((res) => setQuota(res?.quota_set || null))
       .catch(() => setQuota(null));
-  }, [projectId, instances.length]);
+  }, [projectId, instances.length, enabled]);
 
   // Quota Metrics
   const quotaMetrics = useMemo(() => {

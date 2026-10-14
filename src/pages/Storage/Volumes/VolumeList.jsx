@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ResourcePage from '@/components/ResourcePage';
+import ResourcePage, { useIsAdminPage } from '@/components/ResourcePage';
 import useActionRunner from '@/components/Action/useActionRunner';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
@@ -14,6 +14,7 @@ import {
   volumeActionConfigs,
   createVolumeAction,
   volumeServerSide,
+  VOLUME_LIST_POLICY,
 } from './volumeShared';
 
 /** KPI cards: backend counts (extension count + /volumes/summary), the current page as fallback */
@@ -73,9 +74,11 @@ function AutoOpenCreate({ refetch }) {
 export default function VolumeList({ autoCreate = false }) {
   const projectMap = useProjectMap();
   const navigate = useNavigate();
+  const isAdminPage = useIsAdminPage();
 
   return (
     <ResourcePage
+      policy={VOLUME_LIST_POLICY}
       title={t('Volumes')}
       breadcrumb={[t('Storage'), t('Volumes')]}
       description={t('Persistent block storage volumes for compute instances.')}
@@ -89,7 +92,7 @@ export default function VolumeList({ autoCreate = false }) {
       )}
       columns={({ isAdmin }) => volumeColumns({ isAdmin, projectMap })}
       searchFields={['name', 'id', 'volume_type']}
-      filterParams={volumeFilters()}
+      filterParams={volumeFilters({ isAdmin: isAdminPage })}
       primaryActions={({ isAdmin }) => volumeActionConfigs({ isAdmin, navigate }).primaryActions}
       batchActions={({ isAdmin }) => volumeActionConfigs({ isAdmin, navigate }).batchActions}
       rowActions={({ isAdmin }) => volumeActionConfigs({ isAdmin, navigate }).rowActions}

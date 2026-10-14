@@ -7,6 +7,7 @@ import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
 import { volumeStatus, fetchVolumes, volumeColumns, volumeActionConfigs } from '../Volumes/volumeShared';
 import { fetchSnapshotDetail, snapshotActionConfigs } from './SnapshotList';
+import { filterTabsByPolicy } from '@/pages/Compute/_shared';
 
 export default function SnapshotDetail() {
   const navigate = useNavigate();
@@ -15,6 +16,8 @@ export default function SnapshotDetail() {
     <ResourceDetail
       breadcrumb={[t('Storage'), { title: t('Volume Snapshots'), path: '/storage/snapshot' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/storage/snapshot-admin' : '/storage/snapshot')}
+      title={t('Volume Snapshot')}
+      policy="volume:get_snapshot"
       fetch={(id, ctx) => fetchSnapshotDetail(id, ctx)}
       info={(d) => [
         { label: t('ID'), value: d.id, copyable: true },
@@ -25,7 +28,7 @@ export default function SnapshotDetail() {
         { label: t('Created At'), value: formatTime(d.created_at) },
         { label: t('Updated At'), value: formatTime(d.updated_at) },
       ]}
-      tabs={(d, { isAdmin }) => [
+      tabs={(d, { isAdmin }) => filterTabsByPolicy([
         {
           key: 'base',
           label: t('Detail'),
@@ -54,6 +57,7 @@ export default function SnapshotDetail() {
               {
                 key: 'volumes',
                 label: t('Created Volumes'),
+                policy: 'volume:get_all',
                 render: () => (
                   <ResourcePage
                     embedded
@@ -69,7 +73,7 @@ export default function SnapshotDetail() {
               },
             ]
           : []),
-      ]}
+      ])}
       actions={(ctx) => snapshotActionConfigs(ctx).rowActions}
     />
   );

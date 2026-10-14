@@ -5,6 +5,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import ResourcePage, { formatTime, timeColumn, textColumn, yesNo, CopyText, IdNameCell } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { filterTabsByPolicy } from '../_shared';
 import { powerState, provisioningState, fetchNodeDetail, fetchNodePorts, fetchNodePortGroups, yesNoText } from './helpers';
 import {
   nodeRowActions,
@@ -162,6 +163,7 @@ export default function NodeDetail() {
   const { id } = useParams();
   return (
     <ResourceDetail
+      policy="baremetal:node:get"
       breadcrumb={[t('Compute'), { title: t('Bare Metal Nodes'), path: '/compute/baremetal-node-admin' }]}
       backPath="/compute/baremetal-node-admin"
       fetch={(nodeId) => fetchNodeDetail(nodeId)}
@@ -191,11 +193,16 @@ export default function NodeDetail() {
         { label: t('Driver'), value: d.driver },
         { label: t('Created At'), value: formatTime(d.created_at) },
       ]}
-      tabs={(d) => [
+      tabs={(d) => filterTabsByPolicy([
         { key: 'base', label: t('Base Info'), render: () => <BaseInfoTab detail={d} /> },
-        { key: 'ports', label: t('Ports'), render: () => <PortTab detail={d} /> },
-        { key: 'portGroups', label: t('Port Groups'), render: () => <PortGroupTab detail={d} /> },
-      ]}
+        { key: 'ports', label: t('Ports'), policy: 'baremetal:port:get', render: () => <PortTab detail={d} /> },
+        {
+          key: 'portGroups',
+          label: t('Port Groups'),
+          policy: 'baremetal:portgroup:get',
+          render: () => <PortGroupTab detail={d} />,
+        },
+      ])}
       actions={() => nodeRowActions(navigate)}
     />
   );

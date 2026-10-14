@@ -50,6 +50,7 @@ export default function StorageBackendList() {
   return (
     <ResourcePage
       title={t('Storage Backends')}
+      policy="scheduler_extension:scheduler_stats:get_pools"
       breadcrumb={[t('Storage'), t('Storage Backends')]}
       description={t('Cinder scheduler pools and their capacity usage.')}
       rowKey="name"

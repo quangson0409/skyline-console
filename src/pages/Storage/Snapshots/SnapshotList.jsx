@@ -3,12 +3,15 @@ import { cinderApi } from '@/api/cinder';
 import ResourcePage, { nameColumn, IdNameCell, statusColumn, timeColumn, textColumn, deleteAction } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import { withQuota } from '@/components/Quota/utils';
+import { withQuota, quotaItem } from '@/components/Quota/utils';
+import { useIsAdminPage } from '@/components/ResourcePage/helpers';
+import { nameRule } from '@/pages/Compute/_shared/nameRules';
+import { pagedSelectTableField } from '@/pages/Compute/_shared/PagedSelectTable';
 import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems } from '@/components/Quota/services';
 import { MetricCards } from '@/components/MetricCards';
 import { useRemoteCounts } from '@/hooks/useServerPaging';
 import { sortParams, pageParams } from '@/api/paging';
-import { volumeStatus, fetchVolumeTypeList, fetchCinderQuota } from '../Volumes/volumeShared';
+import { volumeStatus, fetchVolumeTypeList, fetchCinderQuota, fetchVolumesPage } from '../Volumes/volumeShared';
 
 /* ------------------------------------------------------------------ resources/cinder/snapshot */
 export const snapshotTransitionStatuses = ['creating', 'deleting', 'updating', 'unmanaging', 'backing-up', 'restoring', 'uploading', 'rollbacking'];
@@ -72,7 +75,7 @@ export const editSnapshotAction = () => ({
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => cinderApi.updateSnapshot(item.id, values),
@@ -123,7 +126,7 @@ export const createVolumeFromSnapshotAction = () => ({
     const left = !g || g.limit === -1 ? null : Math.max(0, g.limit - (g.in_use || 0) - (g.reserved || 0));
     return [
       { name: 'snapshot', label: t('Volume Snapshot'), type: 'label' },
-      { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
       {
         name: 'size',
         label: t('Capacity (GiB)'),
@@ -148,30 +151,85 @@ export const createVolumeFromSnapshotAction = () => ({
     cinderApi.createVolume({ name, size, snapshot_id: item.id, volume_type: volume_type || item.__volumeTypeId }),
 });
 
-/** Kept from the previous new-console page: create a snapshot by choosing a source volume */
-export const createSnapshotAction = () => ({
-  id: 'create-snapshot',
-  type: 'modal',
-  title: t('Create Snapshot'),
-  getFormItems: async () => {
-    const res = await cinderApi.listVolumes().catch(() => ({}));
-    return [
-      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: 'snapshot-volume-01' },
-      {
+/** source volume columns of the new-console "Create Snapshot" (legacy volume select table) */
+const sourceVolumeColumns = () => [
+  nameColumn(),
+  { title: t('Size'), dataIndex: 'size', key: 'size', render: (v) => `${v ?? '-'} GiB` },
+  statusColumn({ textMap: volumeStatus() }),
+  { title: t('Type'), dataIndex: 'volume_type', key: 'volume_type', render: (v) => v || '-' },
+  timeColumn(),
+];
+
+/**
+ * Kept from the previous new-console page: create a snapshot by choosing a source volume.
+ * Same rules as legacy Volume/actions/CreateSnapshot: volume:create_snapshot policy, source volume
+ * available or in-use (force only for in-use), snapshots + snapshots_<type> quota.
+ */
+export const createSnapshotAction = () => {
+  const seen = {};
+  const selectedVolume = (values) => {
+    const id = Array.isArray(values.volume_id) ? values.volume_id[0] : values.volume_id;
+    return seen[id];
+  };
+  return {
+    id: 'create-snapshot',
+    type: 'modal',
+    policy: 'volume:create_snapshot',
+    title: t('Create Snapshot'),
+    width: 900,
+    getDefaultValues: () => ({ volume_id: [] }),
+    // legacy Volume/actions/CreateSnapshot quotaInfo: snapshots + snapshots_<volume type>
+    quota: withQuota(() => fetchCinderQuotaData(), (quota, values) => {
+      const volume = selectedVolume(values);
+      const typeName = volume?.volume_type;
+      return [
+        quotaItem(quota.snapshots, { name: 'snapshot', title: t('Volume Snapshot'), add: 1 }),
+        typeName &&
+          quota[`snapshots_${typeName}`] &&
+          quotaItem(quota[`snapshots_${typeName}`], {
+            name: 'type',
+            title: t('{name} type snapshots', { name: typeName }),
+            add: 1,
+          }),
+      ].filter(Boolean);
+    }),
+    getFormItems: async () => [
+      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: 'snapshot-volume-01', rules: [nameRule()] },
+      pagedSelectTableField({
         name: 'volume_id',
         label: t('Source Volume'),
-        type: 'select',
         required: true,
-        options: (res?.volumes || []).map((v) => ({
-          value: v.id,
-          label: `${v.name || v.id} (${v.size} GiB - ${v.volume_type || '-'})`,
-        })),
-      },
+        columns: sourceVolumeColumns(),
+        disabledFunc: (v) => !['available', 'in-use'].includes(v.status),
+        fetchPage: ({ limit, marker, filters }) =>
+          fetchVolumesPage({ ctx: {}, limit, marker, filters, sortKey: 'created_at', sortDir: 'desc' }),
+        onRowsChange: (rows) =>
+          rows.forEach((r) => {
+            seen[r.id] = r;
+          }),
+      }),
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
-    ];
-  },
-  onSubmit: (values) => cinderApi.createSnapshot({ ...values, description: values.description || '', force: true }),
-});
+    ],
+    onSubmit: async ({ volume_id: selected, ...values }) => {
+      const id = Array.isArray(selected) ? selected[0] : selected;
+      let volume = seen[id];
+      try {
+        volume = (await cinderApi.getVolume(id))?.volume || volume;
+      } catch {
+        // keep the row from the table
+      }
+      if (volume && !['available', 'in-use'].includes(volume.status)) {
+        throw new Error(t('The volume status must be available or in-use.'));
+      }
+      return cinderApi.createSnapshot({
+        ...values,
+        volume_id: id,
+        description: values.description || '',
+        force: volume?.status === 'in-use',
+      });
+    },
+  };
+};
 
 export const snapshotActionConfigs = ({ isAdmin } = {}) =>
   isAdmin
@@ -215,18 +273,24 @@ export const snapshotColumns = ({ isAdmin, projectMap = {}, hideVolume } = {}) =
     { ...timeColumn(), sortKey: 'created_at' },
   ].filter(Boolean);
 
-export const snapshotFilters = () => [
-  { name: 'name', label: t('Name') },
-  {
-    name: 'status',
-    label: t('Status'),
-    options: [
-      { label: t('Available'), key: 'AVAILABLE' },
-      { label: t('Error'), key: 'ERROR' },
-    ],
-  },
-  { name: 'volume_name', label: t('Volume Name') },
-];
+export const snapshotFilters = ({ isAdmin } = {}) =>
+  [
+    { name: 'name', label: t('Name') },
+    {
+      name: 'status',
+      label: t('Status'),
+      options: [
+        { label: t('Available'), key: 'AVAILABLE' },
+        { label: t('Error'), key: 'ERROR' },
+      ],
+    },
+    { name: 'volume_name', label: t('Volume Name') },
+    // legacy adminPageHasProjectFilter
+    isAdmin && { name: 'project_id', label: t('Project ID') },
+  ].filter(Boolean);
+
+/** legacy Snapshot container `get policy()` */
+export const SNAPSHOT_LIST_POLICY = 'volume:get_all_snapshots';
 
 const normalizeSnapshot = (s) => ({
   ...s,
@@ -300,8 +364,10 @@ function SnapshotMetrics({ data, countBy, isAdmin, projectId, total }) {
 
 export default function SnapshotList() {
   const projectMap = useProjectMap();
+  const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy={SNAPSHOT_LIST_POLICY}
       title={t('Volume Snapshots')}
       breadcrumb={[t('Storage'), t('Volume Snapshots')]}
       description={t('Point-in-time copies of persistent block storage volumes.')}
@@ -312,7 +378,7 @@ export default function SnapshotList() {
       )}
       columns={({ isAdmin }) => snapshotColumns({ isAdmin, projectMap })}
       searchFields={['name', 'id', 'volume_name', 'volume_id']}
-      filterParams={snapshotFilters()}
+      filterParams={snapshotFilters({ isAdmin: isAdminPage })}
       primaryActions={(ctx) => snapshotActionConfigs(ctx).primaryActions}
       batchActions={(ctx) => snapshotActionConfigs(ctx).batchActions}
       rowActions={(ctx) => snapshotActionConfigs(ctx).rowActions}

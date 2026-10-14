@@ -280,7 +280,7 @@ export function buildStatusActions(isAdminPage = false) {
     buttonTextKey: 'Reset State',
     descKey: 'action.desc.reset_state',
     isDanger: true,
-    adminOnly: true,
+    // legacy Reset: gated only by the policy (and !locked), not by the administrator role
     policy: 'os_compute_api:os-admin-actions:reset_state',
     allowed: (item) => !item?.locked,
     getFormItems: (item) => {

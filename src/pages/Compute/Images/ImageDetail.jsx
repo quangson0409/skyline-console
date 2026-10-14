@@ -112,6 +112,7 @@ export default function ImageDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="get_image"
       breadcrumb={[t('Compute'), { title: t('Images'), path: '/compute/image' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/compute/image-admin' : '/compute/image')}
       fetch={fetchImageDetail}

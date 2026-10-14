@@ -17,11 +17,19 @@ import {
   fetchBackups,
   backupColumns,
   deleteBackupAction,
-  editBackupAction,
-  restoreBackupAction,
-  createVolumeFromBackupAction,
+  backupRowActions,
+  createBackupAction,
+  fetchBackupsPage,
+  BACKUP_LIST_POLICY,
 } from '../Backups/BackupList';
-import { fetchSnapshots, snapshotColumns, snapshotActionConfigs } from '../Snapshots/SnapshotList';
+import {
+  fetchSnapshots,
+  snapshotColumns,
+  snapshotActionConfigs,
+  fetchSnapshotsPage,
+  SNAPSHOT_LIST_POLICY,
+} from '../Snapshots/SnapshotList';
+import { filterTabsByPolicy } from '@/pages/Compute/_shared';
 
 /** Volume/Detail/BaseDetail */
 function BaseInfoTab({ d, isAdmin }) {
@@ -85,6 +93,8 @@ export default function VolumeDetail() {
     <ResourceDetail
       breadcrumb={[t('Storage'), { title: t('Volumes'), path: '/storage/volume' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/storage/volume-admin' : '/storage/volume')}
+      title={t('Volume')}
+      policy="volume:get"
       fetch={(id, ctx) => fetchVolumeDetail(id, ctx)}
       interval={15000}
       info={(d, { isAdmin }) =>
@@ -105,48 +115,55 @@ export default function VolumeDetail() {
           isAdmin && { label: t('Project'), value: d.project_name || projectMap[d.project_id] || d.project_id },
         ].filter(Boolean)
       }
-      tabs={(d, { isAdmin }) => [
-        { key: 'base', label: t('Detail'), render: () => <BaseInfoTab d={d} isAdmin={isAdmin} /> },
-        {
-          key: 'backup',
-          label: t('Backups'),
-          render: () => (
-            <ResourcePage
-              embedded
-              fetch={async (ctx) => (await fetchBackups({ ...ctx, params: { volume_id: d.id } })).filter((b) => b.volume_id === d.id)}
-              columns={({ isAdmin: admin }) => backupColumns({ isAdmin: admin, projectMap, hideVolume: true })}
-              filterParams={[{ name: 'name', label: t('Name') }]}
-              batchActions={[deleteBackupAction()]}
-              rowActions={({ isAdmin: admin }) =>
-                admin
-                  ? { firstAction: deleteBackupAction(), moreActions: [] }
-                  : {
-                      firstAction: editBackupAction(),
-                      moreActions: [
-                        { action: restoreBackupAction() },
-                        { action: createVolumeFromBackupAction() },
-                        { action: deleteBackupAction() },
-                      ],
-                    }
-              }
-            />
-          ),
-        },
-        {
-          key: 'snapshot',
-          label: t('Snapshots'),
-          render: () => (
-            <ResourcePage
-              embedded
-              fetch={async (ctx) => (await fetchSnapshots({ ...ctx, params: { volume_id: d.id } })).filter((s) => s.volume_id === d.id)}
-              columns={({ isAdmin: admin }) => snapshotColumns({ isAdmin: admin, projectMap, hideVolume: true })}
-              filterParams={[{ name: 'name', label: t('Name') }]}
-              batchActions={(ctx) => snapshotActionConfigs(ctx).batchActions}
-              rowActions={(ctx) => snapshotActionConfigs(ctx).rowActions}
-            />
-          ),
-        },
-      ]}
+      tabs={(d, { isAdmin }) =>
+        filterTabsByPolicy([
+          { key: 'base', label: t('Detail'), render: () => <BaseInfoTab d={d} isAdmin={isAdmin} /> },
+          {
+            key: 'backup',
+            label: t('Backups'),
+            // legacy Backup list (inDetailPage): backend paging by volume_id, primary action CreateBackup
+            policy: BACKUP_LIST_POLICY,
+            render: () => (
+              <ResourcePage
+                embedded
+                deps={[d.id]}
+                fetch={async (ctx) => (await fetchBackups({ ...ctx, params: { volume_id: d.id } })).filter((b) => b.volume_id === d.id)}
+                serverSide={{
+                  defaultSortKey: 'created_at',
+                  fetchPage: (args) => fetchBackupsPage({ ...args, extraParams: { volume_id: d.id } }),
+                }}
+                columns={({ isAdmin: admin }) => backupColumns({ isAdmin: admin, projectMap, hideVolume: true })}
+                filterParams={[{ name: 'name', label: t('Name') }]}
+                primaryActions={({ isAdmin: admin }) =>
+                  admin ? [] : [{ ...createBackupAction({ volumeId: d.id }), title: t('Create Backup') }]
+                }
+                batchActions={[deleteBackupAction()]}
+                rowActions={({ isAdmin: admin }) => backupRowActions({ isAdmin: admin })}
+              />
+            ),
+          },
+          {
+            key: 'snapshot',
+            label: t('Snapshots'),
+            policy: SNAPSHOT_LIST_POLICY,
+            render: () => (
+              <ResourcePage
+                embedded
+                deps={[d.id]}
+                fetch={async (ctx) => (await fetchSnapshots({ ...ctx, params: { volume_id: d.id } })).filter((s) => s.volume_id === d.id)}
+                serverSide={{
+                  defaultSortKey: 'created_at',
+                  fetchPage: (args) => fetchSnapshotsPage({ ...args, extraParams: { volume_id: d.id } }),
+                }}
+                columns={({ isAdmin: admin }) => snapshotColumns({ isAdmin: admin, projectMap, hideVolume: true })}
+                filterParams={[{ name: 'name', label: t('Name') }]}
+                batchActions={(ctx) => snapshotActionConfigs(ctx).batchActions}
+                rowActions={(ctx) => snapshotActionConfigs(ctx).rowActions}
+              />
+            ),
+          },
+        ])
+      }
       actions={({ isAdmin }) => volumeActionConfigs({ isAdmin, navigate }).rowActions}
     />
   );

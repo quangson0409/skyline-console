@@ -19,6 +19,7 @@ const downloadPublicKeyAction = () => ({
 export default function KeypairDetail() {
   return (
     <ResourceDetail
+      policy="os_compute_api:os-keypairs:show"
       breadcrumb={[t('Compute'), { title: t('Keypairs'), path: '/compute/keypair' }]}
       backPath="/compute/keypair"
       title={(d) => d.name || d.origin_id || d.id}

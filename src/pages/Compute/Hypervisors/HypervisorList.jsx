@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Breadcrumb, Progress, Tabs, Tag, Tooltip } from 'antd';
 import { novaApi } from '@/api/nova';
 import { placementApi } from '@/api/placement';
 import ResourcePage, { nameColumn, statusColumn } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { canSeeTab } from '../_shared';
+import { usePolicyStore } from '@/core/policy';
+import { useSearchParams } from 'react-router-dom';
 import { getGiBValue, sinceTime } from '../_shared';
 import { KpiCards } from '@/components/MetricCards';
 
@@ -261,6 +264,8 @@ export function HypervisorTab() {
   return (
     <ResourcePage
       embedded
+      title={t('Hypervisors')}
+      policy="os_compute_api:os-hypervisors:list"
       fetch={fetchHypervisors}
       columns={hypervisorColumns}
       header={({ data }) => <KpiCards items={hypervisorKpis(data)} />}
@@ -315,6 +320,8 @@ export function ComputeHostTab() {
   return (
     <ResourcePage
       embedded
+      title={t('Compute Hosts')}
+      policy="os_compute_api:os-services:list"
       fetch={fetchComputeHosts}
       columns={() => [
         { title: t('Host'), dataIndex: 'host', key: 'host', sorter: (a, b) => String(a.host).localeCompare(String(b.host)) },
@@ -373,7 +380,20 @@ export function ComputeHostTab() {
 /* Page (legacy TabList: Hypervisors / Compute Hosts)                 */
 /* ------------------------------------------------------------------ */
 export default function HypervisorList() {
-  const [tab, setTab] = useState('Hypervisor');
+  // legacy TabList: ?tab= keeps the active tab, a tab whose list policy is denied is hidden
+  const [searchParams, setSearchParams] = useSearchParams();
+  usePolicyStore((st) => st.rules);
+  const tabItems = [
+    canSeeTab('os_compute_api:os-hypervisors:list') && { key: 'Hypervisor', label: t('Hypervisors'), children: <HypervisorTab /> },
+    canSeeTab('os_compute_api:os-services:list') && { key: 'ComputeHost', label: t('Compute Hosts'), children: <ComputeHostTab /> },
+  ].filter(Boolean);
+  const requested = searchParams.get('tab');
+  const tab = tabItems.some((it) => it.key === requested) ? requested : tabItems[0]?.key;
+  const setTab = (key) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', key);
+    setSearchParams(next, { replace: true });
+  };
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>
       <Breadcrumb items={[{ title: t('Compute') }, { title: t('Hypervisors') }]} style={{ marginBottom: 16, fontSize: 13 }} />
@@ -389,10 +409,7 @@ export default function HypervisorList() {
         activeKey={tab}
         onChange={setTab}
         destroyOnHidden
-        items={[
-          { key: 'Hypervisor', label: t('Hypervisors'), children: <HypervisorTab /> },
-          { key: 'ComputeHost', label: t('Compute Hosts'), children: <ComputeHostTab /> },
-        ]}
+        items={tabItems.length ? tabItems : [{ key: 'Hypervisor', label: t('Hypervisors'), children: <HypervisorTab /> }]}
       />
     </div>
   );

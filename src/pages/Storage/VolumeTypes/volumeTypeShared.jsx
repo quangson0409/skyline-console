@@ -5,6 +5,7 @@ import { nameColumn, IdNameCell, textColumn, boolColumn, deleteAction } from '@/
 import { t } from '@/core/i18n';
 import { renderSpecs } from '../shared';
 import { selectTableField } from '@/components/SelectTable';
+import { nameRule } from '@/pages/Compute/_shared/nameRules';
 
 /* ------------------------------------------------------------------ resources/cinder/volume-type */
 export const consumerTypes = () => ({
@@ -149,7 +150,7 @@ export const createVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
   getDefaultValues: () => ({ isPublic: true, multiattach: false }),
   getFormItems: async () => {
     const projects = await fetchProjects();
-    const names = existingNames();
+    const names = (await existingNames()) || [];
     return [
       {
         name: 'name',
@@ -157,6 +158,7 @@ export const createVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
         type: 'input',
         required: true,
         rules: [
+          nameRule(),
           {
             validator: (_, v) =>
               v && names.includes(v) ? Promise.reject(new Error(t('Name already exists'))) : Promise.resolve(),
@@ -195,8 +197,8 @@ export const editVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
   policy: 'volume_extension:type_update',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
-  getFormItems: (item) => {
-    const names = existingNames().filter((n) => n !== item.name);
+  getFormItems: async (item) => {
+    const names = ((await existingNames()) || []).filter((n) => n !== item.name);
     return [
       {
         name: 'name',
@@ -204,6 +206,7 @@ export const editVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
         type: 'input',
         required: true,
         rules: [
+          nameRule(),
           {
             validator: (_, v) =>
               v && names.includes(v) ? Promise.reject(new Error(t('Name already exists'))) : Promise.resolve(),
@@ -438,7 +441,7 @@ export const createQosAction = () => ({
   policy: 'volume_extension:qos_specs_manage:create',
   title: t('Create QoS Spec'),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
     { name: 'consumer', label: t('Consumer'), type: 'select', required: true, options: consumerOptions() },
   ],
   onSubmit: (values) => cinderApi.createQosSpec(values),

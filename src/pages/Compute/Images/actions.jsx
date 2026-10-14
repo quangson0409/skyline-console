@@ -4,6 +4,7 @@ import { cinderApi } from '@/api/cinder';
 import { hasEndpoint } from '@/api/endpoints';
 import { deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { nameRule, imageNameRule } from '../_shared/nameRules';
 import { withQuota } from '@/components/Quota/utils';
 import { fetchCinderQuota as fetchCinderQuotaData, volumeQuotaItems } from '@/components/Quota/services';
 import {
@@ -68,7 +69,7 @@ export const editImageAction = ({ isAdmin } = {}) => ({
     const enableCinder = hasEndpoint('cinder');
     const zeroTip = t('If the value is set to 0, it means unlimited');
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true },
+      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [imageNameRule()] },
       { name: 'os_distro', label: t('OS'), type: 'select', options: toOptions(imageOS()), required: true },
       { name: 'os_version', label: t('OS Version'), type: 'input', required: true },
       {
@@ -213,7 +214,7 @@ export const createVolumeFromImageAction = ({ isAdmin } = {}) => ({
     const types = await fetchVolumeTypeOptions();
     return [
       { name: 'image', label: t('Image'), type: 'label' },
-      { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      { name: 'name', label: t('Volume Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
       {
         name: 'volume_type',
         label: t('Volume Type'),

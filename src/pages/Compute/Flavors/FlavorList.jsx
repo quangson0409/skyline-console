@@ -79,6 +79,7 @@ export default function FlavorList() {
   return (
     <ResourcePage
       title={t('Flavors')}
+      policy="os_compute_api:os-flavor-extra-specs:index"
       breadcrumb={[t('Compute'), t('Flavors')]}
       description={tabName || t('Manage virtual hardware configurations (vCPU, RAM, and Disk storage).')}
       deps={[tab]}

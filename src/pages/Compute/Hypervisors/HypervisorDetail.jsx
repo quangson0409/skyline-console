@@ -5,6 +5,7 @@ import { placementApi } from '@/api/placement';
 import ResourceDetail from '@/components/ResourceDetail';
 import { t } from '@/core/i18n';
 import InstanceTable from '../_shared/InstanceTable';
+import { filterTabsByPolicy } from '../_shared';
 import {
   applyInventories,
   mapHypervisor,
@@ -48,6 +49,7 @@ const ironicTip = () => (
 export default function HypervisorDetail() {
   return (
     <ResourceDetail
+      policy="os_compute_api:os-hypervisors:show"
       breadcrumb={[t('Compute'), { title: t('Hypervisors'), path: '/compute/hypervisors-admin' }]}
       backPath="/compute/hypervisors-admin"
       title={(d) => d.service_host || d.hypervisor_hostname || d.id}
@@ -92,23 +94,15 @@ export default function HypervisorDetail() {
           d.running_vms !== undefined ? { label: t('Instances'), value: String(d.running_vms) } : null,
         ].filter(Boolean)
       }
-      tabs={(d) => [
+      tabs={(d) => filterTabsByPolicy([
         {
           key: 'members',
           label: t('Instances'),
-          render: () => (
-            <InstanceTable
-              isAdmin
-              deps={[d.service_host]}
-              fetchServers={async () => {
-                if (!d.service_host) return [];
-                const res = await novaApi.listServersV({ all_tenants: true, host: d.service_host });
-                return res?.servers || [];
-              }}
-            />
-          ),
+          // legacy Instance list (inHostDetailPage): backend paging with host = service host, row actions
+          policy: 'os_compute_api:servers:index:get_all_tenants',
+          render: () => <InstanceTable host={d.service_host || ''} />,
         },
-      ]}
+      ])}
       actions={() => ({
         firstAction: null,
         moreActions: [

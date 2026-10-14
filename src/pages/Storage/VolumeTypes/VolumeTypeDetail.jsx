@@ -13,7 +13,18 @@ import {
   extraSpecColumns,
   typeExtraSpecActions,
   volumeTypeRowActions,
+  fetchVolumeTypes,
 } from './volumeTypeShared';
+import { filterTabsByPolicy } from '@/pages/Compute/_shared';
+
+/** names of the other volume types (legacy Edit `names` duplicate check) */
+const loadVolumeTypeNames = async () => {
+  try {
+    return (await fetchVolumeTypes({ showQoS: false, showEncryption: false })).map((it) => it.name);
+  } catch {
+    return [];
+  }
+};
 
 function ExtraSpecTab({ typeId }) {
   const { create, edit, del } = typeExtraSpecActions(typeId);
@@ -36,6 +47,8 @@ export default function VolumeTypeDetail() {
     <ResourceDetail
       breadcrumb={[t('Storage'), { title: t('Volume Types'), path: '/storage/volume-type-admin' }]}
       backPath="/storage/volume-type-admin"
+      title={t('Volume Type')}
+      policy="volume_extension:type_get"
       fetch={(id) => fetchVolumeTypeDetail(id)}
       info={(d) => [
         { label: t('ID'), value: d.id, copyable: true },
@@ -49,7 +62,7 @@ export default function VolumeTypeDetail() {
             d.qos_specs_id ? <Link to={`/storage/volume-type-admin/qos/detail/${d.qos_specs_id}`}>{d.qos_specs_id}</Link> : '-',
         },
       ]}
-      tabs={(d) => [
+      tabs={(d) => filterTabsByPolicy([
         ...(hasEncryption(d)
           ? [
               {
@@ -73,9 +86,14 @@ export default function VolumeTypeDetail() {
               },
             ]
           : []),
-        { key: 'ExtraSpec', label: t('Extra Specs'), render: () => <ExtraSpecTab typeId={d.id} /> },
-      ]}
-      actions={() => volumeTypeRowActions()}
+        {
+          key: 'ExtraSpec',
+          label: t('Extra Specs'),
+          policy: 'volume_extension:types_extra_specs:index',
+          render: () => <ExtraSpecTab typeId={d.id} />,
+        },
+      ])}
+      actions={() => volumeTypeRowActions({ existingNames: loadVolumeTypeNames })}
     />
   );
 }

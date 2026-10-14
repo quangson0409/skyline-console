@@ -4,7 +4,8 @@ import { novaApi } from '@/api/nova';
 import ResourceDetail from '@/components/ResourceDetail';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
-import InstanceTable, { fetchServersByIds } from '../_shared/InstanceTable';
+import InstanceTable from '../_shared/InstanceTable';
+import { filterTabsByPolicy } from '../_shared';
 import { mapServerGroup, PolicyTag, serverGroupRowActions } from './ServerGroupList';
 
 export default function ServerGroupDetail() {
@@ -14,6 +15,8 @@ export default function ServerGroupDetail() {
     <ResourceDetail
       breadcrumb={[t('Compute'), { title: t('Server Groups'), path: '/compute/server-group' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/compute/server-group-admin' : '/compute/server-group')}
+      title={t('Server Group')}
+      policy="os_compute_api:os-server-groups:show"
       fetch={async (id) => mapServerGroup({ id, ...((await novaApi.getServerGroupV(id))?.server_group || {}) })}
       info={(d, { isAdmin }) =>
         [
@@ -32,19 +35,17 @@ export default function ServerGroupDetail() {
             : null,
         ].filter(Boolean)
       }
-      tabs={(d, { isAdmin }) => [
-        {
-          key: 'members',
-          label: t('Members'),
-          render: () => (
-            <InstanceTable
-              isAdmin={isAdmin}
-              deps={[d.members.join(',')]}
-              fetchServers={() => fetchServersByIds(d.members, { isAdmin })}
-            />
-          ),
-        },
-      ]}
+      tabs={(d, { isAdmin }) =>
+        filterTabsByPolicy([
+          {
+            key: 'members',
+            label: t('Members'),
+            // legacy Instance list (inServerGroupDetailPage): members by id, legacy row / batch actions
+            policy: isAdmin ? 'os_compute_api:servers:index:get_all_tenants' : 'os_compute_api:servers:index',
+            render: () => <InstanceTable memberIds={d.members} serverGroupId={d.id} />,
+          },
+        ])
+      }
       actions={({ isAdmin }) => serverGroupRowActions({ isAdmin, navigate })}
     />
   );

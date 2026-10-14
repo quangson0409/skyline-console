@@ -10,6 +10,7 @@ import FlavorSelectTable from '@/components/compute/FlavorSelectTable';
 import { getGiBValue, quotaItem, withQuota } from '@/components/Quota/utils';
 import { fetchCinderQuota as fetchCinderQuotaData, fetchNovaQuota as fetchNovaQuotaData } from '@/components/Quota/services';
 import { instancePasswordRule, instanceNameValidator } from '@/pages/Instances/Create/utils';
+import { imageNameRule } from '@/pages/Compute/_shared/nameRules';
 import {
   checkStatus,
   isActive,
@@ -119,7 +120,11 @@ export function buildConfigActions(isAdminPage = false) {
           label: t('Snapshot Name'),
           type: 'input',
           required: true,
-          rules: quotaError ? [{ validator: () => Promise.reject(new Error(`${t('Quota exceeded')}: ${quotaError}`)) }] : [],
+          // legacy input-name isImage
+          rules: [
+            imageNameRule(),
+            ...(quotaError ? [{ validator: () => Promise.reject(new Error(`${t('Quota exceeded')}: ${quotaError}`)) }] : []),
+          ],
         },
         bfv ? { name: 'volumes', label: t('Volumes'), render: () => <VolumesPreview volumes={volumes} /> } : null,
       ].filter(Boolean);

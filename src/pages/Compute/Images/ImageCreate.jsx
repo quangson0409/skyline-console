@@ -22,6 +22,7 @@ import { glanceApi } from '@/api/glance';
 import { getErrorMessage } from '@/hooks/useResource';
 import { isAdminPathname, formatSize } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { imageNameRule } from '../_shared/nameRules';
 import {
   NoSetValue,
   imageOS,
@@ -233,7 +234,7 @@ export default function ImageCreate() {
           onFinish={onFinish}
           disabled={submitting}
         >
-          <Form.Item name="name" label={t('Image Name')} rules={[{ required: true, message: t('Please input name') }]}>
+          <Form.Item name="name" label={t('Image Name')} rules={[{ required: true, message: t('Please input name') }, imageNameRule()]}>
             <Input />
           </Form.Item>
           {isAdmin ? (

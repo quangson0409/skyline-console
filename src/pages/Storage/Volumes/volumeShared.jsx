@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Tooltip } from 'antd';
+import { Alert, Form, Switch, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { cinderApi } from '@/api/cinder';
 import { novaApi } from '@/api/nova';
@@ -28,6 +28,15 @@ import {
   backupQuotaItems,
   volumeCreateQuota,
 } from '@/components/Quota/services';
+import { nameRule, imageNameRule } from '@/pages/Compute/_shared/nameRules';
+import PagedSelectTable, { pagedSelectTableField } from '@/pages/Compute/_shared/PagedSelectTable';
+import { fetchServersPage } from '@/hooks/useInstances';
+import {
+  canImageCreateInstance,
+  canImageCreateIronicInstance,
+  getImageOS,
+  getImageSystemTabs,
+} from '@/pages/Instances/Create/utils';
 
 /* =================================================================== resources/cinder/volume */
 export const volumeStatus = () => ({
@@ -229,7 +238,7 @@ export const editVolumeAction = () => ({
   allowed: isAvailableOrInUse,
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+    { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => cinderApi.updateVolume(item.id, values),
@@ -271,17 +280,20 @@ export const deleteVolumeAction = () => {
   };
 };
 
-/** Snapshot picker that also syncs the volume type (legacy onSnapshotChange) */
-function SnapshotPicker({ value, onChange, form, data, types }) {
+/** Snapshot picker paged on the backend that also syncs the volume type (legacy onSnapshotChange) */
+function SnapshotPicker({ value, onChange, form, types, seen }) {
   return (
-    <SelectTable
+    <PagedSelectTable
       value={value}
-      data={data}
+      onChange={onChange}
       columns={snapshotSelectColumns()}
-      onChange={async (keys) => {
-        onChange?.(keys);
-        const snap = data.find((s) => s.id === keys[0]);
+      // legacy backendPageStore snapshotStore, default sort created_at descend, name filter
+      fetchPage={fetchSnapshotsPickerPage}
+      disabledFunc={(snap) => snap.status !== 'available'}
+      onRowsChange={async (rows) => {
+        const snap = rows[0];
         if (!snap) return;
+        seen[snap.id] = snap;
         let typeId = snap.volume_type_id;
         if (!typeId) {
           try {
@@ -292,9 +304,49 @@ function SnapshotPicker({ value, onChange, form, data, types }) {
           }
         }
         if (typeId) form.setFieldsValue({ volume_type: [typeId] });
+        form.validateFields(['size']).catch(() => {});
       }}
     />
   );
+}
+
+/** one page of the current project's snapshots (skyline extension, cinder fallback) */
+const fetchSnapshotsPickerPage = async ({ limit, marker, filters = {} }) => {
+  const params = { ...pageParams({ limit, marker }), ...filters, ...sortParams('skyline', 'created_at', 'desc') };
+  try {
+    return await cinderApi.listSnapshotsExtensionPage(params);
+  } catch (err) {
+    if (err?.response?.status && err.response.status < 404) throw err;
+    const { sort_keys: _k, sort_dirs: _d, ...rest } = params;
+    return cinderApi.listSnapshotsPage({ ...rest, ...sortParams('cinder', 'created_at', 'desc') });
+  }
+};
+
+/** legacy image select table with the OS tabs (getImageSystemTabs, only tabs with images) */
+function ImageTabsPicker({ value, onChange, images = [], columns }) {
+  const tabs = getImageSystemTabs().filter((tab) => images.some((img) => getImageOS(img) === tab.value));
+  const [tab, setTab] = useState(tabs[0]?.value);
+  const current = tabs.some((it) => it.value === tab) ? tab : tabs[0]?.value;
+  return (
+    <SelectTable
+      value={value}
+      onChange={onChange}
+      data={current ? images.filter((img) => getImageOS(img) === current) : images}
+      columns={columns}
+      tabs={tabs}
+      tabValue={current}
+      onTabChange={setTab}
+    />
+  );
+}
+
+/** legacy Create "instanceName": the names the volumes get when count > 1 */
+function CountNamesPreview({ form }) {
+  const name = Form.useWatch('name', form);
+  const count = Number(Form.useWatch('count', form)) || 1;
+  if (count <= 1 || !name) return null;
+  const names = Array.from({ length: Math.min(count, 100) }, (_, idx) => `${name}-${idx + 1}`).join(', ');
+  return <div style={{ padding: '4px 0', color: '#475569', wordBreak: 'break-all' }}>{names}</div>;
 }
 
 const sourceTypes = () => [
@@ -305,10 +357,10 @@ const sourceTypes = () => [
 
 /** Volume/actions/Create (step form in legacy, modal here; route storage/volume/create opens it) */
 export const createVolumeAction = () => {
-  const ctx = { images: [], snapshots: [], quota: {} };
+  const ctx = { images: [], snapshots: {}, quota: {} };
   const minSizeOf = (values) => {
     if (values.source === 'image') return imageMinSize(ctx.images.find((i) => i.id === (values.image || [])[0]));
-    if (values.source === 'snapshot') return Math.max(ctx.snapshots.find((s) => s.id === (values.snapshot || [])[0])?.size || 1, 1);
+    if (values.source === 'snapshot') return Math.max(ctx.snapshots[(values.snapshot || [])[0]]?.size || 1, 1);
     return 1;
   };
   return {
@@ -335,15 +387,17 @@ export const createVolumeAction = () => {
       typeName: (values) => (ctx.types || []).find((tp) => tp.id === (values.volume_type || [])[0])?.name,
     }),
     getFormItems: async () => {
-      const [zonesRes, imagesRes, snapsRes, types, quota] = await Promise.all([
+      const [zonesRes, imagesRes, types, quota] = await Promise.all([
         cinderApi.listAvailabilityZones().catch(() => ({})),
         glanceApi.listImages({ status: 'active' }).catch(() => ({})),
-        cinderApi.listSnapshots().catch(() => ({})),
         fetchVolumeTypeList(),
         fetchCinderQuota(),
       ]);
-      ctx.images = (imagesRes?.images || []).filter((i) => i.status === 'active');
-      ctx.snapshots = (snapsRes?.snapshots || []).filter((s) => s.status === 'available');
+      // legacy images getter: only images usable to create an instance (common or ironic usage)
+      ctx.images = (imagesRes?.images || []).filter(
+        (i) => i.status === 'active' && (canImageCreateInstance(i) || canImageCreateIronicInstance(i))
+      );
+      ctx.snapshots = {};
       ctx.quota = quota;
       ctx.types = types;
       const gLeft = leftOf(quota.gigabytes);
@@ -371,6 +425,7 @@ export const createVolumeAction = () => {
             data: ctx.images,
             columns: imageColumns(),
           }),
+          render: () => <ImageTabsPicker images={ctx.images} columns={imageColumns()} />,
           visible: (v) => v.source === 'image',
         },
         {
@@ -393,7 +448,7 @@ export const createVolumeAction = () => {
               </div>
             </div>
           ),
-          render: ({ form }) => <SnapshotPicker form={form} data={ctx.snapshots} types={types} />,
+          render: ({ form }) => <SnapshotPicker form={form} types={types} seen={ctx.snapshots} />,
         },
         selectTableField({
           name: 'volume_type',
@@ -423,7 +478,7 @@ export const createVolumeAction = () => {
             }),
           ],
         },
-        { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+        { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
         { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
         {
           name: 'count',
@@ -432,6 +487,12 @@ export const createVolumeAction = () => {
           min: 1,
           max: vLeft === Infinity ? undefined : vLeft,
           required: true,
+        },
+        {
+          name: 'namePreview',
+          label: t('Volume Name'),
+          visible: (v) => Number(v.count) > 1 && !!v.name,
+          render: ({ form }) => <CountNamesPreview form={form} />,
         },
       ];
     },
@@ -506,8 +567,8 @@ export const restoreFromSnapshotAction = () => ({
 const INSTANCE_ATTACH_STATUS = ['active', 'paused', 'stopped', 'resized', 'soft-delete', 'shelved', 'shelved_offloaded'];
 const allowAttachVolumeInstance = (ins) => {
   const status = String(ins.status || '').toLowerCase();
-  const vmState = String(ins['OS-EXT-STS:vm_state'] || '').toLowerCase();
-  const task = String(ins['OS-EXT-STS:task_state'] || '').toLowerCase();
+  const vmState = String(ins['OS-EXT-STS:vm_state'] || ins.vm_state || '').toLowerCase();
+  const task = String(ins['OS-EXT-STS:task_state'] || ins.task_state || '').toLowerCase();
   return (INSTANCE_ATTACH_STATUS.includes(status) || INSTANCE_ATTACH_STATUS.includes(vmState)) && task !== 'deleting' && !ins.locked;
 };
 
@@ -526,6 +587,18 @@ const instanceColumns = () => [
   timeColumn({ dataIndex: 'created' }),
 ];
 
+/** columns of the backend paged instance picker (skyline /extension/servers items) */
+const pagedInstanceColumns = () => [
+  nameColumn(),
+  statusColumn(),
+  {
+    title: t('Instance IP'),
+    key: 'ip',
+    render: (_, r) => (r.fixed_addresses || []).concat(r.floating_addresses || []).join(', ') || '-',
+  },
+  timeColumn({ dataIndex: 'created_at' }),
+];
+
 export const attachVolumeAction = () => ({
   id: 'attach',
   type: 'modal',
@@ -535,16 +608,17 @@ export const attachVolumeAction = () => ({
   allowed: (item) => isAvailable(item) || isMultiAttach(item),
   getDefaultValues: (item) => ({ volume: volumeLabel(item) }),
   getFormItems: async (item) => {
-    const res = await novaApi.listServers().catch(() => ({}));
     const attached = (item.attachments || []).map((a) => a.server_id);
     return [
       { name: 'volume', label: t('Volume'), type: 'label' },
-      selectTableField({
+      // legacy instance select table paged on the backend (ServerStore, isFilterByBackend)
+      pagedSelectTableField({
         name: 'instance',
         label: t('Instance'),
         required: true,
-        data: res?.servers || [],
-        columns: instanceColumns(),
+        columns: pagedInstanceColumns(),
+        fetchPage: ({ limit, marker, filters }) =>
+          fetchServersPage({ ctx: {}, limit, marker, filters, sortKey: 'created_at', sortDir: 'desc' }),
         disabledFunc: (ins) => !allowAttachVolumeInstance(ins) || attached.includes(ins.id),
       }),
     ];
@@ -613,7 +687,14 @@ export const createVolumeSnapshotAction = () => ({
   getFormItems: async () => {
     return [
       { name: 'volume', label: t('Volume'), type: 'label' },
-      { name: 'name', label: t('Volume Snapshot Name'), type: 'input', required: true, placeholder: t('Please input snapshot name') },
+      {
+        name: 'name',
+        label: t('Volume Snapshot Name'),
+        type: 'input',
+        required: true,
+        placeholder: t('Please input snapshot name'),
+        rules: [nameRule()],
+      },
     ];
   },
   onSubmit: ({ name }, item) => cinderApi.createSnapshot({ name, volume_id: item.id, force: item.status === 'in-use' }),
@@ -636,7 +717,7 @@ export const createVolumeBackupAction = () => ({
   getFormItems: async () => {
     return [
       { name: 'volume', label: t('Volume'), type: 'label' },
-      { name: 'name', label: t('Volume Backup Name'), type: 'input', required: true },
+      { name: 'name', label: t('Volume Backup Name'), type: 'input', required: true, rules: [nameRule()] },
       {
         name: 'incremental',
         label: t('Backup Mode'),
@@ -663,7 +744,7 @@ export const createImageAction = () => ({
   allowed: isAvailable,
   getDefaultValues: () => ({ disk_format: 'raw' }),
   formItems: [
-    { name: 'image_name', label: t('Image Name'), type: 'input', required: true, placeholder: t('Please input name') },
+    { name: 'image_name', label: t('Image Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [imageNameRule()] },
     {
       name: 'disk_format',
       label: t('Format'),
@@ -712,7 +793,7 @@ export const cloneVolumeAction = () => ({
     const gLeft = leftOf(quota.gigabytes);
     return [
       { name: 'volume', label: t('Volume'), type: 'label' },
-      { name: 'name', label: t('Volume Name'), type: 'input', required: true },
+      { name: 'name', label: t('Volume Name'), type: 'input', required: true, rules: [nameRule()] },
       {
         name: 'size',
         label: t('Capacity (GiB)'),
@@ -734,6 +815,12 @@ export const cloneVolumeAction = () => ({
   onSubmit: ({ volume, more, ...rest }, item) => cinderApi.createVolume({ ...rest, source_volid: item.id }),
 });
 
+function BootableSwitch({ value, onChange }) {
+  return (
+    <Switch checked={!!value} onChange={onChange} checkedChildren={t('Bootable')} unCheckedChildren={t('Unbootable')} />
+  );
+}
+
 export const bootableAction = () => ({
   id: 'volume-bootable',
   type: 'modal',
@@ -741,7 +828,15 @@ export const bootableAction = () => ({
   title: t('Bootable'),
   buttonText: t('Bootable'),
   getDefaultValues: (item) => ({ bootable: String(item.bootable) === 'true' }),
-  formItems: [{ name: 'bootable', label: t('Bootable'), type: 'switch', tip: bootableTip() }],
+  formItems: [
+    {
+      name: 'bootable',
+      label: t('Bootable'),
+      tip: bootableTip(),
+      // legacy checkedText / uncheckedText
+      render: () => <BootableSwitch />,
+    },
+  ],
   onSubmit: ({ bootable }, item) => cinderApi.volumeAction(item.id, 'os-set_bootable', { bootable: !!bootable }),
 });
 
@@ -852,7 +947,9 @@ export const createTransferAction = () => ({
   ),
   allowed: (item) => isAvailable(item) && !item.encrypted,
   getDefaultValues: () => ({ name: '' }),
-  formItems: [{ name: 'name', label: t('Transfer Name'), type: 'input', required: true, placeholder: t('Please input name') }],
+  formItems: [
+    { name: 'name', label: t('Transfer Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
+  ],
   onSubmit: async ({ name }, item) => {
     const data = await cinderApi.createTransfer({ name, volume_id: item.id });
     if (data && data.transfer) {
@@ -906,10 +1003,12 @@ export const updateStatusAction = () => ({
       ],
     },
     {
-      type: 'alert',
+      // legacy: the hint is shown only while "in-use" is the chosen status
       name: 'in-use-tip',
-      alertType: 'warning',
-      message: t('The volume status can be reset to in-use only when the previous status is in-use.'),
+      visible: (v) => v.status === 'in-use',
+      render: () => (
+        <Alert type="warning" showIcon message={t('The volume status can be reset to in-use only when the previous status is in-use.')} />
+      ),
     },
   ],
   onSubmit: ({ status }, item) => cinderApi.volumeAction(item.id, 'os-reset_status', { status }),
@@ -1083,7 +1182,10 @@ export const volumeColumns = ({ isAdmin, projectMap = {}, hideAttachments } = {}
     { ...timeColumn(), sortKey: 'created_at' },
   ].filter(Boolean);
 
-export const volumeFilters = () => [
+/** legacy Volume container `get policy()` */
+export const VOLUME_LIST_POLICY = 'volume:get_all';
+
+export const volumeFilters = ({ isAdmin } = {}) => [
   { name: 'name', label: t('Name') },
   {
     name: 'status',
@@ -1098,6 +1200,8 @@ export const volumeFilters = () => [
       { key: 'false', label: t('No') },
     ],
   },
+  // legacy adminPageHasProjectFilter
+  ...(isAdmin ? [{ name: 'project_id', label: t('Project ID') }] : []),
 ];
 
 /**

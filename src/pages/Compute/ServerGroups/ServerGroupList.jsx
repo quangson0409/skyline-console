@@ -10,6 +10,7 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { t } from '@/core/i18n';
+import { nameRule } from '../_shared/nameRules';
 import { quotaItem, withQuota } from '@/components/Quota/utils';
 import { KpiCards } from '@/components/MetricCards';
 
@@ -92,7 +93,7 @@ export const createServerGroupAction = ({ projectId } = {}) => ({
   ),
   getFormItems: async () => {
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
       {
         name: 'policy',
         label: t('Policy'),
@@ -165,6 +166,7 @@ export default function ServerGroupList() {
 
   return (
     <ResourcePage
+      policy="os_compute_api:os-server-groups:index"
       title={t('Server Groups')}
       breadcrumb={[t('Compute'), t('Server Groups')]}
       description={t(

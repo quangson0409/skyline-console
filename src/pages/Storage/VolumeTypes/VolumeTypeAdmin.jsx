@@ -15,6 +15,11 @@ import {
   editConsumerAction,
   deleteQosAction,
 } from './volumeTypeShared';
+import { canSeeTab } from '@/pages/Compute/_shared';
+import { usePolicyStore } from '@/core/policy';
+
+const VOLUME_TYPE_LIST_POLICY = 'volume_extension:type_get_all';
+const QOS_LIST_POLICY = 'volume_extension:qos_specs_manage:get_all';
 
 /** Legacy containers/VolumeType/VolumeType */
 export function VolumeTypeTab() {
@@ -23,6 +28,8 @@ export function VolumeTypeTab() {
   return (
     <ResourcePage
       embedded
+      title={t('Volume Types')}
+      policy={VOLUME_TYPE_LIST_POLICY}
       fetch={async () => {
         const items = await fetchVolumeTypes();
         namesRef.current = items.map((it) => it.name);
@@ -45,6 +52,8 @@ export function QosSpecTab() {
   return (
     <ResourcePage
       embedded
+      title={t('QoS Specs')}
+      policy={QOS_LIST_POLICY}
       fetch={fetchQosSpecs}
       columns={qosColumns}
       filterParams={[{ name: 'name', label: t('Name') }]}
@@ -57,7 +66,14 @@ export function QosSpecTab() {
 
 export default function VolumeTypeAdmin() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = searchParams.get('tab') === 'qos' ? 'qos' : 'volume-type';
+  usePolicyStore((st) => st.rules); // re-render when the policies are loaded
+  // legacy tab containers `get policy()`: a denied tab is hidden
+  const tabItems = [
+    canSeeTab(VOLUME_TYPE_LIST_POLICY) && { key: 'volume-type', label: t('Volume Types'), children: <VolumeTypeTab /> },
+    canSeeTab(QOS_LIST_POLICY) && { key: 'qos', label: t('QoS Specs'), children: <QosSpecTab /> },
+  ].filter(Boolean);
+  const wanted = searchParams.get('tab') === 'qos' ? 'qos' : 'volume-type';
+  const tab = tabItems.some((it) => it.key === wanted) ? wanted : tabItems[0]?.key;
 
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>
@@ -75,10 +91,7 @@ export default function VolumeTypeAdmin() {
           activeKey={tab}
           onChange={(key) => setSearchParams(key === 'qos' ? { tab: 'qos' } : {})}
           destroyOnHidden
-          items={[
-            { key: 'volume-type', label: t('Volume Types'), children: <VolumeTypeTab /> },
-            { key: 'qos', label: t('QoS Specs'), children: <QosSpecTab /> },
-          ]}
+          items={tabItems.length ? tabItems : [{ key: 'volume-type', label: t('Volume Types'), children: <VolumeTypeTab /> }]}
         />
       </Card>
     </div>

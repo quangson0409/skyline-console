@@ -21,6 +21,7 @@ import {
   Input,
   InputNumber,
   Radio,
+  Result,
   message,
 } from 'antd';
 import {
@@ -158,6 +159,12 @@ export default function InstanceDetail() {
   const isAdminPage = useIsAdminPage();
   const isSystemReaderOnly = useAuthStore((st) => st.isSystemReaderOnly);
   usePolicyStore((st) => st.rules); // re-render when policies load
+  // legacy Instance Detail `get policy()` (also the recycle bin detail, which reuses this page)
+  const canView = checkActionPolicy({ policy: 'os_compute_api:servers:show' });
+  // inline (non action) operations of the page: same legacy policy check as the actions
+  const allow = (policy) => checkActionPolicy({ policy }, { isAdminPage, isSystemReaderOnly });
+  // legacy tab components with their own list policy are hidden when it is denied
+  const canTab = (policy) => checkActionPolicy({ policy });
   const { pathname } = useLocation();
   const isRecycleBinDetail = pathname.includes('recycle-bin');
   const listPath = isRecycleBinDetail
@@ -218,6 +225,10 @@ export default function InstanceDetail() {
   // Fetch instance details and resolve all related entities
   const fetchServerDetail = useCallback(async (opts) => {
     if (!id) return;
+    if (!canView) {
+      setLoading(false);
+      return;
+    }
     const quiet = Boolean(opts && opts.quiet);
     if (!quiet) setLoading(true);
     try {
@@ -405,7 +416,7 @@ export default function InstanceDetail() {
     } finally {
       if (!quiet) setLoading(false);
     }
-  }, [id, t]);
+  }, [id, t, canView]);
 
   const { handleAction, actionModal } = useActionRunner({ onRefresh: () => fetchServerDetail({ quiet: true }) });
 
@@ -803,6 +814,16 @@ export default function InstanceDetail() {
     return list;
   }, [instance, ports]);
 
+  if (!canView) {
+    return (
+      <Result
+        status="403"
+        title={t("You don't have access to get {name}.", { name: t('Instance') })}
+        extra={<Button onClick={() => navigate(listPath)}>{t('Back')}</Button>}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '120px 0' }}>
@@ -831,7 +852,7 @@ export default function InstanceDetail() {
 
   const ironic = isIronicInstance(actionItem || {});
   // legacy tabs: Volumes only with cinder, Volumes / Snapshots hidden for ironic instances
-  const showVolumes = hasEndpoint('cinder') && !ironic;
+  const showVolumes = hasEndpoint('cinder') && !ironic && canTab('volume:get_all');
   const selectedSgPort = sgPortId !== 'all' ? ports.find((p) => p.id === sgPortId) : null;
   const allSecurityGroups = instance.security_groups || [];
   const securityGroups = selectedSgPort
@@ -1487,12 +1508,12 @@ export default function InstanceDetail() {
                 />
               ),
             },
-            !ironic && {
+            !ironic && canTab('get_images') && {
               key: 'snapshots',
               label: t('Snapshots'),
               children: <SnapshotsTab item={actionItem} />,
             },
-            {
+            canTab('get_port') && {
               key: 'interface',
               label: t('Interfaces'),
               children: (
@@ -1507,7 +1528,7 @@ export default function InstanceDetail() {
                 />
               ),
             },
-            {
+            canTab('get_floatingip') && {
               key: 'floatingIps',
               label: t('Floating IPs'),
               children: (
@@ -1553,6 +1574,7 @@ export default function InstanceDetail() {
                       </div>
                     </div>
                     <Space wrap>
+                      {allow('os_compute_api:os-security-groups:add') && (
                       <Button
                         type="primary"
                         icon={<PlusOutlined />}
@@ -1565,6 +1587,7 @@ export default function InstanceDetail() {
                       >
                         {t('Attach Security Group')}
                       </Button>
+                      )}
                       {!isAdminPage && can(ManageSecurityGroupAction) && (
                         <Button
                           icon={<SafetyOutlined />}
@@ -1642,6 +1665,7 @@ export default function InstanceDetail() {
                               )}
                             </Space>
                             <Space size={8} wrap>
+                              {allow('create_security_group_rule') && (
                               <Button
                                 type="primary"
                                 ghost
@@ -1666,9 +1690,10 @@ export default function InstanceDetail() {
                               >
                                 {t('Add Rule')}
                               </Button>
+                              )}
                               {selectedSgPort ? (
                                 // legacy Detail/SecurityGroup Detach: port level, only when more than one group
-                                !isAdminPage && securityGroups.length !== 1 && (
+                                !isAdminPage && securityGroups.length !== 1 && allow('update_port') && (
                                   <Button
                                     size="small"
                                     danger
@@ -1679,6 +1704,7 @@ export default function InstanceDetail() {
                                   </Button>
                                 )
                               ) : (
+                                allow('os_compute_api:os-security-groups:remove') && (
                                 <Button
                                   size="small"
                                   danger
@@ -1688,6 +1714,7 @@ export default function InstanceDetail() {
                                 >
                                   {t('Detach from Instance')}
                                 </Button>
+                                )
                               )}
                             </Space>
                           </div>
@@ -1800,7 +1827,7 @@ export default function InstanceDetail() {
                                       type="link"
                                       size="small"
                                       icon={<EditOutlined />}
-                                      disabled={instance.locked}
+                                      disabled={instance.locked || !allow('create_security_group_rule')}
                                       onClick={() => handlePrefillRule(sg, rule)}
                                       style={{ padding: '0 4px', fontSize: 12 }}
                                     >
@@ -1811,7 +1838,7 @@ export default function InstanceDetail() {
                                       danger
                                       size="small"
                                       icon={<DeleteOutlined />}
-                                      disabled={instance.locked}
+                                      disabled={instance.locked || !allow('delete_security_group_rule')}
                                       onClick={() => handleDeleteRule(rule)}
                                       style={{ padding: '0 4px', fontSize: 12 }}
                                     >
@@ -1842,7 +1869,7 @@ export default function InstanceDetail() {
                 </div>
               ),
             },
-            {
+            canTab('os_compute_api:os-instance-actions:list') && {
               key: 'action',
               label: t('Action Logs'),
               children: <ActionLogTab item={actionItem} isAdminPage={isAdminPage} />,

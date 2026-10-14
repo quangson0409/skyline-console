@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Breadcrumb, Input, Space, Table, Tabs, Tag, Tooltip, message } from 'antd';
 import { BlockOutlined } from '@ant-design/icons';
 import { novaApi } from '@/api/nova';
 import ResourcePage, { deleteAction, yesNo, IdNameCell } from '@/components/ResourcePage';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
-import { sinceTime } from '../_shared';
+import { sinceTime, canSeeTab } from '../_shared';
+import { nameRule } from '../_shared/nameRules';
+import { usePolicyStore } from '@/core/policy';
+
+/** legacy HostAggregate tab containers `get policy()` */
+const AGGREGATE_LIST_POLICY = 'os_compute_api:os-aggregates:index';
+const AZ_LIST_POLICY = 'os_compute_api:os-availability-zone:detail';
 import { KpiCards } from '@/components/MetricCards';
 import MetadataEditor, { fetchMetadefs, metadataWithRemovals } from '@/components/MetadataEditor';
 import { fetchComputeHosts, serviceState, serviceStatus } from '../Hypervisors/HypervisorList';
@@ -82,7 +89,7 @@ export const createAggregateAction = () => ({
   getFormItems: async () => {
     const zones = await fetchZoneNames();
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
       { name: 'isCreate', label: t('Create new AZ'), tip: azTip(), type: 'radio', options: yesNoOptions() },
       {
         name: 'availabilityZone',
@@ -131,7 +138,7 @@ export const editAggregateAction = () => ({
       options.push({ value: item.availability_zone, label: item.availability_zone });
     }
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
+      { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name'), rules: [nameRule()] },
       !hasHost && { name: 'isCreate', label: t('Create new AZ'), tip: azTip(), type: 'radio', options: yesNoOptions() },
       !hasHost && {
         name: 'availabilityZone',
@@ -286,6 +293,8 @@ export function AggregateTab() {
   return (
     <ResourcePage
       embedded
+      title={t('Host Aggregate')}
+      policy={AGGREGATE_LIST_POLICY}
       fetch={fetchAggregates}
       header={({ data }) => (
         <KpiCards
@@ -414,6 +423,8 @@ export function AvailabilityZoneTab() {
   return (
     <ResourcePage
       embedded
+      title={t('Availability Zones')}
+      policy={AZ_LIST_POLICY}
       rowKey="zoneName"
       fetch={fetchAvailabilityZones}
       columns={() => [
@@ -446,7 +457,20 @@ export function AvailabilityZoneTab() {
 /* Page (legacy TabList: Host Aggregate / Availability Zones)         */
 /* ------------------------------------------------------------------ */
 export default function AggregateList() {
-  const [tab, setTab] = useState('hostAggregate');
+  // the active tab follows ?tab= (legacy TabList), denied tabs are hidden
+  const [searchParams, setSearchParams] = useSearchParams();
+  usePolicyStore((st) => st.rules);
+  const tabItems = [
+    canSeeTab(AGGREGATE_LIST_POLICY) && { key: 'hostAggregate', label: t('Host Aggregate'), children: <AggregateTab /> },
+    canSeeTab(AZ_LIST_POLICY) && { key: 'availabilityZone', label: t('Availability Zones'), children: <AvailabilityZoneTab /> },
+  ].filter(Boolean);
+  const requested = searchParams.get('tab');
+  const tab = tabItems.some((it) => it.key === requested) ? requested : tabItems[0]?.key;
+  const setTab = (key) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', key);
+    setSearchParams(next, { replace: true });
+  };
   return (
     <div style={{ maxWidth: 1600, margin: '0 auto' }}>
       <Breadcrumb
@@ -467,10 +491,7 @@ export default function AggregateList() {
         activeKey={tab}
         onChange={setTab}
         destroyOnHidden
-        items={[
-          { key: 'hostAggregate', label: t('Host Aggregate'), children: <AggregateTab /> },
-          { key: 'availabilityZone', label: t('Availability Zones'), children: <AvailabilityZoneTab /> },
-        ]}
+        items={tabItems.length ? tabItems : [{ key: 'hostAggregate', label: t('Host Aggregate'), children: <AggregateTab /> }]}
       />
     </div>
   );

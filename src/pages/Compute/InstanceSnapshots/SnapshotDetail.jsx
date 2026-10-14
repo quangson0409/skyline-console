@@ -62,6 +62,7 @@ export default function SnapshotDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="get_image"
       breadcrumb={[t('Compute'), { title: t('Instance Snapshots'), path: '/compute/instance-snapshot' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/compute/instance-snapshot-admin' : '/compute/instance-snapshot')}
       fetch={fetchSnapshotDetail}

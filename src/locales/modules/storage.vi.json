@@ -1,0 +1,11 @@
+{
+  "1. The volume associated with the backup is available.": "1. Ổ cứng của bản sao lưu đang ở trạng thái sẵn sàng.",
+  "2. The volume associated with the backup has been mounted, and the instance is shut down.": "2. Ổ cứng của bản sao lưu đã được gắn vào máy ảo và máy ảo đã tắt.",
+  "The instance is not shut down, unable to restore.": "Máy ảo chưa tắt, không thể khôi phục.",
+  "The volume associated with the backup is not available, unable to restore.": "Ổ cứng của bản sao lưu không ở trạng thái khả dụng, không thể khôi phục.",
+  "The volume status must be available or in-use.": "Trạng thái ổ cứng phải là sẵn sàng hoặc đang sử dụng.",
+  "Unbootable": "Không thể khởi động",
+  "Volume ID": "ID ổ cứng",
+  "Volume Info": "Thông tin ổ cứng",
+  "When you restore a backup, you need to meet one of the following conditions:": "Khi khôi phục bản sao lưu, cần đáp ứng một trong các điều kiện sau:"
+}

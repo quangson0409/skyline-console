@@ -20,6 +20,7 @@ import { novaApi } from '@/api/nova';
 import { hasEndpoint } from '@/api/endpoints';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
+import { nameRule } from '../_shared/nameRules';
 import {
   categoryHasEphemeral,
   categoryHasIOPS,
@@ -378,7 +379,7 @@ export default function FlavorCreate() {
               >
                 <Radio.Group options={categoryOptions} />
               </Form.Item>
-              <Form.Item name="name" label={t('Flavor Name')} rules={[required(t('Flavor Name'))]}>
+              <Form.Item name="name" label={t('Flavor Name')} rules={[required(t('Flavor Name')), nameRule()]}>
                 <Input placeholder={t('Please input name')} />
               </Form.Item>
               <Form.Item

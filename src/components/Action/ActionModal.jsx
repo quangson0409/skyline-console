@@ -285,7 +285,7 @@ export default function ActionModal({
           if (!field) return null;
 
           if (field.type === 'alert') {
-            return (
+            const alertNode = (
               <Alert
                 key={field.name || 'alert'}
                 message={field.message || field.label}
@@ -294,6 +294,15 @@ export default function ActionModal({
                 style={{ marginBottom: 16 }}
               />
             );
+            if (field.hidden === true) return null;
+            if (typeof field.visible === 'function') {
+              return (
+                <Form.Item key={`${field.name || 'alert'}-cond`} noStyle shouldUpdate>
+                  {({ getFieldsValue }) => (field.visible({ ...initialValues, ...getFieldsValue(true) }) ? alertNode : null)}
+                </Form.Item>
+              );
+            }
+            return alertNode;
           }
 
           if (field.hidden === true) {

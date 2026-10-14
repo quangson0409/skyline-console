@@ -45,6 +45,7 @@ export default function NodeList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="baremetal:node:get"
       title={t('Bare Metal Nodes')}
       breadcrumb={[t('Compute'), t('Bare Metal Nodes')]}
       fetch={() => fetchNodes()}
