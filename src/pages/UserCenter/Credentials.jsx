@@ -4,6 +4,7 @@ import { QuestionCircleOutlined } from '@ant-design/icons';
 import { keystoneApi } from '@/api/keystone';
 import ResourcePage, { nameColumn, IdNameCell, formatTime, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { nameRule } from '@/components/form/rules';
 import { getProfile, currentUserId, downloadJson } from '@/pages/Identity/common';
 
 /** legacy CredentialStore.listDidFetch: adds project_name from auth/projects */
@@ -60,7 +61,7 @@ export const deleteCredentialAction = () => ({
     name: t('Application Credential'),
     onDelete: (it) => keystoneApi.deleteApplicationCredential(it.user_id, it.id),
   }),
-  policy: 'identity:delete_application_credential',
+  aliasPolicy: 'keystone:identity:delete_application_credential',
   title: t('Delete Application Credential'),
   actionName: t('delete application credential'),
 });
@@ -75,14 +76,15 @@ const startOfToday = () => {
 export const createCredentialAction = () => ({
   id: 'create-application_credentials',
   type: 'modal',
-  policy: 'identity:create_application_credential',
+  aliasPolicy: 'keystone:identity:create_application_credential',
   title: t('Create Application Credentials'),
   width: 640,
   getFormItems: async () => {
     const profile = await getProfile();
     const roleOptions = (profile?.roles || []).map((r) => ({ label: r.name || r, value: r.id || r }));
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true },
+      // legacy type 'input-name'
+      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule({ withoutChinese: true })] },
       {
         name: 'expires_at',
         label: t('Expires At'),
@@ -145,6 +147,7 @@ export function CredentialsTable({ userId, embedded = false }) {
   return (
     <ResourcePage
       embedded={embedded}
+      aliasPolicy="keystone:identity:get_application_credential"
       title={t('Application Credentials')}
       breadcrumb={[t('User Center'), t('Application Credentials')]}
       deps={[userId]}

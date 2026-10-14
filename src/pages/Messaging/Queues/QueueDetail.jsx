@@ -99,6 +99,7 @@ function MessagesTab({ queueName }) {
   return (
     <ResourcePage
       embedded
+      policy="messages:get_all"
       fetch={async () => {
         const res = await zaqarApi.listMessages(queueName, { echo: true, include_claimed: true });
         return (res?.messages || []).map((it) => ({ ...it, id: messageId(it) }));
@@ -377,6 +378,7 @@ function SubscriptionsTab({ queueName }) {
   return (
     <ResourcePage
       embedded
+      policy="subscription:get_all"
       fetch={async () => (await zaqarApi.listSubscriptions(queueName))?.subscriptions || []}
       deps={[queueName]}
       columns={[

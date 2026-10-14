@@ -167,6 +167,7 @@ const statCol = (title, key) => ({
 export default function QueueList() {
   return (
     <ResourcePage
+      policy="queues:get_all"
       title={t('Queues')}
       breadcrumb={[t('Messaging'), t('Queues')]}
       description={t('Zaqar message queues: post, claim and subscribe to messages.')}

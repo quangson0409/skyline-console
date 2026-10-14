@@ -12,6 +12,7 @@ import { mapNamespace, metadataRowActions } from './MetadataList';
 export default function MetadataDetail() {
   return (
     <ResourceDetail
+      policy="get_metadef_namespace"
       breadcrumb={[t('Global Settings'), { title: t('Metadata Definitions'), path: '/configuration-admin/metadata' }]}
       backPath="/configuration-admin/metadata"
       title={(d) => d.display_name || d.namespace}

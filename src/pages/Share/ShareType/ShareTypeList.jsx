@@ -7,6 +7,7 @@ import { fetchShareTypes, shareTypeColumns, shareTypeActionConfigs } from './sha
 export default function ShareTypeList() {
   return (
     <ResourcePage
+      policy="share_type:index"
       title={t('Share Types')}
       breadcrumb={[t('Share File Storage'), t('Share Types')]}
       description={t('Share types define the capabilities (extra specs) and visibility of shares.')}

@@ -36,7 +36,11 @@ const friendlyLoginError = (message, t) => {
   if (msg.includes('requires authentication') || msg.includes('(HTTP 401)')) {
     return t('Username or password is incorrect');
   }
-  return msg || t('Login Failed');
+  if (msg === 'invalid_totp') return t('Invalid TOTP code. Please try again.');
+  if (msg === 'receipt_expired') return t('Session expired. Please log in again.');
+  // keep transport failures readable; legacy answered every other failure with this text
+  if (!msg || /network error|timeout|ECONN|failed to fetch|status code 5\d\d|HTTP 5\d\d|server connection/i.test(msg)) return msg || t('Login Failed');
+  return t('Username or password is incorrect');
 };
 
 export default function Login() {
@@ -98,8 +102,16 @@ export default function Login() {
     setErrorMsg('');
     const res = await loginTotp({ ...totp, passcode });
     setLoading(false);
-    if (res.success) navigate(redirectUrl, { replace: true });
-    else setErrorMsg(res.error || t('Login Failed'));
+    if (res.success) {
+      navigate(redirectUrl, { replace: true });
+    } else if (res.code === 'receipt_expired') {
+      // legacy: the receipt expired -> back to the password step
+      setTotp(null);
+      setPasscode('');
+      setErrorMsg(t('Session expired. Please log in again.'));
+    } else {
+      setErrorMsg(t('Invalid TOTP code. Please try again.'));
+    }
   };
   const redirectUrl = searchParams.get('redirect') || '/base/overview';
 
@@ -266,11 +278,17 @@ export default function Login() {
           label={t('Domain')}
           name="domain"
           rules={[{ required: true, message: t('Please input your Domain!') }]}
-          extra={<span style={{ fontSize: 11, color: '#94a3b8' }}>{t('Default Domain Tips')}</span>}
+          extra={
+            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+              {t('Tips: If no domain is provided, the configured default domain "{domain}" will be used.', {
+                domain: defaultDomain,
+              })}
+            </span>
+          }
         >
           <Input
             prefix={<GlobalOutlined style={{ color: '#94a3b8' }} />}
-            placeholder="Default"
+            placeholder={defaultDomain}
             size="large"
             style={{ borderRadius: 8 }}
           />

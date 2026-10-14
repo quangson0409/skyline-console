@@ -2,6 +2,7 @@ import React from 'react';
 import { manilaApi } from '@/api/manila';
 import { nameColumn, textColumn, yesNo, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { nameRule } from '@/components/form/rules';
 import {
   yesNoOptions,
   fetchProjectsWithDomain,
@@ -74,7 +75,7 @@ export const createShareTypeAction = ({ existingNames = () => [] } = {}) => ({
   getFormItems: async () => {
     const projects = await fetchProjectsWithDomain();
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [uniqueName(existingNames())] },
+      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule(), uniqueName(existingNames())] },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
       {
         name: 'driver_handles_share_servers',
@@ -120,7 +121,7 @@ export const editShareTypeAction = ({ existingNames = () => [] } = {}) => ({
       label: t('Name'),
       type: 'input',
       required: true,
-      rules: [uniqueName(existingNames().filter((n) => n !== item.name))],
+      rules: [nameRule(), uniqueName(existingNames().filter((n) => n !== item.name))],
     },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],

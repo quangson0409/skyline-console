@@ -73,6 +73,7 @@ export const shareInstanceColumns = () => [
 export default function ShareInstanceList() {
   return (
     <ResourcePage
+      policy="share_instance:index"
       title={t('Share Instances')}
       breadcrumb={[t('Share File Storage'), t('Share Instances')]}
       description={t('Backend instances (replicas) of every share, visible to administrators.')}

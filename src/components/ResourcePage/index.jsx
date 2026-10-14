@@ -71,18 +71,22 @@ export default function ResourcePage({
 
   // legacy List `get policy()`: without the list permission the page shows a notice and fetches nothing
   const policyRules = usePolicyStore((st) => st.rules);
+  const policiesLoaded = usePolicyStore((st) => st.loaded);
   const canView = useMemo(
     () => checkActionPolicy({ policy, aliasPolicy }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [policy, aliasPolicy, policyRules]
   );
+  // with a page policy, wait for /policies before the first request (avoids a 403 + toast on reload)
+  const policyPending = Boolean(policy || aliasPolicy) && !policiesLoaded;
+  const canFetch = canView && !policyPending;
 
   const remoteMode = Boolean(serverSide && serverSide.fetchPage);
   const local = useResource(
-    () => (remoteMode || !canView ? Promise.resolve([]) : fetch(ctx)),
-    [ctx, remoteMode, canView, ...deps]
+    () => (remoteMode || !canFetch ? Promise.resolve([]) : fetch(ctx)),
+    [ctx, remoteMode, canFetch, ...deps]
   );
-  const paging = useServerPaging({ serverSide, ctx, deps, initialFilters, enabled: remoteMode && canView });
+  const paging = useServerPaging({ serverSide, ctx, deps, initialFilters, enabled: remoteMode && canFetch });
   const data = remoteMode ? paging.items : local.data;
   const loading = remoteMode ? paging.loading : local.loading;
   const refetch = remoteMode ? paging.refetch : local.refetch;

@@ -11,6 +11,7 @@ import { mapNotification, notificationStatus } from './NotificationList';
 export default function NotificationDetail() {
   return (
     <ResourceDetail
+      policy="capsule:get_one_all_projects"
       breadcrumb={[t('Instance-HA'), { title: t('Notifications'), path: '/ha/notifications-admin' }]}
       backPath="/ha/notifications-admin"
       nameField="notification_uuid"

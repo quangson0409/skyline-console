@@ -1,16 +1,24 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ResourceDetail from '@/components/ResourceDetail';
 import { yesNo } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { KeyValueTab } from '../shareShared';
 import { ShareTable } from '../Share/shareActions';
-import { fetchShareTypeDetail, extraSpecApi, shareTypeActionConfigs } from './shareTypeShared';
+import { fetchShareTypeDetail, extraSpecApi, shareTypeActionConfigs, fetchShareTypes } from './shareTypeShared';
 
 export default function ShareTypeDetail() {
   const navigate = useNavigate();
+  // legacy Edit checks the new name against every share type (existingNames on the list page)
+  const [names, setNames] = useState([]);
+  useEffect(() => {
+    fetchShareTypes({ all: true })
+      .then((list) => setNames(list.map((it) => it.name)))
+      .catch(() => setNames([]));
+  }, []);
   return (
     <ResourceDetail
+      policy="share_type:show"
       breadcrumb={[t('Share File Storage'), { title: t('Share Types'), path: '/share/share-type-admin' }]}
       backPath="/share/share-type-admin"
       fetch={(id) => fetchShareTypeDetail(id)}
@@ -28,6 +36,7 @@ export default function ShareTypeDetail() {
             <KeyValueTab
               api={extraSpecApi(d.id)}
               kind="extra"
+              viewPolicy="share_types_extra_spec:index"
               policies={{
                 create: 'share_types_extra_spec:create',
                 edit: 'share_types_extra_spec:update',
@@ -45,7 +54,7 @@ export default function ShareTypeDetail() {
           ),
         },
       ]}
-      actions={() => shareTypeActionConfigs().rowActions}
+      actions={() => shareTypeActionConfigs({ existingNames: () => names }).rowActions}
     />
   );
 }

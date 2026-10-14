@@ -25,7 +25,8 @@ export async function getNovaService() {
   });
   resultOf(last24State).forEach(({ metric = {} }) => markDown24(tmp, metric.service || '', metric.hostname || ''));
   resultOf(libvirtdState).forEach(({ metric = {}, value = [] }) => {
-    tmp.push({ serviceName: 'nova_libvirt', hostname: metric.hostname, state: value[1] === 'enabled' ? 'up' : 'down' });
+    // node_process_total{name="libvirtd"} is a process count (legacy compared it with 'enabled' and always showed down)
+    tmp.push({ serviceName: 'nova_libvirt', hostname: metric.hostname, state: Number(value[1]) > 0 ? 'up' : 'down' });
   });
   resultOf(libvirtd24State).forEach(({ metric = {} }) => markDown24(tmp, 'nova_libvirt', metric.hostname || ''));
   return tmp;

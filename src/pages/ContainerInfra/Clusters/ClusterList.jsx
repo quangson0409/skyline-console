@@ -30,6 +30,7 @@ export default function ClusterList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="cluster:get_all"
       title={t('Clusters')}
       breadcrumb={[t('Container Infra'), t('Clusters')]}
       description={t('Kubernetes clusters provisioned by Magnum.')}

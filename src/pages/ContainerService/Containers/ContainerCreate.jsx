@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { t as tPolicy } from '@/core/i18n';
+import { useParams as usePolicyParams, useLocation as usePolicyLocation } from 'react-router-dom';
+import { checkActionPolicy as checkPagePolicy, usePolicyStore as usePagePolicyStore } from '@/core/policy';
+import { Result as PolicyResult } from 'antd';
 import { Link } from 'react-router-dom';
 import { Button, Checkbox, Form, Input, InputNumber, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -222,7 +226,7 @@ export const buildContainerBody = (values) => {
   return body;
 };
 
-export default function ContainerCreate() {
+function ContainerCreatePage() {
   const [form] = Form.useForm();
   const projectId = currentProjectId();
   const hasAdminRole = useAuthStore((s) => s.hasAdminRole);
@@ -560,4 +564,16 @@ export default function ContainerCreate() {
       quota={quotaLoading || quota ? <QuotaPanel quotas={quotaInfo} loading={quotaLoading} /> : null}
     />
   );
+}
+
+/** legacy page `get policy()`: without the permission the page shows the no-access notice */
+export default function ContainerCreate(props) {
+  const params = usePolicyParams();
+  const isAdmin = /-admin(\/|$)/.test(usePolicyLocation().pathname);
+  usePagePolicyStore((st) => st.rules);
+  const policy = { policy: 'container:create' };
+  if (!checkPagePolicy(policy, { item: params })) {
+    return <PolicyResult status="403" title={tPolicy("You don't have access to get {name}.", { name: tPolicy('Create Container') })} />;
+  }
+  return <ContainerCreatePage {...props} />;
 }

@@ -28,5 +28,8 @@
   "days ago": "天前",
   "hours ago": "小时前",
   "in the future": "未来",
-  "minutes ago": "分钟前"
+  "minutes ago": "分钟前",
+  "Valid JSON": "JSON 格式正确",
+  "Invalid JSON": "JSON 格式错误",
+  "{failed} of {total} failed": "{total} 项中有 {failed} 项失败"
 }

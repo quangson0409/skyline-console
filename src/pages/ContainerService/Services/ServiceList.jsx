@@ -19,6 +19,7 @@ const sinceTime = (value) => {
 export default function ServiceList() {
   return (
     <ResourcePage
+      policy="zun-service:get_all"
       title={t('Zun Services')}
       breadcrumb={[t('Container Service'), t('Zun Services')]}
       description={t('State of the Zun compute services.')}

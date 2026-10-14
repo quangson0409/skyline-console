@@ -177,6 +177,7 @@ function UsersTab({ instanceId }) {
   return (
     <ResourcePage
       embedded
+      policy="instance:extension:user:index"
       rowKey="name"
       fetch={() => fetchUsers(instanceId)}
       deps={[instanceId]}
@@ -220,6 +221,7 @@ function DatabasesTab({ instanceId }) {
   return (
     <ResourcePage
       embedded
+      policy="instance:extension:database:index"
       rowKey="name"
       fetch={async () => (await troveApi.listDatabases(instanceId))?.databases || []}
       deps={[instanceId]}
@@ -241,6 +243,7 @@ function BackupsTab({ instanceId, isAdmin }) {
   return (
     <ResourcePage
       embedded
+      policy="instance:backups"
       fetch={async () => (await troveApi.listInstanceBackups(instanceId))?.backups || []}
       deps={[instanceId]}
       columns={[
@@ -260,6 +263,7 @@ function LogsTab({ instanceId }) {
   return (
     <ResourcePage
       embedded
+      policy="instance:guest_log_list"
       rowKey="name"
       fetch={async () => (await troveApi.listInstanceLogs(instanceId))?.logs || []}
       deps={[instanceId]}
@@ -305,6 +309,7 @@ export const fetchInstanceDetail = async (id) => {
 export default function InstanceDetail() {
   return (
     <ResourceDetail
+      aliasPolicy="trove:instance:detail"
       breadcrumb={[t('Databases'), { title: t('Database Instances'), path: '/database/instances' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/database/instances-admin' : '/database/instances')}
       fetch={fetchInstanceDetail}

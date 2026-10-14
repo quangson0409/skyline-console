@@ -12,6 +12,7 @@ const hostUuid = () => new URLSearchParams(window.location.search).get('uuid') |
 export default function HostDetail() {
   return (
     <ResourceDetail
+      policy="capsule:get_one_all_projects"
       breadcrumb={[t('Instance-HA'), { title: t('Hosts'), path: '/ha/hosts-admin' }]}
       backPath="/ha/hosts-admin"
       title={(d) => d.uuid || hostUuid()}

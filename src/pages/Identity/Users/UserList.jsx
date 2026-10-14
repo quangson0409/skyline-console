@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import ResourcePage, { nameColumn, textColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
-import { detailPath, enabledColumn, domainColumn, yesNoFilterOptions, IdNameLink, listDomains, listRoles, listAllProjects, safeList, emailRule, phoneRule } from '../common';
+import { detailPath, enabledColumn, domainColumn, yesNoFilterOptions, IdNameLink, listDomains, listRoles, listAllProjects, safeList, emailRule, withPagePolicy } from '../common';
+import { PhoneInput, phoneNumberRule, normalizePhone } from '../phone';
 import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 
 /* ------------------------------ Data ------------------------------ */
@@ -181,14 +182,15 @@ export const userNameRule = (getDomainId, selfId) => ({
 export const editUserAction = () => ({
   id: 'user-edit',
   type: 'modal',
-  policy: 'identity:update_user',
+  aliasPolicy: 'keystone:identity:update_user',
   title: t('Edit User'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
     name: item.name,
     domainName: item.domain?.name || item.domainName || item.domain_id,
     email: item.email,
-    phone: item.phone,
+    // legacy Edit normalises the stored number to '+<code> <national>'
+    phone: normalizePhone(item.phone),
     real_name: item.real_name,
     description: item.description,
   }),
@@ -203,7 +205,13 @@ export const editUserAction = () => ({
       rules: [userNameRule(() => item.domain_id, item.id)],
     },
     { name: 'email', label: t('Email'), type: 'input', required: true, rules: [emailRule()] },
-    { name: 'phone', label: t('Phone'), type: 'input', required: true, rules: [phoneRule()], placeholder: '+86 13800000000' },
+    {
+      name: 'phone',
+      label: t('Phone'),
+      required: true,
+      rules: [phoneNumberRule()],
+      render: () => <PhoneInput />,
+    },
     { name: 'real_name', label: t('Real Name'), type: 'input', required: true },
     { name: 'domainName', label: t('Domain'), type: 'input', disabled: true },
     { name: 'description', label: t('Description'), type: 'textarea' },
@@ -216,7 +224,7 @@ export const editUserAction = () => ({
 export const systemRoleAction = () => ({
   id: 'edit-system-permission',
   type: 'modal',
-  policy: 'identity:list_roles',
+  aliasPolicy: 'keystone:identity:list_roles',
   title: t('Edit System Permission'),
   getDefaultValues: (item) => {
     const role = (item.systemRoles || [])[0]?.id;
@@ -247,7 +255,7 @@ export const systemRoleAction = () => ({
 export const userPasswordAction = () => ({
   id: 'update-user-password',
   type: 'modal',
-  policy: 'identity:update_user',
+  aliasPolicy: 'keystone:identity:update_user',
   title: t('Update User Password'),
   getDefaultValues: (item) => ({ name: item.name, password: '', confirmPassword: '' }),
   formItems: [
@@ -266,7 +274,7 @@ export const userPasswordAction = () => ({
 
 export const deleteUserAction = () => ({
   ...deleteAction({ name: t('User'), onDelete: (it) => keystoneApi.deleteUser(it.id) }),
-  policy: 'identity:delete_user',
+  aliasPolicy: 'keystone:identity:delete_user',
   title: t('Delete User'),
   actionName: t('delete user'),
 });
@@ -274,7 +282,7 @@ export const deleteUserAction = () => ({
 export const enableUserAction = () => ({
   id: 'Enable',
   type: 'confirm',
-  policy: 'identity:update_user',
+  aliasPolicy: 'keystone:identity:update_user',
   title: t('Enable User'),
   actionName: t('Enable User'),
   allowed: (item) => item.enabled !== true,
@@ -284,11 +292,15 @@ export const enableUserAction = () => ({
 export const disableUserAction = () => ({
   id: 'Disable',
   type: 'confirm',
-  policy: 'identity:update_user',
+  aliasPolicy: 'keystone:identity:update_user',
   title: t('Disable User'),
   actionName: t('Disable User'),
   isDanger: true,
   allowed: (item) => item.enabled !== false,
+  confirmText: (items) =>
+    t('Are you sure to disable user { name }? Disabled users are not allowed to login in ', {
+      name: (items || []).map((it) => it.name).join(','),
+    }),
   onSubmit: (item) => keystoneApi.updateUser(item.id, { enabled: false }),
 });
 
@@ -318,10 +330,11 @@ export default function UserList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      aliasPolicy="keystone:identity:list_users"
       title={t('Users')}
       breadcrumb={[t('Identity'), t('Users')]}
       description={t('Manage user credentials and access authorization in OpenStack Keystone.')}
-      fetch={() => fetchUsers()}
+      fetch={withPagePolicy({ aliasPolicy: 'keystone:identity:list_users' }, () => fetchUsers())}
       columns={() => userColumns({ mode: 'list' })}
       filterParams={userFilters()}
       searchFields={['name', 'id', 'email', 'real_name', 'domainName']}
@@ -329,7 +342,7 @@ export default function UserList() {
         {
           id: 'user-create',
           type: 'custom',
-          policy: ['identity:create_user', 'identity:update_user', 'identity:list_roles'],
+          aliasPolicy: ['keystone:identity:create_user', 'keystone:identity:update_user', 'keystone:identity:list_roles'],
           title: t('Create User'),
           onExecute: () => navigate('/identity/user-admin/create'),
         },

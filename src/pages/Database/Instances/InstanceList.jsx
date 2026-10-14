@@ -39,6 +39,7 @@ export default function InstanceList() {
   const projectMap = useProjectMap();
   return (
     <ResourcePage
+      aliasPolicy="trove:instance:index"
       title={t('Database Instances')}
       breadcrumb={[t('Databases'), t('Database Instances')]}
       description={t('Trove managed relational and NoSQL database instances.')}

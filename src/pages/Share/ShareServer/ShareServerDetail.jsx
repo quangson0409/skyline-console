@@ -12,6 +12,7 @@ export default function ShareServerDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="share_server:show"
       breadcrumb={[t('Share File Storage'), { title: t('Share Servers'), path: '/share/share-server-admin' }]}
       backPath="/share/share-server-admin"
       title={(d) => d.id}

@@ -182,6 +182,7 @@ function AccessRuleTab({ share, isAdmin }) {
   return (
     <ResourcePage
       embedded
+      policy="share_access_rule:index"
       fetch={async () => (await manilaApi.listAccessRules(share.id))?.access_list || []}
       deps={[share.id]}
       columns={[
@@ -246,6 +247,7 @@ export default function ShareDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="share:get"
       breadcrumb={[t('Share File Storage'), { title: t('Shares'), path: '/share/share' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/share/share-admin' : '/share/share')}
       fetch={(id) => fetchShareDetail(id)}
@@ -267,6 +269,7 @@ export default function ShareDetail() {
             <KeyValueTab
               api={shareMetadataApi(d.id)}
               kind="metadata"
+              viewPolicy="share:get_share_metadata"
               policies={{
                 create: 'share:update_share_metadata',
                 edit: 'share:update_share_metadata',

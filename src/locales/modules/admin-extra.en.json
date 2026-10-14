@@ -21,5 +21,8 @@
   "Segment": "Segment",
   "Service catalog, compute / block storage / orchestration services and network agents of the cloud.": "Service catalog, compute / block storage / orchestration services and network agents of the cloud.",
   "Soft-deleted instances can be recovered until their reclaim time expires.": "Soft-deleted instances can be recovered until their reclaim time expires.",
-  "in the future": "in the future"
+  "in the future": "in the future",
+  "Valid JSON": "Valid JSON",
+  "Invalid JSON": "Invalid JSON",
+  "{failed} of {total} failed": "{failed} of {total} failed"
 }

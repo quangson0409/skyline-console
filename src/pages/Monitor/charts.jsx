@@ -323,6 +323,96 @@ export const useMonitor = () => useContext(MonitorContext);
  * Port of legacy PrometheusChart/component/BaseContent: refresh button, time range
  * (last hour/day/7 days/2 weeks/custom), interval select and node select.
  */
+/** Legacy BaseContent time range controls: presets, custom range and interval */
+export function RangeControls({ groupIndex, onGroupChange, range, onRangeChange, interval, onIntervalChange }) {
+  const { t } = useTranslation();
+  const intervals = getIntervals(range);
+  return (
+    <>
+      <Radio.Group
+        value={groupIndex}
+        onChange={(e) => {
+          onGroupChange(e.target.value);
+          onRangeChange(getRange(e.target.value));
+        }}
+      >
+        <Radio.Button value={0}>{t('Last Hour')}</Radio.Button>
+        <Radio.Button value={1}>{t('Last Day')}</Radio.Button>
+        <Radio.Button value={2}>{t('Last 7 Days')}</Radio.Button>
+        <Radio.Button value={3}>{t('Last 2 Weeks')}</Radio.Button>
+      </Radio.Group>
+      <DatePicker.RangePicker
+        showTime
+        allowClear={false}
+        value={[dayjs(range[0]), dayjs(range[1])]}
+        disabledDate={(d) => d && d.isAfter(dayjs().endOf('day'))}
+        onChange={(dates) => {
+          if (!dates || !dates[0] || !dates[1]) return;
+          onGroupChange(4);
+          onRangeChange([dates[0].valueOf(), dates[1].valueOf()]);
+        }}
+      />
+      <span>
+        {t('Time Interval: ')}
+        <Select
+          value={interval}
+          style={{ width: 110, marginLeft: 6 }}
+          onChange={onIntervalChange}
+          options={intervals.map((d) => ({ value: d.value, label: d.text }))}
+        />
+      </span>
+    </>
+  );
+}
+
+/**
+ * Legacy ChartCard full screen modal: the chart gets its own range / interval selectors
+ * (initialised from the page) so it can be explored without touching the page.
+ */
+function ChartModalContent({ ctx, chartProps }) {
+  const { t } = useTranslation();
+  const [groupIndex, setGroupIndex] = useState(ctx.groupIndex ?? 4);
+  const [range, setRange] = useState(ctx.range);
+  const [interval, setIntervalValue] = useState(ctx.interval);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setIntervalValue(getIntervals(range)[0].value);
+  }, [range]);
+  const value = useMemo(
+    () => ({ ...ctx, range, interval, groupIndex, refreshKey: `${ctx.refreshKey}-${refreshKey}` }),
+    [ctx, range, interval, groupIndex, refreshKey]
+  );
+  return (
+    <MonitorContext.Provider value={value}>
+      <Space wrap size={[12, 8]} style={{ marginBottom: 12 }} className="monitor-modal-range">
+        <Tooltip title={t('Refresh')}>
+          <Button
+            icon={<SyncOutlined />}
+            onClick={() => {
+              if (groupIndex !== 4) setRange(getRange(groupIndex));
+              setRefreshKey((k) => k + 1);
+            }}
+          />
+        </Tooltip>
+        <RangeControls
+          groupIndex={groupIndex}
+          onGroupChange={setGroupIndex}
+          range={range}
+          onRangeChange={setRange}
+          interval={interval}
+          onIntervalChange={setIntervalValue}
+        />
+      </Space>
+      <ChartCard {...chartProps} height={420} isModal />
+    </MonitorContext.Provider>
+  );
+}
+
 export function MonitorPanel({ renderTimeRangeSelect = true, renderNodeSelect = true, fetchNodes, nodeKey = 'instance', children }) {
   const { t } = useTranslation();
   const [groupIndex, setGroupIndex] = useState(0);
@@ -359,8 +449,8 @@ export function MonitorPanel({ renderTimeRangeSelect = true, renderNodeSelect = 
   };
 
   const ctx = useMemo(
-    () => ({ range, interval, node, nodeKey, refreshKey }),
-    [range, interval, node, nodeKey, refreshKey]
+    () => ({ range, interval, node, nodeKey, refreshKey, groupIndex }),
+    [range, interval, node, nodeKey, refreshKey, groupIndex]
   );
 
   return (
@@ -372,38 +462,14 @@ export function MonitorPanel({ renderTimeRangeSelect = true, renderNodeSelect = 
           </Tooltip>
           {renderTimeRangeSelect ? (
             <>
-              <Radio.Group
-                value={groupIndex}
-                onChange={(e) => {
-                  setGroupIndex(e.target.value);
-                  setRange(getRange(e.target.value));
-                }}
-              >
-                <Radio.Button value={0}>{t('Last Hour')}</Radio.Button>
-                <Radio.Button value={1}>{t('Last Day')}</Radio.Button>
-                <Radio.Button value={2}>{t('Last 7 Days')}</Radio.Button>
-                <Radio.Button value={3}>{t('Last 2 Weeks')}</Radio.Button>
-              </Radio.Group>
-              <DatePicker.RangePicker
-                showTime
-                allowClear={false}
-                value={[dayjs(range[0]), dayjs(range[1])]}
-                disabledDate={(d) => d && d.isAfter(dayjs().endOf('day'))}
-                onChange={(dates) => {
-                  if (!dates || !dates[0] || !dates[1]) return;
-                  setGroupIndex(4);
-                  setRange([dates[0].valueOf(), dates[1].valueOf()]);
-                }}
+              <RangeControls
+                groupIndex={groupIndex}
+                onGroupChange={setGroupIndex}
+                range={range}
+                onRangeChange={setRange}
+                interval={interval}
+                onIntervalChange={setIntervalValue}
               />
-              <span>
-                {t('Time Interval: ')}
-                <Select
-                  value={interval}
-                  style={{ width: 110, marginLeft: 6 }}
-                  onChange={setIntervalValue}
-                  options={intervals.map((d) => ({ value: d.value, label: d.text }))}
-                />
-              </span>
             </>
           ) : null}
           {renderNodeSelect && fetchNodes ? (
@@ -543,19 +609,10 @@ export function ChartCard({
       width: 1200,
       okText: t('OK'),
       content: (
-        <MonitorContext.Provider value={ctx}>
-          <ChartCard
-            title={title}
-            metricKey={metricKey}
-            typeKey={typeKey}
-            deviceKey={deviceKey}
-            modifyKeys={modifyKeys}
-            yFormatter={yFormatter}
-            params={params}
-            height={420}
-            isModal
-          />
-        </MonitorContext.Provider>
+        <ChartModalContent
+          ctx={ctx}
+          chartProps={{ title, metricKey, typeKey, deviceKey, modifyKeys, yFormatter, params }}
+        />
       ),
     });
 

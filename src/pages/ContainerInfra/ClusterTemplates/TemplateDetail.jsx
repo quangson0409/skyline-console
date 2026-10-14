@@ -177,6 +177,7 @@ export default function TemplateDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="clustertemplate:detail"
       breadcrumb={[t('Container Infra'), { title: t('Cluster Templates'), path: '/container-infra/cluster-template' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/container-infra/cluster-template-admin' : '/container-infra/cluster-template')}
       fetch={fetchTemplateDetail}

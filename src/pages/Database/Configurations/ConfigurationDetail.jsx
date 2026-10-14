@@ -44,6 +44,7 @@ function InstancesTab({ detail }) {
 export default function ConfigurationDetail() {
   return (
     <ResourceDetail
+      policy="configuration:show"
       breadcrumb={[t('Databases'), { title: t('Configuration Groups'), path: '/database/configurations' }]}
       backPath="/database/configurations"
       fetch={async (id) => (await troveApi.getConfiguration(id))?.configuration}

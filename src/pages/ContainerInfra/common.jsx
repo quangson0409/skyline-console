@@ -214,9 +214,19 @@ export const fetchKeypairs = async () => {
  */
 export const findRef = (list = [], ref) => (ref ? list.find((it) => it.id === ref) || list.find((it) => it.name === ref) : undefined);
 
+const UUID_RE = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
+/** neutron / glance ids are uuids: a name is looked up by name directly (no 404 GET by id first) */
+const looksLikeId = (ref) => UUID_RE.test(String(ref));
+
 /** Show a resource by id, falling back to a "name=" list query (names are accepted by magnum) */
 export const resolveFlavor = async (ref) => {
   if (!ref) return null;
+  if (!looksLikeId(ref)) {
+    // flavor ids may be any string: search the flavor list (by id, then by name) before a GET by id
+    const all = await fetchFlavors().catch(() => []);
+    const found = findRef(all, ref);
+    if (found || all.length) return found || null;
+  }
   try {
     const res = await novaApi.getFlavor(ref);
     if (res?.flavor) return res.flavor;
@@ -229,7 +239,7 @@ export const resolveFlavor = async (ref) => {
 
 export const resolveNetwork = async (ref) => {
   if (!ref) return null;
-  try {
+  if (looksLikeId(ref)) try {
     const res = await neutronApi.getNetwork(ref);
     if (res?.network) return res.network;
   } catch {
@@ -241,7 +251,7 @@ export const resolveNetwork = async (ref) => {
 
 export const resolveSubnet = async (ref) => {
   if (!ref) return null;
-  try {
+  if (looksLikeId(ref)) try {
     const res = await neutronApi.getSubnet(ref);
     if (res?.subnet) return res.subnet;
   } catch {
@@ -253,7 +263,7 @@ export const resolveSubnet = async (ref) => {
 
 export const resolveImage = async (ref) => {
   if (!ref) return null;
-  try {
+  if (looksLikeId(ref)) try {
     const res = await glanceApi.getImage(ref);
     if (res?.id) return res;
   } catch {

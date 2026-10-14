@@ -62,6 +62,7 @@ export function ActionLogs({ detail, isAdmin }) {
   const map = actionMap();
   return (
     <ResourcePage
+      policy="container:actions"
       embedded
       rowKey="request_id"
       autoRefreshEnabled={false}

@@ -9,6 +9,9 @@ import apiClient from '@/api/client';
  */
 export const policyMap = {
   nova: ['os_compute_api'],
+  // skyline /policies names keystone rules 'keystone:identity:*' (legacy left this commented out,
+  // so its identity checks never matched anything)
+  keystone: ['identity:'],
   ironic: ['baremetal:'],
   cinder: ['volume:', 'volume_extension', 'backup:get', 'backup:restore', 'scheduler_extension'],
   glance: [

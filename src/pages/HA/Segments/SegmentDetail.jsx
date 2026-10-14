@@ -11,6 +11,7 @@ import { mapSegment, recoveryMethodText, segmentRowActions } from './SegmentList
 export default function SegmentDetail() {
   return (
     <ResourceDetail
+      policy="capsule:get_one_all_projects"
       breadcrumb={[t('Instance-HA'), { title: t('Segments'), path: '/ha/segments-admin' }]}
       backPath="/ha/segments-admin"
       fetch={async (id) => mapSegment({ uuid: id, ...((await masakariApi.getSegment(id))?.segment || {}) })}

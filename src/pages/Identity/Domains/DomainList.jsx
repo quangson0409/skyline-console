@@ -11,6 +11,7 @@ import {
   listAllProjects,
   listAllGroups,
   safeList,
+  withPagePolicy,
 } from '../common';
 
 /** legacy stores/keystone/domain listDidFetch */
@@ -59,7 +60,7 @@ const duplicateNameRule = (selfId) => ({
 export const createDomainAction = () => ({
   id: 'domain-create',
   type: 'modal',
-  policy: 'identity:create_domain',
+  aliasPolicy: 'keystone:identity:create_domain',
   title: t('Create Domain'),
   getDefaultValues: () => ({ enabled: true }),
   getFormItems: () => [
@@ -87,7 +88,7 @@ export const createDomainAction = () => ({
 export const editDomainAction = () => ({
   id: 'domain-edit',
   type: 'modal',
-  policy: 'identity:update_domain',
+  aliasPolicy: 'keystone:identity:update_domain',
   title: t('Edit Domain'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
@@ -111,7 +112,7 @@ export const deleteDomainAction = () => ({
     allowed: (item) => !item.enabled,
     onDelete: (it) => keystoneApi.deleteDomain(it.id),
   }),
-  policy: 'identity:delete_domain',
+  aliasPolicy: 'keystone:identity:delete_domain',
   title: t('Delete Domain'),
   actionName: t('delete domain'),
   description: t(
@@ -122,7 +123,7 @@ export const deleteDomainAction = () => ({
 export const enableDomainAction = () => ({
   id: 'Enable',
   type: 'confirm',
-  policy: 'identity:update_domain',
+  aliasPolicy: 'keystone:identity:update_domain',
   title: t('Enable Domain'),
   actionName: t('Enable Domain'),
   allowed: (item) => item.enabled !== true,
@@ -132,7 +133,7 @@ export const enableDomainAction = () => ({
 export const disableDomainAction = () => ({
   id: 'Disable',
   type: 'confirm',
-  policy: 'identity:update_domain',
+  aliasPolicy: 'keystone:identity:update_domain',
   title: t('Disable Domain'),
   actionName: t('Disable Domain'),
   isDanger: true,
@@ -160,10 +161,11 @@ export const domainColumns = () => [
 export default function DomainList() {
   return (
     <ResourcePage
+      aliasPolicy="keystone:identity:list_domains"
       title={t('Domains')}
       breadcrumb={[t('Identity'), t('Domains')]}
       description={t('Keystone domains group projects, users and user groups into isolated namespaces.')}
-      fetch={fetchDomains}
+      fetch={withPagePolicy({ aliasPolicy: 'keystone:identity:list_domains' }, fetchDomains)}
       columns={domainColumns}
       filterParams={[{ name: 'name', label: t('Domain Name') }]}
       primaryActions={[createDomainAction()]}

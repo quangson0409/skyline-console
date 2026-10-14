@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { t as tPolicy } from '@/core/i18n';
+import { useParams as usePolicyParams, useLocation as usePolicyLocation } from 'react-router-dom';
+import { checkActionPolicy as checkPagePolicy, usePolicyStore as usePagePolicyStore } from '@/core/policy';
+import { Result as PolicyResult } from 'antd';
 import { useNavigate, Link } from 'react-router-dom';
 import { Breadcrumb, Button, Card, Form, Input, Modal, Select, Space, Steps, Switch, message } from 'antd';
 import { masakariApi } from '@/api/masakari';
@@ -15,7 +19,7 @@ const LIST_URL = '/ha/segments-admin';
  * Step 1 creates the segment immediately (legacy behaviour); step 2 registers the selected
  * compute hosts in it. Going back / cancelling from step 2 deletes the created segment.
  */
-export default function SegmentCreate() {
+function SegmentCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [form] = Form.useForm();
@@ -259,4 +263,16 @@ export default function SegmentCreate() {
       </Card>
     </div>
   );
+}
+
+/** legacy page `get policy()`: without the permission the page shows the no-access notice */
+export default function SegmentCreate(props) {
+  const params = usePolicyParams();
+  const isAdmin = /-admin(\/|$)/.test(usePolicyLocation().pathname);
+  usePagePolicyStore((st) => st.rules);
+  const policy = { policy: 'get_images' };
+  if (!checkPagePolicy(policy, { item: params })) {
+    return <PolicyResult status="403" title={tPolicy("You don't have access to get {name}.", { name: tPolicy('Create Segment') })} />;
+  }
+  return <SegmentCreatePage {...props} />;
 }

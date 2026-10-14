@@ -11,6 +11,7 @@ import {
   deleteAction,
 } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { nameRule } from '@/components/form/rules';
 import { sortParams, pageParams } from '@/api/paging';
 import {
   shareGroupStatus,
@@ -134,7 +135,7 @@ export const createShareGroupAction = () => {
       ]);
       groupTypes = types;
       return [
-        { name: 'name', label: t('Name'), type: 'input', required: true },
+        { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
         { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
         {
           name: 'availability_zone',
@@ -196,7 +197,7 @@ export const editShareGroupAction = () => ({
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true },
+    { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => manilaApi.updateShareGroup(item.id, values),

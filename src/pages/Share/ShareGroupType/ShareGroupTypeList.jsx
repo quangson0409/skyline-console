@@ -27,6 +27,7 @@ export default function ShareGroupTypeList() {
   const cfg = (data) => shareGroupTypeActionConfigs({ existingNames: () => data.map((it) => it.name) });
   return (
     <ResourcePage
+      policy="share_type:index"
       title={t('Share Group Types')}
       breadcrumb={[t('Share File Storage'), t('Share Group Types')]}
       description={t('Share group types bundle share types that can be used together in a share group.')}

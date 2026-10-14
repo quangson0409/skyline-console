@@ -98,6 +98,7 @@ export default function TemplateList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="clustertemplate:get_all"
       title={t('Cluster Templates')}
       breadcrumb={[t('Container Infra'), t('Cluster Templates')]}
       description={t('Magnum cluster templates define the image, flavors, network and labels of Kubernetes clusters.')}

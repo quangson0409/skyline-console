@@ -6,6 +6,7 @@ import ResourcePage, { textColumn } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
 import { JsonBlock } from '@/components/CodeBlock';
 import { jsonRule } from '@/components/form/rules';
+import JsonEditor from './JsonEditor';
 
 /** Legacy pages/configuration/containers/Setting (skyline settings: flavor_families, gpu_models, usb_models...) */
 
@@ -65,11 +66,11 @@ export const editSettingAction = () => ({
     {
       name: 'value',
       label: t('Value'),
-      type: 'textarea',
-      rows: 14,
       required: true,
       rules: [jsonRule()],
       tip: t('Please enter JSON in the correct format!'),
+      // legacy CodeEditor (mode json)
+      render: () => <JsonEditor rows={14} />,
     },
   ],
   onSubmit: (values, item) => skylineApi.updateSetting({ key: item.key, value: JSON.parse(values.value) }),
@@ -95,6 +96,8 @@ export const resetSettingAction = () => ({
 export default function SettingList() {
   return (
     <ResourcePage
+      // legacy Setting get policy(): onlyAdminCanReadPolicy
+      policy={{ rules: ['admin', 'reader'], every: false }}
       title={t('System Config')}
       breadcrumb={[t('Global Settings'), t('System Config')]}
       description={t('Console settings stored by the skyline apiserver.')}

@@ -275,11 +275,12 @@ export const keyValueActions = ({ api, kind = 'extra', canDelete, policies = {} 
   return { create, edit, del };
 };
 
-export function KeyValueTab({ api, kind, readOnly = false, deleteOnly = false, canDelete, policies }) {
+export function KeyValueTab({ api, kind, readOnly = false, deleteOnly = false, canDelete, policies, viewPolicy }) {
   const { create, edit, del } = keyValueActions({ api, kind, canDelete, policies });
   return (
     <ResourcePage
       embedded
+      policy={viewPolicy}
       rowKey="keyName"
       fetch={api.list}
       columns={[textColumn(t('Key'), 'keyName'), textColumn(t('Value'), 'value')]}

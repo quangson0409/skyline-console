@@ -60,6 +60,7 @@ export default function ShareList({ autoCreate = false }) {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="share:get_all"
       title={t('Shares')}
       breadcrumb={[t('Share File Storage'), t('Shares')]}
       description={t('Shared file systems (NFS, CIFS, CephFS...) provided by OpenStack Manila.')}

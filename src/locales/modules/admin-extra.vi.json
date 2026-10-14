@@ -215,5 +215,8 @@
   "transmit": "gửi",
   "update": "cập nhật",
   "used": "đã dùng",
-  "write": "ghi"
+  "write": "ghi",
+  "Valid JSON": "JSON hợp lệ",
+  "Invalid JSON": "JSON không hợp lệ",
+  "{failed} of {total} failed": "{failed}/{total} mục thất bại"
 }

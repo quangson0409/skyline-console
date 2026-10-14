@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Form, Spin } from 'antd';
 import { manilaApi } from '@/api/manila';
 import { neutronApi } from '@/api/neutron';
 import { nameColumn, IdNameCell, timeColumn, textColumn, projectColumn, yesNo, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { nameRule } from '@/components/form/rules';
+import NetworkSelectTable from '@/components/network/NetworkSelectTable';
+import { useAuthStore } from '@/store/authStore';
 import { ResourcePopover, selectTableField, SelectTable } from '../shareShared';
 
 /* ------------------------------------------------------------------ stores/manila/share-network */
@@ -42,6 +45,8 @@ export const shareNetworkColumns = ({ isAdmin, projectMap, selectMode = false } 
       title: t('Neutron Net'),
       dataIndex: 'networks',
       key: 'networks',
+      exportRender: (_, record) =>
+        (record.share_network_subnets || []).map((it) => it.neutron_net_id).filter(Boolean).join(','),
       render: (_, record) => {
         const subnets = record.share_network_subnets || [];
         if (!subnets.length) return '-';
@@ -71,6 +76,8 @@ export const shareNetworkColumns = ({ isAdmin, projectMap, selectMode = false } 
       title: t('Neutron Subnet'),
       dataIndex: 'share_network_subnets',
       key: 'share_network_subnets',
+      exportRender: (_, record) =>
+        (record.share_network_subnets || []).map((it) => it.neutron_subnet_id).filter(Boolean).join(','),
       render: (_, record) => {
         const subnets = record.share_network_subnets || [];
         if (!subnets.length) return '-';
@@ -154,6 +161,26 @@ function SubnetPicker({ value, onChange, form }) {
   );
 }
 
+/**
+ * legacy type 'network-select-table': Current Project / Shared / All (admin) network tabs.
+ * The form value stays the list of selected network ids used by the payload and SubnetPicker.
+ */
+function NetworkPicker({ value, onChange }) {
+  const hasAdminRole = useAuthStore((st) => st.hasAdminRole);
+  const rowsRef = useRef([]);
+  const keys = Array.isArray(value) ? value : [];
+  return (
+    <NetworkSelectTable
+      value={{ selectedRowKeys: keys, selectedRows: rowsRef.current.filter((r) => keys.includes(r.id)) }}
+      onChange={(v) => {
+        rowsRef.current = v?.selectedRows || [];
+        onChange?.(v?.selectedRowKeys || []);
+      }}
+      hasAdminRole={hasAdminRole}
+    />
+  );
+}
+
 export const createShareNetworkAction = () => ({
   id: 'create',
   type: 'modal',
@@ -162,28 +189,22 @@ export const createShareNetworkAction = () => ({
   width: 960,
   getDefaultValues: () => ({ network: [], subnet: [] }),
   getFormItems: async () => {
-    const networks = (await neutronApi.listNetworks().catch(() => ({})))?.networks || [];
     return [
-      { name: 'name', label: t('Name'), type: 'input', required: true },
+      { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
       { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
-      selectTableField({
+      {
         name: 'network',
         label: t('Network'),
-        required: true,
-        data: networks,
-        columns: [
-          nameColumn(),
+        rules: [
           {
-            title: t('Subnet Count'),
-            dataIndex: 'subnets',
-            key: 'subnets',
-            render: (v) => (v || []).length,
+            validator: (_, v) =>
+              Array.isArray(v) && v.length
+                ? Promise.resolve()
+                : Promise.reject(new Error(`${t('Please select')} ${t('Network')}`)),
           },
-          { title: t('Shared'), dataIndex: 'shared', key: 'shared', render: (v) => yesNo(v) },
-          { title: t('External'), dataIndex: 'router:external', key: 'ext', render: (v) => yesNo(v) },
-          textColumn(t('Status'), 'status'),
         ],
-      }),
+        render: () => <NetworkPicker />,
+      },
       {
         name: 'subnet',
         label: t('Subnet'),
@@ -212,7 +233,7 @@ export const editShareNetworkAction = () => ({
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
-    { name: 'name', label: t('Name'), type: 'input', required: true },
+    { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
     { name: 'description', label: t('Description'), type: 'textarea', rows: 3 },
   ],
   onSubmit: (values, item) => manilaApi.updateShareNetwork(item.id, values),

@@ -71,6 +71,7 @@ export default function ShareServerList() {
   const projectMap = useProjectMap();
   return (
     <ResourcePage
+      policy="share_server:index"
       title={t('Share Servers')}
       breadcrumb={[t('Share File Storage'), t('Share Servers')]}
       description={t('Share servers created by drivers that handle share servers.')}

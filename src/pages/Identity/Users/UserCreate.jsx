@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
+import { t as tPolicy } from '@/core/i18n';
+import { useParams as usePolicyParams, useLocation as usePolicyLocation } from 'react-router-dom';
+import { checkActionPolicy as checkPagePolicy, usePolicyStore as usePagePolicyStore } from '@/core/policy';
+import { Result as PolicyResult } from 'antd';
 import { Breadcrumb, Button, Card, Checkbox, Col, Divider, Form, Input, Radio, Row, Select, Space, Switch, message } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import { keystoneApi } from '@/api/keystone';
 import { getErrorMessage } from '@/hooks/useResource';
 import { t } from '@/core/i18n';
-import { statusTypes, fetchDomainOptions, listDomains, listRoles, listAllProjects, listAllGroups, withDomainName, MemberRoleSelector, DomainSelect, emailRule, phoneRule } from '../common';
+import { statusTypes, fetchDomainOptions, listDomains, listRoles, listAllProjects, listAllGroups, withDomainName, MemberRoleSelector, DomainSelect, emailRule } from '../common';
+import { PhoneInput, phoneNumberRule } from '../phone';
 import { passwordRule, confirmPasswordRule } from '@/components/form/rules';
 import { userNameRule } from './UserList';
 
 /** legacy identity/containers/User/actions/Create (FormAction page at /identity/user-admin/create) */
-export default function UserCreate() {
+function UserCreatePage() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
@@ -111,8 +116,8 @@ export default function UserCreate() {
               </Form.Item>
             </Col>
             <Col {...col}>
-              <Form.Item name="phone" label={t('Phone')} rules={[{ required: true, message: t('Please input') }, phoneRule()]}>
-                <Input placeholder="+86 13800000000" />
+              <Form.Item name="phone" label={t('Phone')} rules={[{ required: true, message: t('Please input') }, phoneNumberRule()]}>
+                <PhoneInput />
               </Form.Item>
             </Col>
             <Col {...col}>
@@ -183,4 +188,16 @@ export default function UserCreate() {
       </Card>
     </div>
   );
+}
+
+/** legacy page `get policy()`: without the permission the page shows the no-access notice */
+export default function UserCreate(props) {
+  const params = usePolicyParams();
+  const isAdmin = /-admin(\/|$)/.test(usePolicyLocation().pathname);
+  usePagePolicyStore((st) => st.rules);
+  const policy = { aliasPolicy: ['keystone:identity:create_user', 'keystone:identity:update_user', 'keystone:identity:list_roles'] };
+  if (!checkPagePolicy(policy, { item: params })) {
+    return <PolicyResult status="403" title={tPolicy("You don't have access to get {name}.", { name: tPolicy('Create User') })} />;
+  }
+  return <UserCreatePage {...props} />;
 }

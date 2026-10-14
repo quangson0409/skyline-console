@@ -9,6 +9,7 @@ import { fetchShareGroupTypeDetail, groupSpecApi, shareGroupTypeActionConfigs } 
 export default function ShareGroupTypeDetail() {
   return (
     <ResourceDetail
+      policy="share_group_type:show"
       breadcrumb={[t('Share File Storage'), { title: t('Share Group Types'), path: '/share/share-group-type-admin' }]}
       backPath="/share/share-group-type-admin"
       fetch={(id) => fetchShareGroupTypeDetail(id, { allProjects: true })}
@@ -37,6 +38,7 @@ export default function ShareGroupTypeDetail() {
             <KeyValueTab
               api={groupSpecApi(d.id)}
               kind="extra"
+              viewPolicy="share_group_types_spec:index"
               policies={{
                 create: 'share_group_types_spec:create',
                 edit: 'share_group_types_spec:update',

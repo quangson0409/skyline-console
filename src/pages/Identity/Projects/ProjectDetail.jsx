@@ -12,6 +12,7 @@ import { fetchGroups, groupColumns, groupFilters } from '../UserGroups/UserGroup
 export default function ProjectDetail() {
   return (
     <ResourceDetail
+      aliasPolicy="keystone:identity:list_projects"
       breadcrumb={[t('Identity'), { title: t('Projects'), path: '/identity/project-admin' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/identity/project-admin' : '/identity/project')}
       fetch={fetchProjectDetail}
@@ -36,6 +37,7 @@ export default function ProjectDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_users"
               deps={[d.id]}
               fetch={() => fetchUsers({ projectId: d.id, withProjectRole: true, withSystemRole: true })}
               columns={() => userColumns({ mode: 'project' })}
@@ -49,6 +51,7 @@ export default function ProjectDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_groups"
               deps={[d.id]}
               fetch={() => fetchGroups({ projectId: d.id })}
               columns={() => groupColumns({ mode: 'project' })}

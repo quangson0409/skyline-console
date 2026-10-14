@@ -40,6 +40,7 @@ const isTransition = (item) => ['new', 'running'].includes(String(item?.status |
 export default function NotificationList() {
   return (
     <ResourcePage
+      policy="os_compute_api:servers:index:get_all_tenants"
       title={t('Notifications')}
       breadcrumb={[t('Instance-HA'), t('Notifications')]}
       description={t('Host, process and instance failure notifications received by Masakari.')}

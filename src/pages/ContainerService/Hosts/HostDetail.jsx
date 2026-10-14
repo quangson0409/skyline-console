@@ -45,6 +45,7 @@ function HostInfoTab({ d }) {
 export default function HostDetail() {
   return (
     <ResourceDetail
+      policy="host:get"
       breadcrumb={[t('Container Service'), { title: t('Hosts'), path: '/container-service/hosts-admin' }]}
       backPath="/container-service/hosts-admin"
       fetch={async (id) => {

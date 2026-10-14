@@ -226,6 +226,7 @@ export const metadataRowActions = () => ({
 export default function MetadataList() {
   return (
     <ResourcePage
+      policy="get_metadef_namespaces"
       title={t('Metadata Definitions')}
       breadcrumb={[t('Global Settings'), t('Metadata Definitions')]}
       description={t('Glance metadata definition namespaces and their associated resource types.')}

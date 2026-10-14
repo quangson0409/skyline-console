@@ -51,6 +51,7 @@ export const sharePoolColumns = () => [
 export default function ShareStorageList() {
   return (
     <ResourcePage
+      policy="scheduler_stats:pools:detail"
       title={t('Storage Backends')}
       breadcrumb={[t('Share File Storage'), t('Storage Backends')]}
       description={t('Manila scheduler pools and their capacity usage.')}

@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { t as tPolicy } from '@/core/i18n';
+import { useParams as usePolicyParams, useLocation as usePolicyLocation } from 'react-router-dom';
+import { checkActionPolicy as checkPagePolicy, usePolicyStore as usePagePolicyStore } from '@/core/policy';
+import { Result as PolicyResult } from 'antd';
 import { Link, useParams } from 'react-router-dom';
 import { Checkbox, Form, Input, InputNumber, Select } from 'antd';
 import { magnumApi } from '@/api/magnum';
@@ -50,7 +54,7 @@ export const buildTemplatePatch = (body) =>
       op: [null, undefined, ''].includes(body[key]) ? 'remove' : 'replace',
     }));
 
-export default function TemplateForm() {
+function TemplateFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const [form] = Form.useForm();
@@ -357,4 +361,16 @@ export default function TemplateForm() {
       onSubmit={onSubmit}
     />
   );
+}
+
+/** legacy page `get policy()`: without the permission the page shows the no-access notice */
+export default function TemplateForm(props) {
+  const params = usePolicyParams();
+  const isAdmin = /-admin(\/|$)/.test(usePolicyLocation().pathname);
+  usePagePolicyStore((st) => st.rules);
+  const policy = params.id ? { policy: 'clustertemplate:update' } : { policy: 'clustertemplate:create' };
+  if (!checkPagePolicy(policy, { item: params })) {
+    return <PolicyResult status="403" title={tPolicy("You don't have access to get {name}.", { name: params.id ? tPolicy('Update Cluster Template') : tPolicy('Create Cluster Template') })} />;
+  }
+  return <TemplateFormPage {...props} />;
 }

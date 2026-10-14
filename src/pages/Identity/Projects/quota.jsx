@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Empty, Form, InputNumber, Progress, Row, Spin, Tooltip } from 'antd';
+import { Badge, Card, Col, Empty, Form, InputNumber, List, Row, Spin, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import { quotaApi } from '@/api/quota';
 import { hasEndpoint, loadEndpoints } from '@/api/endpoints';
 import { t } from '@/core/i18n';
 import { hasAdminOnlyRole } from '../common';
 import { updateQuotaData } from '@/components/Quota/utils';
+import { QuotaItem as OverviewQuotaItem, useQuotaColors } from '@/pages/Overview/components';
 
 /* Port of legacy stores/keystone/project.js quota logic + QuotaOverview card definitions */
 
@@ -281,32 +282,9 @@ export const updateProjectQuota = async (projectId, data, currentQuota = {}, svc
 
 /* ------------------------------- UI ------------------------------- */
 
-const QuotaItem = ({ text, data }) => {
-  const { limit, used = 0 } = data || {};
-  const unlimited = limit === -1;
-  const percent = !unlimited && limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
-  const status = percent >= 100 ? 'exception' : percent >= 80 ? 'normal' : 'active';
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-        <span>{text}</span>
-        <span style={{ color: '#64748b' }}>
-          {t('Used')}: {used ?? 0} / {t('Quota')}: {unlimited ? t('Unlimited') : limit ?? '-'}
-        </span>
-      </div>
-      <Progress
-        percent={percent}
-        size="small"
-        showInfo={false}
-        status={status}
-        strokeColor={percent >= 100 ? '#ef4444' : percent >= 80 ? '#f59e0b' : undefined}
-      />
-    </div>
-  );
-};
-
-/** legacy pages/base/.../QuotaOverview used in project detail */
+/** legacy QuotaOverview card (title + Normal/Danger/Full legend; >=80% danger, >=90% full) */
 export function QuotaOverview({ projectId, refreshKey }) {
+  const colors = useQuotaColors();
   const [state, setState] = useState({ loading: true, quota: {}, types: [] });
   useEffect(() => {
     let alive = true;
@@ -322,33 +300,88 @@ export function QuotaOverview({ projectId, refreshKey }) {
 
   const { loading, quota, types } = state;
   const cards = [...quotaCards()];
-  if (enabledServices().cinder && types.length) cards.push(volumeTypeCard(types));
+  const showTypes = enabledServices().cinder;
+  const typeRows = volumeTypeCard(types).value.reduce((rows, item, idx) => {
+    if (idx % 3 === 0) rows.push({ index: idx / 3, value: [] });
+    rows[rows.length - 1].value.push(item);
+    return rows;
+  }, []);
+  const legend = [
+    { key: 'normal', color: colors.normal, text: t('Normal') },
+    { key: 'danger', color: colors.danger, text: t('Danger') },
+    { key: 'full', color: colors.full, text: t('Full') },
+  ];
 
   return (
-    <Spin spinning={loading}>
-      {!loading && !Object.keys(quota).length ? (
-        <Empty />
-      ) : (
-        <Row gutter={[16, 16]}>
-          {cards.map((card) => (
-            <Col key={card.type} xs={24} md={12} xl={8}>
-              <Card size="small" title={card.text} style={{ height: '100%' }}>
-                {card.value.map((it) => (
-                  <QuotaItem key={it.key} text={it.text} data={quota[it.key]} />
-                ))}
-              </Card>
-            </Col>
+    <Card
+      size="small"
+      className="project-quota-overview"
+      title={
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <span>{t('Quota Overview')}</span>
+          {legend.map((l) => (
+            <Badge key={l.key} color={l.color} text={<span style={{ fontWeight: 400, fontSize: 12 }}>{l.text}</span>} />
           ))}
-        </Row>
-      )}
-    </Spin>
+        </div>
+      }
+    >
+      <Spin spinning={loading}>
+        {!loading && !Object.keys(quota).length ? (
+          <Empty />
+        ) : (
+          <Row gutter={[16, 16]}>
+            {cards.map((card) => (
+              <Col key={card.type} xs={24} md={12} xl={8}>
+                <Card size="small" title={card.text} style={{ height: '100%' }}>
+                  {card.value.map((it) => (
+                    <OverviewQuotaItem key={it.key} item={it} data={quota} t={t} compact />
+                  ))}
+                </Card>
+              </Col>
+            ))}
+            {showTypes ? (
+              <Col key="volumeTypes" span={24}>
+                <Card size="small" title={t('Storage Types')}>
+                  {typeRows.length ? (
+                    <List
+                      split
+                      pagination={typeRows.length > 5 ? { pageSize: 5, size: 'small' } : false}
+                      dataSource={typeRows}
+                      renderItem={(row) => (
+                        <List.Item key={row.index} style={{ display: 'block', padding: '8px 0' }}>
+                          <Row gutter={[16, 4]}>
+                            {row.value.map((i) => (
+                              <Col key={i.key} xs={24} md={8}>
+                                <OverviewQuotaItem data={quota} item={i} t={t} compact />
+                              </Col>
+                            ))}
+                          </Row>
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                  )}
+                </Card>
+              </Col>
+            ) : null}
+          </Row>
+        )}
+      </Spin>
+    </Card>
   );
 }
 
 const quotaRule = (quota, key) => ({
   validator: (_, value) => {
-    if (value === undefined || value === null || value === '') return Promise.resolve();
     const used = quota?.[key]?.used ?? 0;
+    // legacy ManageQuota checkMin: an empty value fails the integer test
+    if (value === undefined || value === null || value === '') {
+      if (!quota?.[key]) return Promise.resolve();
+      return Promise.reject(
+        new Error(t('Invalid: Quota value(s) cannot be less than the current usage value(s): { used } used.', { used }))
+      );
+    }
     if ((value < used && value !== -1) || !/^-?\d+$/.test(String(value))) {
       return Promise.reject(
         new Error(t('Invalid: Quota value(s) cannot be less than the current usage value(s): { used } used.', { used }))

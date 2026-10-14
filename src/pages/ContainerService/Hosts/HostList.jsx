@@ -32,6 +32,7 @@ const usage = (percent, label) => (
 export default function HostList() {
   return (
     <ResourcePage
+      policy="host:get_all"
       title={t('Hosts')}
       breadcrumb={[t('Container Service'), t('Hosts')]}
       description={t('Compute hosts running the Zun container service.')}

@@ -124,6 +124,8 @@ export const createSegmentAction = (navigate) => ({
 
 export const segmentColumns = () => [
   nameColumn({ idIndex: 'uuid', linkTo: (r) => `/ha/segments-admin/detail/${r.uuid}` }),
+  // legacy hideable UUID column (the id is also shown under the name)
+  { ...textColumn(t('UUID'), 'uuid'), defaultHidden: true },
   { title: t('Recovery Method'), dataIndex: 'recovery_method', key: 'recovery_method', render: recoveryMethodText },
   textColumn(t('Service Type'), 'service_type'),
   textColumn(t('Description'), 'description'),
@@ -138,6 +140,7 @@ export default function SegmentList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="os_compute_api:servers:index:get_all_tenants"
       title={t('Segments')}
       breadcrumb={[t('Instance-HA'), t('Segments')]}
       description={t('Failover segments group compute hosts that protect each other (Masakari Instance-HA).')}

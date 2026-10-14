@@ -46,6 +46,7 @@ export default function ShareNetworkDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="share_network:show"
       breadcrumb={[t('Share File Storage'), { title: t('Share Networks'), path: '/share/share-network' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/share/share-network-admin' : '/share/share-network')}
       fetch={(id) => fetchShareNetworkDetail(id)}

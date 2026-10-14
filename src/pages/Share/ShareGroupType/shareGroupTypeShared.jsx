@@ -1,6 +1,7 @@
 import { manilaApi } from '@/api/manila';
 import { nameColumn, deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { nameRule } from '@/components/form/rules';
 import {
   fetchProjectsWithDomain,
   accessControlField,
@@ -64,6 +65,7 @@ export const createShareGroupTypeAction = ({ existingNames = () => [] } = {}) =>
         type: 'input',
         required: true,
         rules: [
+          nameRule(),
           {
             validator: (_, v) =>
               v && names.includes(v) ? Promise.reject(new Error(t('Name already exists'))) : Promise.resolve(),

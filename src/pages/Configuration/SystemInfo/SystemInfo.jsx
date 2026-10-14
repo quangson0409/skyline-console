@@ -74,6 +74,7 @@ export const fetchCatalog = async () => {
 function CatalogTab() {
   return (
     <ResourcePage
+      aliasPolicy="keystone:identity:get_auth_catalog"
       embedded
       fetch={fetchCatalog}
       searchFields={['name', 'type', 'region']}
@@ -149,6 +150,7 @@ export const disableComputeServiceAction = () => ({
 function ComputeServiceTab() {
   return (
     <ResourcePage
+      policy="os_compute_api:os-services:list"
       embedded
       fetch={fetchComputeServices}
       searchFields={['binary', 'host', 'zone']}
@@ -217,6 +219,7 @@ export const agentRowActions = () => ({
 function NeutronAgentTab() {
   return (
     <ResourcePage
+      policy="get_agent"
       embedded
       fetch={fetchNeutronAgents}
       searchFields={['binary', 'host', 'agent_type']}
@@ -307,6 +310,7 @@ export const disableCinderServiceAction = () => ({
 function CinderServiceTab() {
   return (
     <ResourcePage
+      policy="volume_extension:services:index"
       embedded
       fetch={fetchCinderServices}
       searchFields={['binary', 'host', 'zone']}
@@ -340,6 +344,7 @@ export const fetchHeatServices = async () => {
 function HeatServiceTab() {
   return (
     <ResourcePage
+      aliasPolicy="heat:service:index"
       embedded
       fetch={fetchHeatServices}
       searchFields={['binary', 'host', 'engine_id']}

@@ -11,6 +11,7 @@ import { fetchGroups, groupColumns, groupFilters } from '../UserGroups/UserGroup
 export default function RoleDetail() {
   return (
     <ResourceDetail
+      aliasPolicy={['keystone:identity:get_role', 'keystone:identity:list_role_assignments']}
       breadcrumb={[t('Identity'), { title: t('Roles'), path: '/identity/role-admin' }]}
       backPath="/identity/role-admin"
       fetch={fetchRoleDetail}
@@ -37,6 +38,7 @@ export default function RoleDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_users"
               deps={[d.id]}
               fetch={() => fetchUsers({ roleId: d.id, withProjectRole: true, withSystemRole: true })}
               columns={() => userColumns({ mode: 'role' })}
@@ -50,6 +52,7 @@ export default function RoleDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_groups"
               deps={[d.id]}
               fetch={() => fetchGroups({ roleId: d.id })}
               columns={() => groupColumns({ mode: 'role' })}

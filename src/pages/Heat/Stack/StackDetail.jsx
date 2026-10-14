@@ -159,6 +159,7 @@ function StackResources({ stack, isAdmin }) {
   return (
     <ResourcePage
       embedded
+      policy="resource:index"
       deps={[stack.id]}
       rowKey="logical_resource_id"
       fetch={async () => {
@@ -203,6 +204,7 @@ function StackEvents({ stack }) {
   return (
     <ResourcePage
       embedded
+      aliasPolicy="heat:events:index"
       deps={[stack.id]}
       fetch={async () => {
         const res = await heatApi.listEvents(stackRef(stack));
@@ -301,7 +303,21 @@ function StackTemplate({ stack }) {
             borderRadius: 8,
           }}
         >
-          {state.content || '-'}
+          {state.content
+            ? state.content.split('\n').map((line, i) => (
+                // legacy CodeEditor (read-only YAML): numbered lines
+                // eslint-disable-next-line react/no-array-index-key
+                <div key={i} style={{ display: 'flex' }}>
+                  <span
+                    aria-hidden
+                    style={{ width: 40, flex: 'none', textAlign: 'right', paddingRight: 12, opacity: 0.45, userSelect: 'none' }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span style={{ whiteSpace: 'pre' }}>{line || ' '}</span>
+                </div>
+              ))
+            : '-'}
         </pre>
       )}
     </Card>
@@ -312,6 +328,7 @@ export default function StackDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="stacks:show"
       breadcrumb={[t('Orchestration'), { title: t('Stacks'), path: '/heat/stack' }]}
       backPath={({ isAdmin }) => stackListPath(isAdmin)}
       fetch={fetchStackDetail}

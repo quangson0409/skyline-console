@@ -42,6 +42,7 @@ export const fetchBackups = async () => (await troveApi.listBackups())?.backups 
 export default function BackupList() {
   return (
     <ResourcePage
+      policy="backup:index"
       title={t('Database Backups')}
       breadcrumb={[t('Databases'), t('Database Backups')]}
       description={t('Backups of Trove database instances.')}

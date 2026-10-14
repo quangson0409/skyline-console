@@ -13,7 +13,9 @@ import ResourcePage, {
 } from '@/components/ResourcePage';
 import { useProjectMap } from '@/hooks/useProjectMap';
 import { useAuthStore } from '@/store/authStore';
+import { checkPolicyRule } from '@/core/policy';
 import { t } from '@/core/i18n';
+import { nameRule } from '@/components/form/rules';
 import { sortParams } from '@/api/paging';
 import { withQuota } from '@/components/Quota/utils';
 import { fetchManilaQuota, shareQuotaItems } from '@/components/Quota/services';
@@ -147,7 +149,8 @@ export const shareFilters = () => [
 ];
 
 /** checkPolicyRule('share:create_public_share' / 'share:set_public_share'): admin-only by default */
-const canSetPublic = () => Boolean(useAuthStore.getState().hasAdminRole);
+/** legacy Create / Edit: checkPolicyRule('share:create_public_share' | 'share:set_public_share') */
+const canSetPublic = (rule = 'share:create_public_share') => checkPolicyRule(rule);
 
 /* ------------------------------------------------------------------ create */
 function ShareGroupPicker({ value, onChange, form, groups }) {
@@ -218,7 +221,7 @@ export const createShareAction = () => {
           type: 'select',
           options: (zoneRes?.availability_zones || []).map((it) => ({ value: it.id, label: it.name })),
         },
-        { name: 'name', label: t('Name'), type: 'input', required: true },
+        { name: 'name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
         { name: 'description', label: t('Description'), type: 'textarea', rows: 2 },
         {
           name: 'share_proto',
@@ -318,9 +321,9 @@ export const editShareAction = () => ({
   }),
   getFormItems: () =>
     [
-      { name: 'display_name', label: t('Name'), type: 'input', required: true },
+      { name: 'display_name', label: t('Name'), type: 'input', required: true, rules: [nameRule()] },
       { name: 'display_description', label: t('Description'), type: 'textarea', rows: 3 },
-      canSetPublic() && {
+      canSetPublic('share:set_public_share') && {
         name: 'is_public',
         label: t('Public'),
         type: 'checkbox',
@@ -330,7 +333,7 @@ export const editShareAction = () => ({
   onSubmit: (values, item) => {
     const { is_public, ...rest } = values;
     const body = { ...rest };
-    if (canSetPublic()) body.is_public = Boolean(is_public);
+    if (canSetPublic('share:set_public_share')) body.is_public = Boolean(is_public);
     return manilaApi.updateShare(item.id, body);
   },
 });
@@ -477,6 +480,7 @@ export function ShareTable({ filterKey, filterValue, hide = [], navigate }) {
   return (
     <ResourcePage
       embedded
+      policy="share:get_all"
       deps={[filterKey, filterValue]}
       fetch={({ isAdmin }) => fetchShares({ isAdmin, params: { [filterKey]: filterValue } })}
       columns={({ isAdmin }) => shareColumns({ isAdmin, projectMap, hide })}

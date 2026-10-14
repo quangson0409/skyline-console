@@ -11,6 +11,7 @@ import { deleteBackupAction } from './BackupList';
 export default function BackupDetail() {
   return (
     <ResourceDetail
+      policy="backup:show"
       breadcrumb={[t('Databases'), { title: t('Database Backups'), path: '/database/backups' }]}
       backPath="/database/backups"
       fetch={async (id) => (await troveApi.getBackup(id))?.backup}

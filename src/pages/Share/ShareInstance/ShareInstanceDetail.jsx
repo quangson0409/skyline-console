@@ -10,6 +10,7 @@ import { fetchShareInstanceDetail, shareInstanceActionConfigs } from './ShareIns
 export default function ShareInstanceDetail() {
   return (
     <ResourceDetail
+      policy="share_instance:show"
       breadcrumb={[t('Share File Storage'), { title: t('Share Instances'), path: '/share/share-instance-admin' }]}
       backPath="/share/share-instance-admin"
       title={(d) => d.id}

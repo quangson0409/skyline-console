@@ -1,0 +1,4 @@
+{
+  "Are you sure to disable user { name }? Disabled users are not allowed to login in ": "Bạn có chắc chắn muốn vô hiệu hóa người dùng { name }? Người dùng bị vô hiệu hóa sẽ không thể đăng nhập ",
+  "Session expired. Please log in again.": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+}

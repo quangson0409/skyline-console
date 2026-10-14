@@ -11,6 +11,7 @@ import { fetchGroups, groupColumns, groupFilters } from '../UserGroups/UserGroup
 export default function DomainDetail() {
   return (
     <ResourceDetail
+      aliasPolicy="keystone:identity:get_domain"
       breadcrumb={[t('Identity'), { title: t('Domains'), path: '/identity/domain-admin' }]}
       backPath="/identity/domain-admin"
       fetch={fetchDomainDetail}
@@ -30,6 +31,7 @@ export default function DomainDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_projects"
               deps={[d.id]}
               fetch={() => fetchProjects({ domainId: d.id })}
               columns={() => projectColumns({ mode: 'domain' })}
@@ -43,6 +45,7 @@ export default function DomainDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_users"
               deps={[d.id]}
               fetch={() => fetchUsers({ domainId: d.id, withProjectRole: false, withSystemRole: true })}
               columns={() => userColumns({ mode: 'domain' })}
@@ -56,6 +59,7 @@ export default function DomainDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_groups"
               deps={[d.id]}
               fetch={() => fetchGroups({ domainId: d.id })}
               columns={() => groupColumns({ mode: 'domain' })}

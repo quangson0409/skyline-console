@@ -65,6 +65,7 @@ function CapsuleInfoTab({ d }) {
 export default function CapsuleDetail() {
   return (
     <ResourceDetail
+      policy="capsule:get_one_all_projects"
       breadcrumb={[t('Container Service'), { title: t('Capsules'), path: '/container-service/capsules' }]}
       backPath="/container-service/capsules"
       fetch={async (id) => {

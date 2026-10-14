@@ -235,6 +235,7 @@ function ClusterInfoTab({ d, isAdmin }) {
 export default function ClusterDetail() {
   return (
     <ResourceDetail
+      policy="cluster:detail"
       breadcrumb={[t('Container Infra'), { title: t('Clusters'), path: '/container-infra/clusters' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/container-infra/clusters-admin' : '/container-infra/clusters')}
       fetch={fetchClusterDetail}

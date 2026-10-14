@@ -258,8 +258,8 @@ export const useAuthStore = create((set, get) => ({
         return { success: false, totpRequired: true, receipt: detail.receipt };
       }
       const errorMsg = formatErrorMessage(err);
-      message.error(t('Login failed: {msg}', { msg: errorMsg }));
-      return { success: false, error: errorMsg };
+      // the login page shows the (friendly) error inline; no duplicate toast
+      return { success: false, error: errorMsg, detail };
     }
   },
 
@@ -271,9 +271,10 @@ export const useAuthStore = create((set, get) => ({
       message.success(t('Logged in to Keystone successfully as {username}!', { username }));
       return { success: true };
     } catch (err) {
-      const errorMsg = formatErrorMessage(err);
-      message.error(t('Login failed: {msg}', { msg: errorMsg }));
-      return { success: false, error: errorMsg };
+      // legacy Login.onFinish: 'receipt_expired' -> back to the password step, anything else -> 'invalid_totp'
+      const detail = err?.response?.data?.detail || '';
+      const code = detail === 'receipt_expired' ? 'receipt_expired' : 'invalid_totp';
+      return { success: false, error: formatErrorMessage(err), code };
     }
   },
 

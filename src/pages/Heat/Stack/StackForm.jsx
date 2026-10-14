@@ -2,6 +2,10 @@
  * Port of legacy pages/heat/containers/Stack/actions/Create (StepCreate: Template + Parameter steps)
  * and actions/Edit ("Update Template", same steps on /heat/stack/edit/:id/:name).
  */
+import { t as tPolicy } from '@/core/i18n';
+import { useParams as usePolicyParams, useLocation as usePolicyLocation } from 'react-router-dom';
+import { checkActionPolicy as checkPagePolicy, usePolicyStore as usePagePolicyStore } from '@/core/policy';
+import { Result as PolicyResult } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -120,7 +124,7 @@ const renderParamInput = (field) => {
   }
 };
 
-export default function StackForm() {
+function StackFormPage() {
   const navigate = useNavigate();
   const isAdmin = useIsAdminPage();
   const { id, name: routeName } = useParams();
@@ -495,4 +499,16 @@ export default function StackForm() {
       </Card>
     </div>
   );
+}
+
+/** legacy page `get policy()`: without the permission the page shows the no-access notice */
+export default function StackForm(props) {
+  const params = usePolicyParams();
+  const isAdmin = /-admin(\/|$)/.test(usePolicyLocation().pathname);
+  usePagePolicyStore((st) => st.rules);
+  const policy = params.id ? { policy: 'stacks:update' } : { policy: 'stacks:create' };
+  if (!checkPagePolicy(policy, { item: params })) {
+    return <PolicyResult status="403" title={tPolicy("You don't have access to get {name}.", { name: params.id ? tPolicy('Update Template') : tPolicy('Create Stack') })} />;
+  }
+  return <StackFormPage {...props} />;
 }

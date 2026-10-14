@@ -1,3 +1,5 @@
+import React from 'react';
+import { InputNumber, Slider } from 'antd';
 import { troveApi } from '@/api/trove';
 import { deleteAction } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
@@ -88,6 +90,16 @@ export const rebootAction = () => ({
   },
 });
 
+/** legacy FormItem 'slider-input': slider with a number box */
+function SliderInput({ value, onChange, min, max }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <Slider style={{ flex: 1 }} min={min} max={max} value={value} onChange={onChange} />
+      <InputNumber min={min} max={max} value={value} onChange={onChange} style={{ width: 110 }} addonAfter="GiB" />
+    </div>
+  );
+}
+
 /** legacy Instances/actions/ResizeVolume (quota aware) */
 export const resizeVolumeAction = () => ({
   id: 'resize-volume',
@@ -135,11 +147,12 @@ export const resizeVolumeAction = () => ({
         ? {
             name: 'size',
             label: t('Database Disk (GiB)'),
-            type: 'number',
             min: minSize,
             max: maxSize,
             required: true,
             tip: `${minSize}GiB-${maxSize}GiB · ${t('Quota')}: ${t('Used')} ${volumes.used ?? 0} / ${volumes.limit}`,
+            // legacy type 'slider-input'
+            render: () => <SliderInput min={minSize} max={maxSize} />,
           }
         : { name: 'size', label: t('Database Disk (GiB)'), type: 'number', min: minSize, required: true },
     ];
@@ -154,6 +167,8 @@ export const resizeVolumeAction = () => ({
 export const attachConfigurationAction = () => ({
   id: 'attach-configuration',
   type: 'modal',
+  // trove PUT /instances/{id} -> trove:instance:update
+  policy: 'instance:update',
   title: t('Attach Configuration Group'),
   allowed: (item) => !item.configuration && checkStatus(['active'], item),
   getDefaultValues: (item) => ({ instance: item.name || item.id }),
@@ -176,6 +191,7 @@ export const attachConfigurationAction = () => ({
 export const detachConfigurationAction = () => ({
   id: 'detach-configuration',
   type: 'confirm',
+  policy: 'instance:update',
   title: t('Detach Configuration Group'),
   actionName: t('Detach Configuration Group'),
   isDanger: true,

@@ -6,6 +6,23 @@ import { skylineApi } from '@/api/skyline';
 import { IdNameCell } from '@/components/ResourcePage';
 import { useAuthStore } from '@/store/authStore';
 import { t } from '@/core/i18n';
+import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+
+/**
+ * Page fetches start before /policies has loaded on a full page load (unknown rules are allowed);
+ * wait for the rules (max 5s) so a denied list never calls keystone (no 403 + error toast).
+ */
+export const afterPolicies = async (policy) => {
+  const started = Date.now();
+  while (!usePolicyStore.getState().loaded && Date.now() - started < 5000) {
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return checkActionPolicy(policy);
+};
+
+/** run `fn` only when the legacy page policy allows it (else an empty list) */
+export const withPagePolicy = (policy, fn) => async (...args) => ((await afterPolicies(policy)) ? fn(...args) : []);
 
 /* ------------------------------------------------------------------ */
 /* Shared helpers for the Identity module (port of resources/keystone) */

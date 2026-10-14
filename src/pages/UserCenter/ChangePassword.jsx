@@ -60,10 +60,16 @@ export default function ChangePassword() {
   const [loading, setLoading] = useState(false);
   const expiredFlow = Boolean(info?.userId && info?.oldPassword);
 
+  // legacy: the expired-password page opened without the hand-off data goes back to login
+  const lostHandOff = !expiredFlow && location.pathname.startsWith('/auth/');
   useEffect(() => {
-    if (expiredFlow) return;
+    if (lostHandOff) navigate('/auth/login', { replace: true });
+  }, [lostHandOff, navigate]);
+
+  useEffect(() => {
+    if (expiredFlow || lostHandOff) return;
     getProfile().then((p) => setUserId(p?.user?.id || ''));
-  }, [expiredFlow]);
+  }, [expiredFlow, lostHandOff]);
 
   useEffect(
     () => () => {

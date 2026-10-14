@@ -85,6 +85,7 @@ export default function RecycleBinList() {
   const isAdminPage = useIsAdminPage();
   return (
     <ResourcePage
+      policy={isAdminPage ? 'os_compute_api:servers:index:get_all_tenants' : 'os_compute_api:servers:index'}
       title={t('Recycle Bin')}
       breadcrumb={[t('Maintenance'), t('Recycle Bin')]}
       description={t('Soft-deleted instances can be recovered until their reclaim time expires.')}

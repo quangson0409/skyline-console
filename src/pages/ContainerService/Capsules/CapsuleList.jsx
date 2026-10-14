@@ -67,6 +67,7 @@ export const mapCapsule = (it) => ({ ...it, id: it.uuid, name: it.meta_name || i
 export default function CapsuleList() {
   return (
     <ResourcePage
+      policy="capsule:get_all"
       title={t('Capsules')}
       breadcrumb={[t('Container Service'), t('Capsules')]}
       description={t('Capsules group several Zun containers that share network and storage, like a Kubernetes pod.')}

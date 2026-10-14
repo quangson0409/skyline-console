@@ -8,6 +8,7 @@ import ResourceDetail from '@/components/ResourceDetail';
 import DetailCard from '@/components/DetailCard';
 import { formatTime } from '@/components/ResourcePage';
 import { t } from '@/core/i18n';
+import { checkPolicyRule } from '@/core/policy';
 import { containerStatus, containerTaskStatus, imageDrivers, exitPolicies, stringifyContent, listRender } from '../common';
 import { containerRowActions } from './actions';
 import { mapAddresses, mapContainer } from './ContainerList';
@@ -187,6 +188,7 @@ function ContainerInfoTab({ d, isAdmin }) {
 export default function ContainerDetail() {
   return (
     <ResourceDetail
+      policy="container:get_one"
       breadcrumb={[t('Container Service'), { title: t('Zun Containers'), path: '/container-service/containers' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/container-service/containers-admin' : '/container-service/containers')}
       fetch={fetchContainerDetail}
@@ -202,7 +204,7 @@ export default function ContainerDetail() {
         [
           { key: 'general_info', label: t('Detail'), render: () => <ContainerInfoTab d={d} isAdmin={isAdmin} /> },
           { key: 'action_logs', label: t('Action Logs'), render: () => <ActionLogs detail={d} isAdmin={isAdmin} /> },
-          SHOW_LOG_STATUS.includes(d.status) && { key: 'logs', label: t('Logs'), render: () => <Logs detail={d} /> },
+          checkPolicyRule('container:logs') && SHOW_LOG_STATUS.includes(d.status) && { key: 'logs', label: t('Logs'), render: () => <Logs detail={d} /> },
           d.interactive === true && { key: 'console', label: t('Console'), render: () => <Console detail={d} /> },
         ].filter(Boolean)
       }

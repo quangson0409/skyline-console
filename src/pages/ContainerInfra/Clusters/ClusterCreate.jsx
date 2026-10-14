@@ -1,4 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { t as tPolicy } from '@/core/i18n';
+import { useParams as usePolicyParams, useLocation as usePolicyLocation } from 'react-router-dom';
+import { checkActionPolicy as checkPagePolicy, usePolicyStore as usePagePolicyStore } from '@/core/policy';
+import { Result as PolicyResult } from 'antd';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Checkbox, Divider, Form, Input, InputNumber } from 'antd';
 import { magnumApi } from '@/api/magnum';
@@ -25,7 +29,7 @@ const novaQuotaGiB = (quota = {}) => {
   };
 };
 
-export default function ClusterCreate() {
+function ClusterCreatePage() {
   const [form] = Form.useForm();
   const [searchParams] = useSearchParams();
   const templateParam = searchParams.get('template');
@@ -383,4 +387,16 @@ export default function ClusterCreate() {
       quota={quotaLoading || quota ? <QuotaPanel quotas={quotaInfo} loading={quotaLoading} /> : null}
     />
   );
+}
+
+/** legacy page `get policy()`: without the permission the page shows the no-access notice */
+export default function ClusterCreate(props) {
+  const params = usePolicyParams();
+  const isAdmin = /-admin(\/|$)/.test(usePolicyLocation().pathname);
+  usePagePolicyStore((st) => st.rules);
+  const policy = { policy: 'cluster:create' };
+  if (!checkPagePolicy(policy, { item: params })) {
+    return <PolicyResult status="403" title={tPolicy("You don't have access to get {name}.", { name: tPolicy('Create Cluster') })} />;
+  }
+  return <ClusterCreatePage {...props} />;
 }

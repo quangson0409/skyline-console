@@ -55,6 +55,7 @@ export default function ContainerList() {
   const navigate = useNavigate();
   return (
     <ResourcePage
+      policy="container:get_all"
       title={t('Zun Containers')}
       breadcrumb={[t('Container Service'), t('Zun Containers')]}
       description={t('Application containers managed by Zun.')}

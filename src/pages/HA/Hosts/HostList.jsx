@@ -63,6 +63,8 @@ export const deleteHostAction = () => ({
 
 export const hostColumns = () => [
   nameColumn({ idIndex: 'uuid', linkTo: (r) => hostDetailPath(r) }),
+  // legacy hideable UUID column (the id is also shown under the name)
+  { ...textColumn(t('UUID'), 'uuid'), defaultHidden: true },
   boolColumn(t('Reserved'), 'reserved'),
   textColumn(t('Type'), 'type'),
   textColumn(t('Control Attribute'), 'control_attributes'),
@@ -118,6 +120,7 @@ export function SegmentHostTable({ segmentId }) {
   return (
     <ResourcePage
       embedded
+      policy="os_compute_api:servers:index:get_all_tenants"
       fetch={() => fetchHosts({ segmentId })}
       deps={[segmentId]}
       rowKey="uuid"
@@ -132,6 +135,7 @@ export function SegmentHostTable({ segmentId }) {
 export default function HostList() {
   return (
     <ResourcePage
+      policy="os_compute_api:servers:index:get_all_tenants"
       title={t('Hosts')}
       breadcrumb={[t('Instance-HA'), t('Hosts')]}
       description={t('Compute hosts registered in Instance-HA failover segments.')}

@@ -94,9 +94,11 @@ export const abandonStackAction = () => ({
   }),
 });
 
+// heat policies of POST /stacks/{name}/{id}/actions (heat/policies/actions.py: actions:<action>)
 const stackActionConfirm = ({ id, action, title, actionName, note, allowed, isDanger = false }) => ({
   id,
   type: 'confirm',
+  aliasPolicy: `heat:actions:${action}`,
   title,
   actionName,
   isDanger,

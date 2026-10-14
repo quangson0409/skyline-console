@@ -56,6 +56,8 @@ export default function StackList() {
 
   return (
     <ResourcePage
+      // legacy Stack list get policy()
+      policy={isAdmin ? 'stacks:global_index' : 'stacks:index'}
       title={t('Stacks')}
       breadcrumb={[t('Orchestration'), t('Stacks')]}
       description={t('Heat stacks: groups of cloud resources deployed and managed from a template.')}

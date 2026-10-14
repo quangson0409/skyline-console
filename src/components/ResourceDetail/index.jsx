@@ -57,13 +57,17 @@ export default function ResourceDetail({
 
   // legacy TabDetail `get policy()`
   const policyRules = usePolicyStore((st) => st.rules);
+  const policiesLoaded = usePolicyStore((st) => st.loaded);
   const canView = useMemo(
     () => checkActionPolicy({ policy, aliasPolicy }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [policy, aliasPolicy, policyRules]
   );
+  // with a page policy, wait for /policies before the first request (avoids a 403 + toast on reload)
+  const policyPending = Boolean(policy || aliasPolicy) && !policiesLoaded;
+  const canFetch = canView && !policyPending;
 
-  const { data: detail, loading, error, refetch } = useResource(() => (canView ? fetch(id, ctx) : Promise.resolve(null)), [ctx, canView], {
+  const { data: detail, loading, error, refetch } = useResource(() => (canFetch ? fetch(id, ctx) : Promise.resolve(null)), [ctx, canFetch], {
     initial: null,
     interval,
   });

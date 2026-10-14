@@ -1,0 +1,4 @@
+{
+  "Are you sure to disable user { name }? Disabled users are not allowed to login in ": "确认要禁用用户 { name } 吗？禁用的用户将无法登录。",
+  "Session expired. Please log in again.": "会话已过期。请重新登录。"
+}

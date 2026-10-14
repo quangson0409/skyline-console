@@ -76,6 +76,7 @@ export const deleteConfigurationAction = () => ({
 export default function ConfigurationList() {
   return (
     <ResourcePage
+      policy="configuration:index"
       title={t('Configuration Groups')}
       breadcrumb={[t('Databases'), t('Configuration Groups')]}
       description={t('Parameter groups that can be attached to database instances.')}

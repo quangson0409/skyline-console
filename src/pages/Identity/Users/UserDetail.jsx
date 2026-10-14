@@ -20,6 +20,7 @@ export default function UserDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      aliasPolicy="keystone:identity:get_user"
       breadcrumb={[t('Identity'), { title: t('Users'), path: '/identity/user-admin' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/identity/user-admin' : '/identity/user')}
       fetch={fetchUserDetail}
@@ -59,6 +60,7 @@ export default function UserDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_projects"
               deps={[d.id]}
               fetch={() => fetchProjects({ userId: d.id })}
               columns={() => projectColumns({ mode: 'user' })}
@@ -74,6 +76,7 @@ export default function UserDetail() {
           render: () => (
             <ResourcePage
               embedded
+              aliasPolicy="keystone:identity:list_groups"
               deps={[d.id]}
               fetch={() => fetchGroups({ userId: d.id })}
               columns={() => groupColumns({ mode: 'user' })}

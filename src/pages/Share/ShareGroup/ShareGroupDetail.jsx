@@ -66,6 +66,7 @@ export default function ShareGroupDetail() {
   const navigate = useNavigate();
   return (
     <ResourceDetail
+      policy="share_group:get"
       breadcrumb={[t('Share File Storage'), { title: t('Share Groups'), path: '/share/share-group' }]}
       backPath={({ isAdmin }) => (isAdmin ? '/share/share-group-admin' : '/share/share-group')}
       fetch={(id, ctx) => fetchShareGroupDetail(id, ctx)}

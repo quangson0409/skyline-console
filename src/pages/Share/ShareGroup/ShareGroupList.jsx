@@ -10,6 +10,7 @@ export default function ShareGroupList() {
   const projectMap = useProjectMap();
   return (
     <ResourcePage
+      policy="share_group:get_all"
       title={t('Share Groups')}
       breadcrumb={[t('Share File Storage'), t('Share Groups')]}
       description={t('Groups of shares managed together, built from a share group type.')}
