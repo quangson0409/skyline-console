@@ -28,6 +28,7 @@ const nodeLabel = (item) => item?.name || item?.uuid;
 export const createNodeAction = (navigate) => ({
   id: 'create',
   type: 'custom',
+  policy: 'baremetal:node:create',
   title: t('Create Node'),
   onExecute: () => navigate('/compute/baremetal-node-admin/create'),
 });
@@ -36,6 +37,7 @@ export const createNodeAction = (navigate) => ({
 export const editNodeAction = (navigate) => ({
   id: 'edit-node',
   type: 'custom',
+  policy: 'baremetal:node:update',
   title: t('Edit Bare Metal Node'),
   buttonText: t('Edit'),
   allowed: () => true,
@@ -46,6 +48,7 @@ export const editNodeAction = (navigate) => ({
 export const manageStateAction = () => ({
   id: 'ManageState',
   type: 'modal',
+  policy: 'baremetal:node:set_provision_state',
   title: t('Manage State'),
   allowed: (item) => canChangeStatus(item),
   getDefaultValues: (item) => ({ name: nodeLabel(item) }),
@@ -85,6 +88,7 @@ export const manageStateAction = () => ({
 export const powerOnAction = () => ({
   id: 'power-on',
   type: 'confirm',
+  policy: 'baremetal:node:set_power_state',
   title: t('Power On'),
   actionName: t('Power On'),
   allowed: (item) => item?.power_state === 'power off',
@@ -100,6 +104,7 @@ export const powerOnAction = () => ({
 export const powerOffAction = () => ({
   id: 'power-off',
   type: 'confirm',
+  policy: 'baremetal:node:set_power_state',
   title: t('Power Off'),
   actionName: t('Power Off'),
   allowed: (item) => item?.power_state === 'power on',
@@ -115,6 +120,7 @@ export const powerOffAction = () => ({
 export const setMaintenanceAction = () => ({
   id: 'SetMaintenance',
   type: 'modal',
+  policy: 'baremetal:node:set_maintenance',
   title: t('Enter Maintenance Mode'),
   allowed: (item) => !item?.maintenance,
   getDefaultValues: (item) => ({ name: nodeLabel(item) }),
@@ -129,6 +135,7 @@ export const setMaintenanceAction = () => ({
 export const clearMaintenanceAction = () => ({
   id: 'ClearMaintenance',
   type: 'confirm',
+  policy: 'baremetal:node:clear_maintenance',
   title: t('Leave Maintenance Mode'),
   actionName: t('Leave Maintenance Mode'),
   allowed: (item) => !!item?.maintenance,
@@ -144,6 +151,7 @@ export const clearMaintenanceAction = () => ({
 export const setBootDeviceAction = () => ({
   id: 'SetBootDevice',
   type: 'modal',
+  policy: ['baremetal:node:get_boot_device', 'baremetal:node:set_boot_device'],
   title: t('Set Boot Device'),
   allowed: () => true,
   getDefaultValues: async (item) => {
@@ -179,6 +187,7 @@ export const setBootDeviceAction = () => ({
 /** legacy actions/Delete */
 export const deleteNodeAction = () => ({
   ...deleteAction({ name: t('Node'), onDelete: (it) => ironicApi.deleteNode(it.uuid) }),
+  policy: 'baremetal:node:delete',
   title: t('Delete Node'),
   actionName: t('Delete Node'),
 });
@@ -244,6 +253,7 @@ const portLinkFields = (prefix = '') => [
 export const createPortAction = (fixedNode) => ({
   id: 'CreatePort',
   type: 'modal',
+  policy: 'baremetal:port:create',
   title: t('Create Port'),
   allowed: () => true,
   getDefaultValues: (item) => {
@@ -285,6 +295,7 @@ const llPath = (key) => {
 export const editPortAction = (node) => ({
   id: 'EditPort',
   type: 'modal',
+  policy: 'baremetal:port:update',
   title: t('Edit Port'),
   buttonText: t('Edit'),
   allowed: () => true,
@@ -341,6 +352,7 @@ export const editPortAction = (node) => ({
 
 export const deletePortAction = () => ({
   ...deleteAction({ name: t('Port'), onDelete: (it) => ironicApi.deletePort(it.uuid) }),
+  policy: 'baremetal:port:delete',
   title: t('Delete Port'),
   actionName: t('Delete Port'),
 });
@@ -351,6 +363,7 @@ export const deletePortAction = () => ({
 export const createPortGroupAction = (fixedNode) => ({
   id: 'CreatePortGroup',
   type: 'modal',
+  policy: 'baremetal:portgroup:create',
   title: t('Create Port Group'),
   allowed: () => true,
   getDefaultValues: (item) => ({
@@ -389,6 +402,7 @@ export const createPortGroupAction = (fixedNode) => ({
 export const editPortGroupAction = (node) => ({
   id: 'EditPortGroup',
   type: 'modal',
+  policy: 'baremetal:portgroup:update',
   title: t('Edit Port Group'),
   buttonText: t('Edit'),
   allowed: () => true,
@@ -448,6 +462,7 @@ export const editPortGroupAction = (node) => ({
 
 export const deletePortGroupAction = () => ({
   ...deleteAction({ name: t('Port Group'), onDelete: (it) => ironicApi.deletePortGroup(it.uuid) }),
+  policy: 'baremetal:portgroup:delete',
   title: t('Delete Port Group'),
   actionName: t('Delete Port Group'),
 });

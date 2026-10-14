@@ -64,6 +64,7 @@ export const fetchSnapshotDetail = async (id, { isAdmin } = {}) => {
 export const editSnapshotAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'volume:update_snapshot',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
@@ -73,17 +74,20 @@ export const editSnapshotAction = () => ({
   onSubmit: (values, item) => cinderApi.updateSnapshot(item.id, values),
 });
 
-export const deleteSnapshotAction = () =>
-  deleteAction({
+export const deleteSnapshotAction = () => ({
+  ...deleteAction({
     name: t('Volume Snapshot'),
     title: t('Delete Volume Snapshot'),
     allowed: (item) => !hasCreatedVolumes(item),
     onDelete: (it) => cinderApi.deleteSnapshot(it.id),
-  });
+  }),
+  policy: 'volume:delete_snapshot',
+});
 
 export const createVolumeFromSnapshotAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'volume:create',
   title: t('Create Volume'),
   getDefaultValues: async (item) => {
     let typeId;

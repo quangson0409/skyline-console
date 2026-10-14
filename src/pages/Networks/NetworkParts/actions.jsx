@@ -190,6 +190,7 @@ const createNetworkDefaults = (isAdmin, projectId) => ({
 export const createNetworkAction = ({ isAdmin, projectId, hasAdminRole }) => ({
   id: 'create-network',
   type: 'modal',
+  policy: ['create_network', 'create_subnet'],
   title: t('Create Network'),
   width: isAdmin ? 860 : 680,
   getDefaultValues: () => createNetworkDefaults(isAdmin, projectId),
@@ -494,6 +495,7 @@ export const quickCreateNetworkAction = ({ projectId }) => ({
 export const editNetworkAction = (ctx) => ({
   id: 'edit-network',
   type: 'modal',
+  policy: 'update_network',
   title: t('Edit'),
   buttonText: t('Edit'),
   allowed: (item) => ownsOrAdmin(item, ctx),
@@ -515,13 +517,15 @@ export const editNetworkAction = (ctx) => ({
   },
 });
 
-export const deleteNetworkAction = (ctx) =>
-  deleteAction({
+export const deleteNetworkAction = (ctx) => ({
+  ...deleteAction({
     name: t('Network'),
     title: t('Delete Network'),
     onDelete: (it) => neutronApi.deleteNetwork(it.id),
     allowed: (item) => ownsOrAdmin(item, ctx),
-  });
+  }),
+  policy: 'delete_network',
+});
 
 /* ---------------- Subnet actions ---------------- */
 const createSubnetDefaults = (hasAdminRole, projectId) => ({
@@ -538,6 +542,7 @@ const createSubnetDefaults = (hasAdminRole, projectId) => ({
 export const createSubnetAction = (ctx, network) => ({
   id: 'create-subnet',
   type: 'modal',
+  policy: 'create_subnet',
   title: t('Create Subnet'),
   width: ctx.hasAdminRole ? 860 : 680,
   allowed: (item) => {
@@ -666,6 +671,7 @@ const subnetOwnerOrAdminPage = (item, { isAdmin, projectId }) =>
 export const editSubnetAction = (ctx) => ({
   id: 'edit-subnet',
   type: 'modal',
+  policy: 'update_subnet',
   title: t('Edit Subnet'),
   buttonText: t('Edit'),
   allowed: (item) => subnetOwnerOrAdminPage(item, ctx),
@@ -765,10 +771,12 @@ export const editSubnetAction = (ctx) => ({
   },
 });
 
-export const deleteSubnetAction = (ctx) =>
-  deleteAction({
+export const deleteSubnetAction = (ctx) => ({
+  ...deleteAction({
     name: t('Subnet'),
     title: t('Delete Subnet'),
     onDelete: (it) => neutronApi.deleteSubnet(it.id),
     allowed: (item) => subnetOwnerOrAdminPage(item, ctx),
-  });
+  }),
+  policy: 'delete_subnet',
+});

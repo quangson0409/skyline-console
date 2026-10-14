@@ -27,6 +27,7 @@ export const fetchHosts = async ({ segmentId } = {}) => {
 export const updateHostAction = () => ({
   id: 'UpdateHost',
   type: 'modal',
+  policy: 'baremetal:port:Update',
   title: t('Update'),
   adminOnly: true,
   getDefaultValues: (item) => ({
@@ -55,6 +56,7 @@ export const deleteHostAction = () => ({
     title: t('Delete'),
     onDelete: (it) => masakariApi.deleteHost(it.failover_segment_id, it.uuid),
   }),
+  policy: 'instance:delete',
   actionName: t('delete host'),
   adminOnly: true,
 });

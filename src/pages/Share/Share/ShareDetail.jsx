@@ -101,6 +101,7 @@ const createAccessRuleAction = (share) => {
   return {
     id: 'create',
     type: 'modal',
+    policy: 'share:allow_access',
     title: t('Add Access Rule'),
     getDefaultValues: () => ({ metadata: [] }),
     formItems: [
@@ -143,6 +144,7 @@ const deleteAccessRuleAction = (share) => ({
     title: t('Delete Share Access Rule'),
     onDelete: (it) => manilaApi.shareAction(share.id, { deny_access: { access_id: it.id } }),
   }),
+  policy: 'share:deny_access',
   actionName: t('Delete Share Access Rule'),
 });
 
@@ -150,6 +152,7 @@ const deleteAccessRuleAction = (share) => ({
 const manageAccessRuleMetadataAction = () => ({
   id: 'manage-metadata',
   type: 'modal',
+  policy: ['share_access_metadata:update', 'share_access_metadata:delete'],
   title: t('Manage Metadata'),
   width: 800,
   getDefaultValues: (item) => ({ metadata: objToKV(item.metadata || {}) }),
@@ -264,6 +267,11 @@ export default function ShareDetail() {
             <KeyValueTab
               api={shareMetadataApi(d.id)}
               kind="metadata"
+              policies={{
+                create: 'share:update_share_metadata',
+                edit: 'share:update_share_metadata',
+                del: 'share:delete_share_metadata',
+              }}
               deleteOnly={isAdmin}
               readOnly={!isAdmin && !d.isMine}
             />

@@ -104,6 +104,7 @@ export const createShareGroupAction = () => {
   return {
     id: 'create',
     type: 'modal',
+    policy: 'share_group:create',
     title: t('Create Share Group'),
     width: 960,
     getDefaultValues: () => ({ shareGroupType: [], shareType: [], shareNetwork: [] }),
@@ -173,6 +174,7 @@ export const createShareGroupAction = () => {
 export const editShareGroupAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'share_group:update',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
@@ -188,6 +190,7 @@ export const deleteShareGroupAction = () => ({
     title: t('Delete Share Group'),
     onDelete: (it) => manilaApi.deleteShareGroup(it.id),
   }),
+  policy: 'share_group:delete',
   actionName: t('Delete Share Group'),
 });
 

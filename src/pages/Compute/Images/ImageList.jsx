@@ -159,6 +159,8 @@ export default function ImageList() {
         {
           id: 'image-create',
           type: 'custom',
+          policy: ['add_image', 'upload_image'],
+          aliasPolicy: ['glance:add_image', 'glance:upload_image'],
           title: t('Create Image'),
           icon: <PlusOutlined />,
           onExecute: () => navigate(isAdmin ? '/compute/image-admin/create' : '/compute/image/create'),

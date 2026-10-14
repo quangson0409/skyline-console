@@ -115,6 +115,7 @@ export const fetchComputeServices = async () => {
 export const enableComputeServiceAction = () => ({
   id: 'enable-service',
   type: 'confirm',
+  policy: 'os_compute_api:os-services:update',
   title: t('Enable Compute Service'),
   buttonText: t('Enable'),
   actionName: t('enable compute service'),
@@ -126,6 +127,7 @@ export const enableComputeServiceAction = () => ({
 export const disableComputeServiceAction = () => ({
   id: 'disable-host',
   type: 'modal',
+  policy: 'os_compute_api:os-services:update',
   title: t('Disable Compute Service'),
   buttonText: t('Disable'),
   isDanger: true,
@@ -185,6 +187,7 @@ export const fetchNeutronAgents = async () => {
 export const enableAgentAction = () => ({
   id: 'enable',
   type: 'confirm',
+  policy: 'update_agent',
   title: t('Enable Neutron Agent'),
   buttonText: t('Enable'),
   actionName: t('enable neutron agent'),
@@ -196,6 +199,7 @@ export const enableAgentAction = () => ({
 export const disableAgentAction = () => ({
   id: 'disable',
   type: 'confirm',
+  policy: 'update_agent',
   title: t('Disable Neutron Agent'),
   buttonText: t('Disable'),
   actionName: t('disable neutron agent'),
@@ -272,6 +276,7 @@ export const fetchCinderServices = async () => {
 export const enableCinderServiceAction = () => ({
   id: 'enable',
   type: 'confirm',
+  policy: 'volume_extension:services:update',
   title: t('Enable Service'),
   buttonText: t('Enable'),
   actionName: t('enable cinder service'),
@@ -283,6 +288,7 @@ export const enableCinderServiceAction = () => ({
 export const disableCinderServiceAction = () => ({
   id: 'disable-service',
   type: 'modal',
+  policy: 'volume_extension:services:update',
   title: t('Disable Cinder Service'),
   buttonText: t('Disable'),
   isDanger: true,

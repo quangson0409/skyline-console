@@ -49,6 +49,7 @@ const messageId = (item = {}) => (item.href ? String(item.href).split('?')[0].sp
 const postMessageAction = (queueName) => ({
   id: 'post-message',
   type: 'modal',
+  policy: 'messages:create',
   title: t('Post Message'),
   formItems: [
     {
@@ -75,6 +76,7 @@ const postMessageAction = (queueName) => ({
 const deleteMessageAction = (queueName) => ({
   id: 'delete-message',
   type: 'confirm',
+  policy: 'messages:delete',
   title: t('Delete Message'),
   buttonText: t('Delete'),
   actionName: t('Delete Message'),
@@ -305,6 +307,7 @@ function ClaimsTab({ queueName }) {
 const createSubscriptionAction = (queueName) => ({
   id: 'create-subscription',
   type: 'modal',
+  policy: 'subscription:create',
   title: t('Create Subscription'),
   formItems: [
     {
@@ -330,6 +333,7 @@ const createSubscriptionAction = (queueName) => ({
 const updateSubscriptionAction = (queueName) => ({
   id: 'update-subscription',
   type: 'modal',
+  policy: 'subscription:update',
   title: t('Update Subscription'),
   buttonText: t('Update'),
   getDefaultValues: (item) => ({ id: item.id, ttl: item.ttl || 3600 }),
@@ -351,6 +355,7 @@ const updateSubscriptionAction = (queueName) => ({
 const deleteSubscriptionAction = (queueName) => ({
   id: 'delete-subscription',
   type: 'confirm',
+  policy: 'subscription:delete',
   title: t('Delete Subscription'),
   buttonText: t('Delete'),
   actionName: t('Delete subscription'),

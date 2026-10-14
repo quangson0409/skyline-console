@@ -177,6 +177,8 @@ const bandwidthFields = () => [
 export const createQosPolicyAction = ({ isAdmin, projectId } = {}) => ({
   id: 'create_qos_policy',
   type: 'modal',
+  policy: 'create_policy',
+  aliasPolicy: 'neutron:create_policy',
   title: t('Create QoS Policy'),
   buttonText: t('Create QoS Policy'),
   width: isAdmin ? 720 : 520,
@@ -220,6 +222,8 @@ export const createQosPolicyAction = ({ isAdmin, projectId } = {}) => ({
 export const editQosPolicyAction = ({ isAdmin } = {}) => ({
   id: 'edit_qos_policy',
   type: 'modal',
+  policy: 'update_policy',
+  aliasPolicy: 'neutron:update_policy',
   title: t('Edit QoS Policy'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
@@ -244,17 +248,21 @@ export const editQosPolicyAction = ({ isAdmin } = {}) => ({
     }),
 });
 
-export const deleteQosPolicyAction = () =>
-  deleteAction({
+export const deleteQosPolicyAction = () => ({
+  ...deleteAction({
     name: t('QoS Policy'),
     title: t('Delete QoS Policy'),
     onDelete: (it) => neutronApi.deleteQosPolicy(it.id),
-  });
+  }),
+  policy: 'delete_policy',
+  aliasPolicy: 'neutron:delete_policy',
+});
 
 /* ---------------- rule actions ---------------- */
 export const createBandwidthLimitRuleAction = () => ({
   id: 'create_bandwidth_limit_rule',
   type: 'modal',
+  policy: 'create_policy_bandwidth_limit_rule',
   title: t('Create Bandwidth Limit Rule'),
   allowed: (item) => {
     const rules = rulesOf(item);
@@ -294,6 +302,7 @@ const editBandwidthRuleAction = ({ direction }) => {
   return {
     id: isEgress ? 'edit_bandwidth_egress_limit_rule' : 'edit_bandwidth_ingress_limit_rule',
     type: 'modal',
+    policy: 'update_policy_bandwidth_limit_rule',
     title: isEgress ? t('Edit Bandwidth Egress Limit Rule') : t('Edit Bandwidth Ingress Limit Rule'),
     allowed: (item) => rulesOf(item).some((i) => i.direction === direction),
     getDefaultValues: (item) => {
@@ -323,6 +332,7 @@ const deleteBandwidthRuleAction = ({ direction }) => {
   return {
     id: isEgress ? 'delete-egress' : 'delete-ingress',
     type: 'confirm',
+    policy: 'delete_policy_bandwidth_limit_rule',
     title: isEgress ? t('Delete Bandwidth Egress Rules') : t('Delete Bandwidth Ingress Rules'),
     actionName: isEgress ? t('delete bandwidth egress rules') : t('delete bandwidth ingress rules'),
     isDanger: true,
@@ -344,6 +354,7 @@ const dscpField = () => ({
 export const createDscpMarkingRuleAction = () => ({
   id: 'create_DSCP_marking_rule',
   type: 'modal',
+  policy: 'create_policy_dscp_marking_rule',
   title: t('Create DSCP Marking Rule'),
   allowed: (item) => !rulesOf(item).some((i) => i.type === 'dscp_marking'),
   getDefaultValues: () => ({ dscp_mark: 0 }),
@@ -355,6 +366,7 @@ export const createDscpMarkingRuleAction = () => ({
 export const editDscpMarkingRuleAction = () => ({
   id: 'edit_DSCP_marking_rule',
   type: 'modal',
+  policy: 'update_policy_dscp_marking_rule',
   title: t('Edit DSCP Marking Rule'),
   allowed: (item) => rulesOf(item).some((i) => i.type === 'dscp_marking'),
   getDefaultValues: (item) => ({ dscp_mark: (findDscpRule(item) || {}).dscp_mark || 0 }),
@@ -368,6 +380,7 @@ export const editDscpMarkingRuleAction = () => ({
 export const deleteDscpMarkingRuleAction = () => ({
   id: 'delete-dscp',
   type: 'confirm',
+  policy: 'delete_policy_dscp_marking_rule',
   title: t('Delete DSCP Marking Rules'),
   actionName: t('delete DSCP marking rules'),
   isDanger: true,

@@ -642,6 +642,7 @@ export const getFlavorFilters = (tab) => {
 
 export const deleteFlavorAction = () => ({
   ...deleteAction({ name: t('Flavor'), onDelete: (it) => novaApi.deleteFlavorV(it.id) }),
+  policy: 'os_compute_api:os-flavor-manage:delete',
   title: t('Delete Flavor'),
   buttonText: t('Delete'),
   actionName: t('delete flavor'),
@@ -654,6 +655,7 @@ export const deleteFlavorAction = () => ({
 export const editFlavorAction = () => ({
   id: 'edit-flavor',
   type: 'modal',
+  policy: 'os_compute_api:os-flavor-manage:update',
   title: t('Edit Flavor'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description || '' }),
@@ -667,6 +669,11 @@ export const editFlavorAction = () => ({
 export const manageAccessAction = () => ({
   id: 'manage-access',
   type: 'modal',
+  policy: [
+    'os_compute_api:os-flavor-access',
+    'os_compute_api:os-flavor-access:add_tenant_access',
+    'os_compute_api:os-flavor-access:remove_tenant_access',
+  ],
   title: t('Manage Access'),
   width: 900,
   allowed: (item) => !item.is_public,
@@ -726,6 +733,11 @@ export const manageMetadataAction = () => {
   return {
     id: 'ManageMetadata',
     type: 'modal',
+    policy: [
+      'os_compute_api:os-flavor-extra-specs:create',
+      'os_compute_api:os-flavor-extra-specs:delete',
+      'os_compute_api:os-flavor-extra-specs:update',
+    ],
     title: t('Manage Metadata'),
     width: 900,
     getDefaultValues: async (item) => {

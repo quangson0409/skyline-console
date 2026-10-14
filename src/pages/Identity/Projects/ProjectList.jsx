@@ -256,6 +256,13 @@ export const nameInDomainRule = (check) => ({ getFieldValue }) => check(() => ge
 export const createProjectAction = () => ({
   id: 'project-create',
   type: 'modal',
+  policy: [
+    'identity:create_project',
+    'identity:update_project_tags',
+    'identity:list_domains',
+    'identity:list_roles',
+    'identity:list_users',
+  ],
   title: t('Create Project'),
   getDefaultValues: () => ({ domain_id: 'default', enabled: true, tags: [] }),
   getFormItems: async () => {
@@ -306,6 +313,7 @@ export const createProjectAction = () => ({
 export const editProjectAction = () => ({
   id: 'project-edit',
   type: 'modal',
+  policy: 'identity:update_project',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description, enabled: item.enabled }),
   getFormItems: (item) => [
@@ -342,6 +350,7 @@ export const deleteProjectAction = () => ({
       }
     },
   }),
+  policy: 'identity:delete_project',
   title: t('Delete Project'),
   actionName: t('delete project'),
   description: t('Before deleting the project, it is recommended to clean up the resources under the project.'),
@@ -350,6 +359,7 @@ export const deleteProjectAction = () => ({
 export const enableProjectAction = () => ({
   id: 'Enable',
   type: 'confirm',
+  policy: 'identity:update_project',
   title: t('Enable Project'),
   actionName: t('Enable Project'),
   allowed: (item) => item.enabled !== true,
@@ -359,6 +369,7 @@ export const enableProjectAction = () => ({
 export const disableProjectAction = () => ({
   id: 'Disable',
   type: 'confirm',
+  policy: 'identity:update_project',
   title: t('Disable Project'),
   actionName: t('Disable Project'),
   isDanger: true,
@@ -378,6 +389,7 @@ const initRoleMap = (map = {}) =>
 export const manageProjectUserAction = () => ({
   id: 'management-user',
   type: 'modal',
+  policy: ['identity:create_grant', 'identity:revoke_grant'],
   title: t('Manage User'),
   width: 900,
   getDefaultValues: (item) => ({ name: item.name, domain: item.domainName, userRoles: initRoleMap(item.users) }),
@@ -415,6 +427,7 @@ export const manageProjectUserAction = () => ({
 export const manageProjectGroupAction = () => ({
   id: 'manage-group-group',
   type: 'modal',
+  policy: ['identity:create_grant', 'identity:revoke_grant'],
   title: t('Manage User Group'),
   width: 900,
   getDefaultValues: (item) => ({ name: item.name, domain: item.domainName, groupRoles: initRoleMap(item.groups) }),
@@ -460,6 +473,7 @@ export const manageProjectGroupAction = () => ({
 export const modifyProjectTagsAction = () => ({
   id: 'modify-project-tags',
   type: 'modal',
+  policy: 'identity:update_project_tags',
   title: t('Modify Project Tags'),
   buttonText: t('Modify Project Tags'),
   getDefaultValues: (item) => ({ tags: item.tags || [] }),
@@ -471,6 +485,7 @@ export const modifyProjectTagsAction = () => ({
 export const setDefaultProjectAction = (user, onDone) => ({
   id: 'set-default-project',
   type: 'modal',
+  policy: 'identity:update_user',
   title: t('Set Default Project'),
   allowed: (item) => user?.default_project_id !== item.id,
   getFormItems: (item) => [
@@ -494,6 +509,7 @@ export const setDefaultProjectAction = (user, onDone) => ({
 export const removeDefaultProjectAction = (user, onDone) => ({
   id: 'remove-default-project',
   type: 'confirm',
+  policy: 'identity:update_user',
   title: t('Remove Default Project'),
   actionName: t('Remove default project for user'),
   confirmText: t('Are you sure to remove the default project?'),

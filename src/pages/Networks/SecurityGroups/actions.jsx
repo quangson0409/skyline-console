@@ -211,6 +211,7 @@ const DEFAULT_RULE_COUNT = 2;
 export const createSecurityGroupAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'create_security_group',
   title: t('Create Security Group'),
   buttonText: t('Create Security Group'),
   description: t(
@@ -255,6 +256,7 @@ export const createSecurityGroupAction = () => ({
 export const editSecurityGroupAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'update_security_group',
   title: t('Edit'),
   buttonText: t('Edit'),
   allowed: (item) => item.name !== 'default',
@@ -276,6 +278,7 @@ export const editSecurityGroupAction = () => ({
 export const deleteSecurityGroupAction = ({ isAdmin } = {}) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_security_group',
   title: t('Delete Security Group'),
   buttonText: t('Delete'),
   actionName: t('Delete Security Group'),
@@ -343,6 +346,7 @@ const showRemoteType = (v) => ['custom_udp', 'custom_tcp', 'custom_icmp'].includ
 export const createRuleAction = ({ securityGroupId } = {}) => ({
   id: 'create-rule',
   type: 'modal',
+  policy: 'create_security_group_rule',
   title: t('Create Rule'),
   buttonText: t('Create Rule'),
   width: 720,
@@ -521,6 +525,7 @@ function SourcePortInput({ form, value, onChange }) {
 export const deleteRuleAction = () => ({
   id: 'delete-rule',
   type: 'confirm',
+  policy: 'delete_security_group_rule',
   title: t('Delete Rule'),
   buttonText: t('Delete'),
   actionName: t('Delete Rule'),

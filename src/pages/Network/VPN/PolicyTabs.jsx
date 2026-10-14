@@ -108,6 +108,7 @@ const ikeFormFields = (upper) => [
 export const createIkePolicyAction = () => ({
   id: 'create-vpn-ike-policy',
   type: 'modal',
+  policy: 'create_ikepolicy',
   title: t('Create VPN IKE Policy'),
   buttonText: t('Create'),
   getDefaultValues: () => ({
@@ -124,6 +125,7 @@ export const createIkePolicyAction = () => ({
 export const editIkePolicyAction = () => ({
   id: 'edit-vpn-ike-policy',
   type: 'modal',
+  policy: 'update_ikepolicy',
   title: t('Edit VPN IKE Policy'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
@@ -144,6 +146,7 @@ export const editIkePolicyAction = () => ({
 export const deleteIkePolicyAction = (ctx) =>
   deleteWithCheck({
     id: 'delete-vpn-ike-policy',
+    policy: 'delete_ikepolicy',
     title: t('Delete VPN IKE Policy'),
     actionName: t('Delete VPN IKE Policy'),
     reason: t('the VPN IKE policy is in use'),
@@ -236,6 +239,7 @@ const ipsecFormFields = (upper) => [
 export const createIpsecPolicyAction = () => ({
   id: 'create-vpn-ipsec-policy',
   type: 'modal',
+  policy: 'create_ipsecpolicy',
   title: t('Create VPN IPsec Policy'),
   buttonText: t('Create'),
   getDefaultValues: () => ({
@@ -253,6 +257,7 @@ export const createIpsecPolicyAction = () => ({
 export const editIpsecPolicyAction = () => ({
   id: 'edit-vpn-ipsec-policy',
   type: 'modal',
+  policy: 'update_ipsecpolicy',
   title: t('Edit VPN IPsec Policy'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
@@ -273,6 +278,7 @@ export const editIpsecPolicyAction = () => ({
 export const deleteIpsecPolicyAction = (ctx) =>
   deleteWithCheck({
     id: 'delete-vpn-ipsec-policy',
+    policy: 'delete_ipsecpolicy',
     title: t('Delete VPN IPsec Policy'),
     actionName: t('Delete VPN IPsec Policy'),
     reason: t('the VPN IPsec policy is in use'),

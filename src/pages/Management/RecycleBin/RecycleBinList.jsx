@@ -44,6 +44,7 @@ const runEach = (fn) => async (target) => {
 export const recoverAction = () => ({
   id: 'Recover',
   type: 'confirm',
+  policy: 'os_compute_api:os-deferred-delete:restore',
   title: t('Recover'),
   actionName: t('recover instance'),
   onSubmit: runEach(recycleApi.restore),
@@ -52,6 +53,7 @@ export const recoverAction = () => ({
 export const forceDeleteAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'os_compute_api:os-deferred-delete:force',
   title: t('Delete'),
   actionName: t('delete instance'),
   isDanger: true,

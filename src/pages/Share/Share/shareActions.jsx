@@ -156,6 +156,7 @@ export const createShareAction = () => {
   return {
     id: 'create',
     type: 'modal',
+    policy: 'share:create',
     title: t('Create Share'),
     width: 960,
     getFormItems: async () => {
@@ -277,6 +278,7 @@ export const createShareAction = () => {
 export const editShareAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'share:update',
   title: t('Edit'),
   allowed: (item) => item.isMine,
   getDefaultValues: (item) => ({
@@ -310,6 +312,7 @@ export const deleteShareAction = ({ isAdmin } = {}) => ({
     allowed: (item) => isAdmin || item.isMine,
     onDelete: (it) => manilaApi.deleteShare(it.id, it.share_group_id),
   }),
+  policy: 'share:delete',
   actionName: t('Delete Share'),
 });
 
@@ -324,6 +327,7 @@ export const extendShareAction = () => {
   return {
     id: 'extend-share',
     type: 'modal',
+    policy: 'share:extend',
     title: t('Extend Share'),
     description: t('After the share is expanded, the share cannot be reduced.'),
     allowed: (item) => item.isMine,
@@ -361,6 +365,7 @@ export const extendShareAction = () => {
 export const resetShareStatusAction = ({ instance = false } = {}) => ({
   id: 'reset',
   type: 'modal',
+  policy: instance ? 'share_instance:reset_status' : 'share:reset_status',
   title: t('Reset Status'),
   getDefaultValues: (item) => ({
     name: instance ? item.id : item.name || item.id,
@@ -390,6 +395,7 @@ const detailPath = (item, isAdmin, tab) => `/share/${isAdmin ? 'share-admin' : '
 export const manageMetadataNavAction = ({ navigate, isAdmin }) => ({
   id: 'manage-metadata',
   type: 'custom',
+  policy: 'share:update_share_metadata',
   title: t('Manage Metadata'),
   allowed: (item) => item.isMine,
   onExecute: (item) => navigate(detailPath(item, isAdmin, 'metadata')),
@@ -398,6 +404,7 @@ export const manageMetadataNavAction = ({ navigate, isAdmin }) => ({
 export const manageAccessRuleNavAction = ({ navigate, isAdmin }) => ({
   id: 'manage-access-rule',
   type: 'custom',
+  policy: 'share_access_rule:index',
   title: t('Manage Access Rule'),
   allowed: (item) => item.isMine,
   onExecute: (item) => navigate(detailPath(item, isAdmin, 'rule')),

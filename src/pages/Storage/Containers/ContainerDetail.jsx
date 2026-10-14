@@ -127,6 +127,7 @@ const uploadWithProgress = (container, name, file) => {
 const createFolderAction = (container, prefix) => ({
   id: 'create',
   type: 'modal',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Create Folder'),
   getDefaultValues: () => ({ container, dest_folder: prefix }),
   formItems: [
@@ -144,6 +145,7 @@ const createFolderAction = (container, prefix) => ({
 const uploadFileAction = (container, prefix) => ({
   id: 'upload-file',
   type: 'modal',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Upload File'),
   getDefaultValues: () => ({ container, dest_folder: prefix }),
   formItems: [
@@ -161,6 +163,7 @@ const uploadFileAction = (container, prefix) => ({
 const editFileAction = () => ({
   id: 'edit-file',
   type: 'modal',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Edit'),
   description: t('Editing only changes the content of the file, not the file name.'),
   allowed: (item) => isFile(item),
@@ -177,6 +180,7 @@ const editFileAction = () => ({
 const downloadAction = () => ({
   id: 'download',
   type: 'confirm',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Download File'),
   actionName: t('Download File'),
   allowed: (item) => isFile(item),
@@ -189,6 +193,7 @@ const downloadAction = () => ({
 const copyPublicUrlAction = () => ({
   id: 'copy-public-url',
   type: 'confirm',
+  policy: { rules: ['admin', 'reader', 'member'], every: false },
   title: t('Copy Public URL'),
   actionName: t('copy public URL'),
   allowed: (item) => isFile(item) && !!item.isPublic,
@@ -205,6 +210,7 @@ const copyPublicUrlAction = () => ({
 const clipAction = (isCopy) => ({
   id: isCopy ? 'CopyFile' : 'CutFile',
   type: 'confirm',
+  policy: { rules: ['admin', 'member'], every: false },
   title: isCopy ? t('Copy File') : t('Cut File'),
   buttonText: isCopy ? t('Copy') : t('Cut'),
   actionName: isCopy ? t('Copy File') : t('Cut File'),
@@ -264,6 +270,7 @@ const pasteDescription = (target) => {
 const pasteIntoFolderAction = () => ({
   id: 'PasteFile',
   type: 'confirm',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Paste File'),
   buttonText: t('Paste'),
   actionName: t('paste files to folder'),
@@ -278,6 +285,7 @@ const pasteIntoFolderAction = () => ({
 const pasteHereAction = (container, prefix, disabled) => ({
   id: 'PasteFile',
   type: 'confirm',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Paste File'),
   buttonText: t('Paste'),
   actionName: t('paste files to folder'),
@@ -289,6 +297,7 @@ const pasteHereAction = (container, prefix, disabled) => ({
 const renameAction = () => ({
   id: 'rename',
   type: 'modal',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Rename'),
   description: t(
     'Rename is to copy the current file to the new file address and delete the current file, which will affect the creation time of the file.'
@@ -312,6 +321,7 @@ const renameAction = () => ({
 const deleteObjectAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Delete'),
   actionName: t('Delete'),
   isDanger: true,

@@ -22,6 +22,7 @@ export const fetchRoleDetail = async (id) => {
 export const createRoleAction = () => ({
   id: 'role-create',
   type: 'modal',
+  policy: 'identity:create_role',
   title: t('Create Role'),
   formItems: [
     { name: 'name', label: t('Name'), type: 'input', placeholder: t('Please input name'), required: true },
@@ -33,6 +34,7 @@ export const createRoleAction = () => ({
 export const editRoleAction = () => ({
   id: 'role-edit',
   type: 'modal',
+  policy: 'identity:update_role',
   title: t('Edit Role'),
   buttonText: t('Edit'),
   allowed: (item) => editableRole(item),
@@ -50,6 +52,7 @@ export const deleteRoleAction = () => ({
     allowed: (item) => editableRole(item),
     onDelete: (it) => keystoneApi.deleteRole(it.id),
   }),
+  policy: 'identity:delete_role',
   title: t('Delete Role'),
   actionName: t('delete role'),
 });

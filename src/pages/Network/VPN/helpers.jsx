@@ -128,9 +128,21 @@ export const isCurrentProjectOrAdmin = (item, { hasAdminRole, projectId }) =>
  * (legacy Delete actions of VPN service / IKE policy / IPsec policy / endpoint group).
  */
 // eslint-disable-next-line no-unused-vars
-export const deleteWithCheck = ({ id, title, actionName, reason, connectionParams, onDelete, allowed }) => ({
+export const deleteWithCheck = ({
+  id,
+  title,
+  actionName,
+  reason,
+  connectionParams,
+  onDelete,
+  allowed,
+  policy,
+  aliasPolicy,
+}) => ({
   id: 'delete',
   type: 'confirm',
+  policy,
+  aliasPolicy,
   title,
   actionName,
   buttonText: t('Delete'),

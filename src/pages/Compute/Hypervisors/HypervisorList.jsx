@@ -104,6 +104,7 @@ export const memoryRender = (_, r) =>
 export const disableServiceAction = ({ hostKey = 'host', idKey = 'id' } = {}) => ({
   id: 'disable-host',
   type: 'modal',
+  policy: 'os_compute_api:os-services:update',
   title: t('Disable Compute Host'),
   buttonText: t('Disable'),
   isDanger: true,
@@ -130,6 +131,7 @@ export const disableServiceAction = ({ hostKey = 'host', idKey = 'id' } = {}) =>
 export const enableServiceAction = ({ idKey = 'id' } = {}) => ({
   id: 'enable-host',
   type: 'confirm',
+  policy: 'os_compute_api:os-services:update',
   title: t('Enable Compute Host'),
   buttonText: t('Enable'),
   actionName: t('Enable compute host'),

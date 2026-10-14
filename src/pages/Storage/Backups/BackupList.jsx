@@ -40,6 +40,8 @@ const fetchVolumeOptions = async () => {
 export const createBackupAction = ({ volumeId } = {}) => ({
   id: 'create',
   type: 'modal',
+  policy: 'backup:create',
+  aliasPolicy: 'cinder:backup:create',
   title: t('Create Volume Backup'),
   description: t(
     'When you do online backup of the volume that has been bound, you need to pay attention to the following points:'
@@ -79,6 +81,8 @@ export const createBackupAction = ({ volumeId } = {}) => ({
 export const editBackupAction = () => ({
   id: 'edit-backup',
   type: 'modal',
+  policy: 'backup:update',
+  aliasPolicy: 'cinder:backup:update',
   title: t('Edit Volume Backup'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
@@ -92,6 +96,7 @@ export const editBackupAction = () => ({
 export const restoreBackupAction = () => ({
   id: 'restore-backup',
   type: 'modal',
+  policy: 'backup:restore',
   title: t('Restore Backup'),
   description: t(
     'Restoring overwrites the data of the source volume. The volume must be available, or every instance it is attached to must be shut off.'
@@ -113,6 +118,8 @@ export const restoreBackupAction = () => ({
 export const createVolumeFromBackupAction = () => ({
   id: 'create-volume',
   type: 'modal',
+  policy: 'volume:create',
+  aliasPolicy: 'cinder:volume:create',
   title: t('Create Volume'),
   allowed: (item) => item.status === 'available',
   getDefaultValues: (item) => ({ backupName: item.name || item.id, size: item.size, availability_zone: 'noSelect' }),
@@ -161,8 +168,11 @@ export const createVolumeFromBackupAction = () => ({
     }),
 });
 
-export const deleteBackupAction = () =>
-  deleteAction({ name: t('Volume Backup'), onDelete: (it) => cinderApi.deleteBackup(it.id) });
+export const deleteBackupAction = () => ({
+  ...deleteAction({ name: t('Volume Backup'), onDelete: (it) => cinderApi.deleteBackup(it.id) }),
+  policy: 'backup:delete',
+  aliasPolicy: 'cinder:backup:delete',
+});
 
 export const backupColumns = ({ isAdmin, projectMap, hideVolume } = {}) =>
   [

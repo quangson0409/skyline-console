@@ -23,6 +23,7 @@ const jsonRule = () => ({
 export const createConfigurationAction = () => ({
   id: 'create-configurations',
   type: 'modal',
+  policy: 'configuration:create',
   title: t('Create Group'),
   width: 720,
   getDefaultValues: () => ({ values: JSON.stringify(DEFAULT_VALUES, null, 2) }),
@@ -63,12 +64,14 @@ export const createConfigurationAction = () => ({
 });
 
 /** legacy Configurations/actions/Delete */
-export const deleteConfigurationAction = () =>
-  deleteAction({
+export const deleteConfigurationAction = () => ({
+  ...deleteAction({
     name: t('configurations'),
     title: t('Delete Configuration'),
     onDelete: (it) => troveApi.deleteConfiguration(it.id),
-  });
+  }),
+  policy: 'instance:delete',
+});
 
 export default function ConfigurationList() {
   return (

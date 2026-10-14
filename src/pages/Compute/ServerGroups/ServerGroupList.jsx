@@ -81,6 +81,7 @@ export const PolicyTag = ({ policy }) =>
 export const createServerGroupAction = ({ projectId } = {}) => ({
   id: 'create',
   type: 'modal',
+  policy: 'os_compute_api:os-server-groups:create',
   title: t('Create Server Group'),
   getDefaultValues: () => ({ policy: 'anti-affinity' }),
   getFormItems: async () => {
@@ -118,17 +119,20 @@ export const createServerGroupAction = ({ projectId } = {}) => ({
   onSubmit: ({ name, policy }) => novaApi.createServerGroupV({ name, policy }),
 });
 
-export const deleteServerGroupAction = () =>
-  deleteAction({
+export const deleteServerGroupAction = () => ({
+  ...deleteAction({
     name: t('Server Group'),
     title: t('Delete Server Group'),
     allowed: (it) => !it.members || it.members.length === 0,
     onDelete: (it) => novaApi.deleteServerGroupV(it.id),
-  });
+  }),
+  policy: 'os_compute_api:os-server-groups:delete',
+});
 
 export const createInstanceFromGroupAction = (navigate) => ({
   id: 'instance-create',
   type: 'custom',
+  policy: 'os_compute_api:servers:create',
   title: t('Create Instance'),
   onExecute: (item) => navigate(`/compute/instance?servergroup=${item.id}`),
 });

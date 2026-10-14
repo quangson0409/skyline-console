@@ -93,6 +93,7 @@ const projectOptions = (projects) =>
 export const createRbacPolicyAction = () => ({
   id: 'create-policy',
   type: 'modal',
+  policy: 'create_rbac_policy',
   title: t('Create RBAC Policy'),
   buttonText: t('Create'),
   getFormItems: async () => {
@@ -171,6 +172,7 @@ export const createRbacPolicyAction = () => ({
 export const editRbacPolicyAction = () => ({
   id: 'edit-policy',
   type: 'modal',
+  policy: 'update_rbac_policy',
   title: t('Edit'),
   buttonText: t('Edit'),
   description: t('You may update the editable properties of the RBAC policy here.'),
@@ -191,12 +193,14 @@ export const editRbacPolicyAction = () => ({
   onSubmit: (values, item) => neutronApi.updateRbacPolicy(item.id, { target_tenant: values.target_tenant }),
 });
 
-export const deleteRbacPolicyAction = () =>
-  deleteAction({
+export const deleteRbacPolicyAction = () => ({
+  ...deleteAction({
     name: t('RBAC Policy'),
     title: t('Delete RBAC Policy'),
     onDelete: (it) => neutronApi.deleteRbacPolicy(it.id),
-  });
+  }),
+  policy: 'delete_rbac_policy',
+});
 
 export const rbacRowActions = () => ({
   firstAction: editRbacPolicyAction(),

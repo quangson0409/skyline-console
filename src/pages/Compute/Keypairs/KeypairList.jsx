@@ -37,6 +37,7 @@ const fetchKeypairQuota = async (projectId) => {
 export const createKeypairAction = ({ projectId, used = 0 } = {}) => ({
   id: 'create-keypair',
   type: 'modal',
+  policy: 'os_compute_api:os-keypairs:create',
   title: t('Create Keypair'),
   description: t('Quota of key pairs means: the number of allowed key pairs for each user.'),
   getDefaultValues: () => ({ type: 'create' }),
@@ -91,12 +92,14 @@ export const createKeypairAction = ({ projectId, used = 0 } = {}) => ({
   },
 });
 
-export const deleteKeypairAction = () =>
-  deleteAction({
+export const deleteKeypairAction = () => ({
+  ...deleteAction({
     name: t('Keypair'),
     title: t('Delete Keypair'),
     onDelete: (it) => novaApi.deleteKeypairV(it.name),
-  });
+  }),
+  policy: 'os_compute_api:os-keypairs:delete',
+});
 
 export const keypairColumns = () => [
   nameColumn({

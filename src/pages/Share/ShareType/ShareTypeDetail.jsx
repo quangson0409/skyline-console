@@ -28,6 +28,11 @@ export default function ShareTypeDetail() {
             <KeyValueTab
               api={extraSpecApi(d.id)}
               kind="extra"
+              policies={{
+                create: 'share_types_extra_spec:create',
+                edit: 'share_types_extra_spec:update',
+                del: 'share_types_extra_spec:delete',
+              }}
               canDelete={(it) => it.keyName !== 'driver_handles_share_servers'}
             />
           ),

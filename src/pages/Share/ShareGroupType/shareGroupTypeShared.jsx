@@ -50,6 +50,7 @@ const removeAccess = (id, projects = []) =>
 export const createShareGroupTypeAction = ({ existingNames = () => [] } = {}) => ({
   id: 'create',
   type: 'modal',
+  policy: 'share_group_type:create',
   title: t('Create Share Group Type'),
   width: 960,
   getDefaultValues: () => ({ is_public: true, shareTypes: [], accessControl: [], extra: [] }),
@@ -103,12 +104,18 @@ export const deleteShareGroupTypeAction = () => ({
     title: t('Delete Share Group Type'),
     onDelete: (it) => manilaApi.deleteShareGroupType(it.id),
   }),
+  policy: 'share_group_type:delete',
   actionName: t('Delete Share Group Type'),
 });
 
 export const manageShareGroupTypeAccessAction = () => ({
   id: 'manage-access',
   type: 'modal',
+  policy: [
+    'share_group_type:list_project_access',
+    'share_group_type:add_project_access',
+    'share_group_type:remove_project_access',
+  ],
   title: t('Manage Access'),
   width: 960,
   allowed: (item) => !item.is_public,

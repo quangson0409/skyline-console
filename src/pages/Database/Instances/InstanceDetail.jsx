@@ -118,6 +118,7 @@ const fetchDatabaseOptions = async (id) => {
 const createUserAction = (instanceId) => ({
   id: 'create-user',
   type: 'modal',
+  policy: 'instance:extension:user:create',
   title: t('Create User'),
   getFormItems: async () => [
     { name: 'userName', label: t('Name'), type: 'input', required: true, rules: [databaseUserNameRule()] },
@@ -137,12 +138,15 @@ const createUserAction = (instanceId) => ({
     }),
 });
 
-const deleteUserAction = (instanceId) =>
-  deleteAction({ name: t('User'), title: t('Delete User'), onDelete: (it) => troveApi.deleteUser(instanceId, it.name) });
+const deleteUserAction = (instanceId) => ({
+  ...deleteAction({ name: t('User'), title: t('Delete User'), onDelete: (it) => troveApi.deleteUser(instanceId, it.name) }),
+  policy: 'instance:extension:user:delete',
+});
 
 const grantDatabaseAction = (instanceId) => ({
   id: 'grant-databases-access',
   type: 'modal',
+  policy: 'instance:extension:user_access:update',
   title: t('Grant Databases Access'),
   getDefaultValues: (item) => ({ name: item.name, database: item.databases }),
   getFormItems: async () => [
@@ -195,6 +199,7 @@ function UsersTab({ instanceId }) {
 const createDatabaseAction = (instanceId) => ({
   id: 'create-database',
   type: 'modal',
+  policy: 'instance:extension:database:create',
   title: t('Create Database'),
   formItems: [{ name: 'databaseName', label: t('Name'), type: 'input', required: true, rules: [databaseNameRule()] }],
   onSubmit: (values) =>
@@ -204,11 +209,14 @@ const createDatabaseAction = (instanceId) => ({
 });
 
 function DatabasesTab({ instanceId }) {
-  const del = deleteAction({
-    name: t('Database'),
-    title: t('Delete Database'),
-    onDelete: (it) => troveApi.deleteDatabase(instanceId, it.name),
-  });
+  const del = {
+    ...deleteAction({
+      name: t('Database'),
+      title: t('Delete Database'),
+      onDelete: (it) => troveApi.deleteDatabase(instanceId, it.name),
+    }),
+    policy: 'instance:extension:database:delete',
+  };
   return (
     <ResourcePage
       embedded

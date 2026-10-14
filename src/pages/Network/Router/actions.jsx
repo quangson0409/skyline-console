@@ -72,6 +72,7 @@ const quotaLeft = (q) => {
 export const createRouterAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'create_router',
   title: t('Create Router'),
   width: 800,
   getDefaultValues: () => ({ openExternalNetwork: false, hints: [] }),
@@ -155,6 +156,7 @@ function CheckLabel({ value, checked, onChange, text }) {
 export const editRouterAction = () => ({
   id: 'edit-router',
   type: 'modal',
+  policy: 'update_router',
   title: t('Edit Router'),
   buttonText: t('Edit'),
   allowed: (item) => item?.name !== 'Default Router',
@@ -188,6 +190,7 @@ export const deleteRouterAction = () => ({
     allowed: (item) => !item?.external_gateway_info,
     onDelete: (it) => neutronApi.deleteRouter(it.id),
   }),
+  policy: 'delete_router',
   actionName: t('delete router'),
   onSubmit: async (target) => {
     const list = toList(target);
@@ -216,6 +219,7 @@ export const deleteRouterAction = () => ({
 export const setGatewayAction = () => ({
   id: 'set-gateway',
   type: 'modal',
+  policy: 'update_router',
   title: t('External Gateway'),
   buttonText: t('Open External Gateway'),
   allowed: (item) => !item?.external_gateway_info,
@@ -239,6 +243,7 @@ export const setGatewayAction = () => ({
 export const closeGatewayAction = () => ({
   id: 'clear-gateway',
   type: 'confirm',
+  policy: 'update_router',
   title: t('Close External Gateway'),
   buttonText: t('Close External Gateway'),
   actionName: t('Close external gateway'),
@@ -255,6 +260,12 @@ export const closeGatewayAction = () => ({
 const snatAction = (enable) => ({
   id: enable ? 'enable-snat' : 'disable-snat',
   type: 'confirm',
+  policy: [
+    'update_router',
+    'update_router:external_gateway_info',
+    'update_router:external_gateway_info:network_id',
+    'update_router:external_gateway_info:enable_snat',
+  ],
   title: enable ? t('Enable SNAT') : t('Disable SNAT'),
   actionName: enable ? t('Enable SNAT') : t('Disable SNAT'),
   allowed: (item) =>
@@ -278,6 +289,7 @@ export const disableSnatAction = () => snatAction(false);
 export const associateFipAction = () => ({
   id: 'associate-fip',
   type: 'modal',
+  policy: 'update_router',
   title: t('Associate Floating IP'),
   allowed: (item) => !!item?.hasExternalGateway && (item.externalFixedIps || []).length < 1,
   getDefaultValues: (item) => ({
@@ -330,6 +342,7 @@ export const associateFipAction = () => ({
 export const disassociateFipAction = () => ({
   id: 'DisassociateFip',
   type: 'confirm',
+  policy: 'update_router',
   title: t('Disassociate Floating IP'),
   actionName: t('disassociate floating IP'),
   allowed: (item) => (item?.external_gateway_info?.external_fixed_ips || []).length > 0,
@@ -400,6 +413,7 @@ function SubnetPicker({ value, onChange, form, excludeSubnetIds }) {
 export const connectSubnetAction = (bound) => ({
   id: 'connect-subnet',
   type: 'modal',
+  policy: 'add_router_interface',
   title: t('Connect Subnet'),
   width: 760,
   getDefaultValues: (item) => ({ name: (item || bound)?.name || (item || bound)?.id }),
@@ -454,6 +468,7 @@ export const connectSubnetAction = (bound) => ({
 export const disconnectSubnetAction = (bound) => ({
   id: 'disconnect-subnet',
   type: 'modal',
+  policy: 'remove_router_interface',
   title: t('Disconnect Subnet'),
   width: 760,
   getDefaultValues: (item) => ({ name: (item || bound)?.name || (item || bound)?.id }),
@@ -504,6 +519,7 @@ export const disconnectSubnetAction = (bound) => ({
 export const createStaticRouteAction = (routerId) => ({
   id: 'create',
   type: 'modal',
+  policy: 'update_router',
   title: t('Create Static Route'),
   formItems: [
     { name: 'destination', label: t('Destination CIDR'), type: 'input', required: true, rules: [cidrRule()] },
@@ -518,6 +534,7 @@ export const createStaticRouteAction = (routerId) => ({
 export const deleteStaticRouteAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'update_router',
   title: t('Delete Static Route'),
   buttonText: t('Delete'),
   actionName: t('delete static route'),

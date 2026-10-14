@@ -79,6 +79,7 @@ const zoneFormItems = ({ isEdit = false } = {}) => [
 export const createZoneAction = () => ({
   id: 'create_zone',
   type: 'modal',
+  policy: 'create_zone',
   title: t('Create Zone'),
   width: 560,
   getDefaultValues: () => ({ ttl: 3600, type: ZONE_TYPE_ENUM.primary }),
@@ -97,6 +98,7 @@ export const createZoneAction = () => ({
 export const editZoneAction = () => ({
   id: 'update-dns-zone',
   type: 'modal',
+  policy: 'update_zone',
   title: t('Edit'),
   buttonText: t('Edit'),
   width: 560,
@@ -123,6 +125,7 @@ export const editZoneAction = () => ({
 export const deleteZoneAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_zone',
   title: t('Delete Zone'),
   actionName: t('Delete Zone'),
   buttonText: t('Delete'),
@@ -183,6 +186,7 @@ const recordSetFormItems = ({ isEdit = false } = {}) => [
 export const createRecordSetAction = (zone) => ({
   id: 'create-record-set',
   type: 'modal',
+  policy: 'create_recordset',
   title: t('Create Record Set'),
   width: 640,
   getDefaultValues: () => ({ ttl: 3600, type: 'A', records: [] }),
@@ -197,6 +201,7 @@ export const createRecordSetAction = (zone) => ({
 export const editRecordSetAction = () => ({
   id: 'update-record-set',
   type: 'modal',
+  policy: 'update_recordset',
   title: t('Update Record Set'),
   buttonText: t('Update'),
   width: 640,
@@ -217,6 +222,7 @@ export const editRecordSetAction = () => ({
 export const deleteRecordSetAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_recordset',
   title: t('Delete Record Set'),
   actionName: t('Delete Record Set'),
   buttonText: t('Delete'),
@@ -238,6 +244,7 @@ export const deleteRecordSetAction = () => ({
 export const setReverseAction = () => ({
   id: 'set-reverse',
   type: 'modal',
+  policy: 'get_images',
   title: t('Set Domain Name PTR'),
   buttonText: t('Set'),
   width: 520,
@@ -268,6 +275,7 @@ export const setReverseAction = () => ({
 export const unsetReverseAction = () => ({
   id: 'unset',
   type: 'confirm',
+  policy: 'instance:delete',
   title: t('Unset'),
   actionName: t('Unset'),
   buttonText: t('Unset'),

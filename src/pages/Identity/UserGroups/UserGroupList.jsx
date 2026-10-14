@@ -165,6 +165,7 @@ const groupNameRule = (getDomainId, selfId) => ({
 export const createGroupAction = () => ({
   id: 'user-group-create',
   type: 'modal',
+  policy: 'identity:create_group',
   title: t('Create User Group'),
   getDefaultValues: () => ({ domain_id: 'default' }),
   getFormItems: async () => [
@@ -186,6 +187,7 @@ export const createGroupAction = () => ({
 export const editGroupAction = () => ({
   id: 'user-group-edit',
   type: 'modal',
+  policy: 'identity:update_group',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   getFormItems: (item) => [
@@ -209,6 +211,7 @@ export const manageGroupUsersAction = () => {
   return {
     id: 'manage-user',
     type: 'modal',
+    policy: ['identity:list_users_in_group', 'identity:list_users_in_group', 'identity:add_user_to_group'],
     title: t('Manage User'),
     width: 760,
     getDefaultValues: async (item) => {
@@ -244,6 +247,7 @@ export const manageGroupUsersAction = () => {
 
 export const deleteGroupAction = () => ({
   ...deleteAction({ name: t('User Group'), onDelete: (it) => keystoneApi.deleteGroup(it.id) }),
+  policy: 'identity:delete_group',
   title: t('Delete User Group'),
   actionName: t('delete user group'),
 });

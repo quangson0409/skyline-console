@@ -157,6 +157,7 @@ function SubnetPicker({ value, onChange, form }) {
 export const createShareNetworkAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'share_network:create',
   title: t('Create Share Network'),
   width: 960,
   getDefaultValues: () => ({ network: [], subnet: [] }),
@@ -207,6 +208,7 @@ export const createShareNetworkAction = () => ({
 export const editShareNetworkAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'share_network:update',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   formItems: [
@@ -222,6 +224,7 @@ export const deleteShareNetworkAction = () => ({
     title: t('Delete Share Network'),
     onDelete: (it) => manilaApi.deleteShareNetwork(it.id),
   }),
+  policy: 'share_network:delete',
   actionName: t('Delete Share Network'),
 });
 

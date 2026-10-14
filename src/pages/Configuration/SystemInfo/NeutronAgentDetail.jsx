@@ -86,6 +86,7 @@ const yesNoOptions = () => [
 const addNetworkAction = (agent, projectMap) => ({
   id: 'add-network',
   type: 'modal',
+  policy: 'create_dhcp-network',
   title: t('Add Network'),
   width: 1000,
   adminOnly: true,
@@ -121,6 +122,7 @@ const addNetworkAction = (agent, projectMap) => ({
 const removeNetworkAction = () => ({
   id: 'remove',
   type: 'confirm',
+  policy: 'delete_dhcp-network',
   title: t('Remove Network'),
   buttonText: t('Remove'),
   actionName: t('remove network'),
@@ -160,6 +162,7 @@ function AgentNetworks({ agent }) {
 const addRouterAction = (agent, projectMap) => ({
   id: 'add-router',
   type: 'modal',
+  policy: 'create_l3-router',
   title: t('Add Router'),
   width: 1000,
   adminOnly: true,
@@ -195,6 +198,7 @@ const addRouterAction = (agent, projectMap) => ({
 const removeRouterAction = () => ({
   id: 'remove',
   type: 'confirm',
+  policy: 'delete_l3-router',
   title: t('Remove Router'),
   buttonText: t('Remove'),
   actionName: t('remove router'),

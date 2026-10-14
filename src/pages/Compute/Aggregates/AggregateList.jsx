@@ -72,6 +72,7 @@ const azNewTip = () =>
 export const createAggregateAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'os_compute_api:os-aggregates:create',
   title: t('Create Host Aggregate'),
   getDefaultValues: async () => {
     const zones = await fetchZoneNames();
@@ -111,6 +112,7 @@ export const createAggregateAction = () => ({
 export const editAggregateAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'os_compute_api:os-aggregates:update',
   title: t('Edit Host Aggregate'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
@@ -211,6 +213,7 @@ const HostSelectTable = ({ value = [], onChange, hosts = [] }) => {
 export const manageHostAction = () => ({
   id: 'ManageHost',
   type: 'modal',
+  policy: ['os_compute_api:os-aggregates:add_host', 'os_compute_api:os-aggregates:remove_host'],
   title: t('Manage Host'),
   width: 900,
   description: t('Add hosts to the aggregate or remove hosts from it. Hosts can be in multiple aggregates.'),
@@ -238,6 +241,7 @@ export const manageHostAction = () => ({
 export const manageMetadataAction = () => ({
   id: 'ManageMetadata',
   type: 'modal',
+  policy: 'os_compute_api:os-aggregates:set_metadata',
   title: t('Manage Metadata'),
   width: 900,
   getDefaultValues: (item) => ({ name: item.name, metadata: { ...(item.metadata || {}) } }),
@@ -264,13 +268,15 @@ export const manageMetadataAction = () => ({
     novaApi.setAggregateMetadataV(item.id, metadataWithRemovals(values.metadata || {}, item.metadata || {})),
 });
 
-export const deleteAggregateAction = () =>
-  deleteAction({
+export const deleteAggregateAction = () => ({
+  ...deleteAction({
     name: t('Host Aggregate'),
     title: t('Delete Host Aggregate'),
     allowed: (item) => Boolean(item) && (item.hosts || []).length === 0,
     onDelete: (it) => novaApi.deleteAggregateV(it.id),
-  });
+  }),
+  policy: 'os_compute_api:os-aggregates:delete',
+});
 
 /* ------------------------------------------------------------------ */
 /* Host aggregate tab                                                 */

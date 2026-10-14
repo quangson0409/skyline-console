@@ -276,8 +276,9 @@ export const specsToList = (specs) =>
 /**
  * Key/value sub-resource tab (share metadata, share type extra specs, share group type group specs).
  * api = { list(), set(obj), remove(key) }
+ * policies = { create, edit, del } legacy policy rules of the matching legacy actions
  */
-export const keyValueActions = ({ api, kind = 'extra', canDelete }) => {
+export const keyValueActions = ({ api, kind = 'extra', canDelete, policies = {} }) => {
   const labels =
     kind === 'metadata'
       ? {
@@ -289,6 +290,7 @@ export const keyValueActions = ({ api, kind = 'extra', canDelete }) => {
   const create = {
     id: 'create',
     type: 'modal',
+    policy: policies.create,
     title: labels.create,
     formItems: [
       { name: 'keyName', label: t('Key'), type: 'input', required: true, placeholder: t('Please input key') },
@@ -299,6 +301,7 @@ export const keyValueActions = ({ api, kind = 'extra', canDelete }) => {
   const edit = {
     id: 'edit',
     type: 'modal',
+    policy: policies.edit,
     title: labels.edit,
     buttonText: t('Edit'),
     getDefaultValues: (item) => ({ keyName: item.keyName, value: item.value }),
@@ -310,13 +313,14 @@ export const keyValueActions = ({ api, kind = 'extra', canDelete }) => {
   };
   const del = {
     ...deleteAction({ name: '', title: labels.del, onDelete: (it) => api.remove(it.keyName), allowed: canDelete }),
+    policy: policies.del,
     actionName: labels.del,
   };
   return { create, edit, del };
 };
 
-export function KeyValueTab({ api, kind, readOnly = false, deleteOnly = false, canDelete }) {
-  const { create, edit, del } = keyValueActions({ api, kind, canDelete });
+export function KeyValueTab({ api, kind, readOnly = false, deleteOnly = false, canDelete, policies }) {
+  const { create, edit, del } = keyValueActions({ api, kind, canDelete, policies });
   return (
     <ResourcePage
       embedded

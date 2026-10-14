@@ -8,22 +8,26 @@ import { createBackupAction } from '../Backups/BackupList';
 export const createInstanceAction = (navigate) => ({
   id: 'create-database-instance',
   type: 'custom',
+  policy: 'instance:create',
   title: t('Create Database Instance'),
   onExecute: () => navigate('/database/instances/create'),
 });
 
 /** legacy Instances/actions/Delete */
-export const deleteInstanceAction = () =>
-  deleteAction({
+export const deleteInstanceAction = () => ({
+  ...deleteAction({
     name: t('database instances'),
     title: t('Delete'),
     onDelete: (it) => troveApi.deleteInstance(it.id),
-  });
+  }),
+  policy: 'instance:delete',
+});
 
 /** legacy Instances/actions/Edit */
 export const editInstanceAction = () => ({
   id: 'edit-instance',
   type: 'modal',
+  policy: 'instance:update',
   title: t('Edit'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name }),
@@ -35,6 +39,7 @@ export const editInstanceAction = () => ({
 export const restartAction = () => ({
   id: 'restart',
   type: 'confirm',
+  policy: 'instance:restart',
   title: t('Restart Database Service'),
   actionName: t('Restart Database Service'),
   isDanger: true,
@@ -51,6 +56,7 @@ export const restartAction = () => ({
 export const stopAction = () => ({
   id: 'stop',
   type: 'confirm',
+  policy: 'instance:stop',
   title: t('Stop Database Service'),
   buttonText: t('Stop'),
   actionName: t('Stop Database Service'),
@@ -68,6 +74,7 @@ export const stopAction = () => ({
 export const rebootAction = () => ({
   id: 'reboot',
   type: 'confirm',
+  policy: 'instance:reboot',
   title: t('Reboot Database Instance'),
   actionName: t('Reboot Database Instance'),
   isDanger: true,
@@ -84,6 +91,7 @@ export const rebootAction = () => ({
 export const resizeVolumeAction = () => ({
   id: 'resize-volume',
   type: 'modal',
+  policy: ['trove:instance:resize_volume', 'trove:admin'],
   title: t('Resize Volume'),
   width: 720,
   allowed: (item) => checkStatus(['active', 'shutoff'], item),

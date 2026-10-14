@@ -43,6 +43,7 @@ function TextareaFromFile({ value, onChange, accept = '.yaml,.yml,.json', rows =
 export const createCapsuleAction = () => ({
   id: 'create-capsules',
   type: 'modal',
+  policy: 'capsule:create',
   title: t('Create Capsule'),
   buttonText: t('Create Capsule'),
   width: 760,
@@ -70,12 +71,14 @@ export const createCapsuleAction = () => ({
   onSubmit: (values) => zunApi.createCapsule({ template: parseYaml(values.template_file) }),
 });
 
-export const deleteCapsuleAction = () =>
-  deleteAction({
+export const deleteCapsuleAction = () => ({
+  ...deleteAction({
     name: t('Capsule'),
     title: t('Delete Capsule'),
     onDelete: (it) => zunApi.deleteCapsule(it.uuid || it.id),
-  });
+  }),
+  policy: 'capsule:delete',
+});
 
 export const capsuleRowActions = () => ({ firstAction: deleteCapsuleAction(), moreActions: [] });
 

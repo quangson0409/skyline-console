@@ -32,6 +32,7 @@ const runForEach = (fn) => async (target) => {
 export const createStackAction = ({ navigate, isAdmin }) => ({
   id: 'stack-create',
   type: 'custom',
+  policy: 'stacks:create',
   title: t('Create Stack'),
   onExecute: () => navigate(isAdmin ? '/heat/stack-admin/create' : '/heat/stack/create'),
 });
@@ -40,6 +41,7 @@ export const createStackAction = ({ navigate, isAdmin }) => ({
 export const editStackAction = ({ navigate, isAdmin }) => ({
   id: 'edit-template',
   type: 'custom',
+  policy: 'stacks:update',
   title: t('Update Template'),
   onExecute: (item) => navigate(stackEditPath(item, isAdmin)),
 });
@@ -48,6 +50,7 @@ export const editStackAction = ({ navigate, isAdmin }) => ({
 export const deleteStackAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'stacks:delete',
   title: t('Delete'),
   actionName: t('delete stack'),
   isDanger: true,
@@ -75,6 +78,7 @@ const downloadJson = (data, filename) => {
 export const abandonStackAction = () => ({
   id: 'abandon',
   type: 'confirm',
+  policy: 'stacks:abandon',
   title: t('Abandon Stack'),
   actionName: t('abandon stack'),
   isDanger: true,

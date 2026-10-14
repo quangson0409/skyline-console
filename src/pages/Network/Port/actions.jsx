@@ -46,6 +46,7 @@ const portLabel = (item) => item?.name || item?.id;
 export const createPortAction = ({ networkId } = {}) => ({
   id: 'create-virtual-adapter',
   type: 'modal',
+  policy: 'create_port',
   title: t('Create Port'),
   width: 860,
   description: t('Port mainly used for binding instance and other operations, occupying the quota of the port.'),
@@ -210,6 +211,7 @@ export const createPortAction = ({ networkId } = {}) => ({
 export const editPortAction = () => ({
   id: 'edit-virtual-adapter',
   type: 'modal',
+  policy: 'update_port',
   title: t('Edit'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
@@ -252,6 +254,7 @@ const allowAttachInterfaceStatus = ['active', 'paused', 'stopped'];
 export const attachInstanceAction = () => ({
   id: 'attach_instance',
   type: 'modal',
+  policy: 'os_compute_api:os-attach-interfaces:create',
   title: t('Attach Instance'),
   width: 720,
   allowed: (item) => !item.device_id,
@@ -283,6 +286,7 @@ export const attachInstanceAction = () => ({
 export const detachInstanceAction = () => ({
   id: 'detach_instance',
   type: 'confirm',
+  policy: 'os_compute_api:os-attach-interfaces:delete',
   title: t('Detach Instance'),
   buttonText: t('Detach'),
   actionName: t('detach instance'),
@@ -300,6 +304,7 @@ export const detachInstanceAction = () => ({
 export const associateFipAction = ({ isAdmin } = {}) => ({
   id: 'AssociateFip',
   type: 'modal',
+  policy: 'update_floatingip',
   title: t('Associate Floating IP'),
   width: 760,
   allowed: (item) =>
@@ -355,6 +360,7 @@ export const associateFipAction = ({ isAdmin } = {}) => ({
 export const disassociateFipAction = ({ isAdmin } = {}) => ({
   id: 'DisAssociateFip',
   type: 'modal',
+  policy: 'update_floatingip',
   title: t('Disassociate Floating IP'),
   width: 720,
   allowed: (item) =>
@@ -380,6 +386,7 @@ export const disassociateFipAction = ({ isAdmin } = {}) => ({
 export const modifyQosAction = () => ({
   id: 'modify_qos',
   type: 'modal',
+  policy: 'update_port',
   title: t('Modify QoS'),
   width: 720,
   allowed: () => qosEnabled(),
@@ -433,6 +440,7 @@ export const modifyQosAction = () => ({
 export const manageSecurityGroupAction = () => ({
   id: 'manage-security-group',
   type: 'modal',
+  policy: 'update_port:port_security_enabled',
   title: t('Manage Security Group'),
   width: 720,
   allowed: (item) => {
@@ -485,12 +493,16 @@ export const manageSecurityGroupAction = () => ({
 
 /* ---------------- Delete ---------------- */
 export const deletePortAction = () =>
-  deleteAction({ name: t('Port'), title: t('Delete Port'), onDelete: (it) => neutronApi.deletePort(it.id) });
+  ({
+    ...deleteAction({ name: t('Port'), title: t('Delete Port'), onDelete: (it) => neutronApi.deletePort(it.id) }),
+    policy: 'delete_port',
+  });
 
 /* ---------------- Allocate IP (Fixed IPs tab) ---------------- */
 export const allocateIpAction = ({ getPort } = {}) => ({
   id: 'allocate-ip',
   type: 'modal',
+  policy: 'update_port:fixed_ips:ip_address',
   title: t('Allocate IP'),
   width: 860,
   getDefaultValues: async (item) => {
@@ -530,6 +542,7 @@ export const allocateIpAction = ({ getPort } = {}) => ({
 export const releaseIpAction = () => ({
   id: 'release-ip',
   type: 'confirm',
+  policy: 'update_port',
   title: t('Release Fixed IP'),
   buttonText: t('Release'),
   actionName: t('release fixed IP'),
@@ -549,6 +562,7 @@ export const releaseIpAction = () => ({
 export const createAllowedAddressPairAction = ({ getPort } = {}) => ({
   id: 'create-ip',
   type: 'modal',
+  policy: 'update_port',
   title: t('Create Allowed Address Pair'),
   getDefaultValues: () => ({ ip_version: 'ipv4', mac_address: { type: 'auto' } }),
   formItems: [
@@ -604,6 +618,7 @@ export const createAllowedAddressPairAction = ({ getPort } = {}) => ({
 export const deleteAllowedAddressPairAction = ({ getPort } = {}) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'update_port',
   title: t('Delete Allowed Address Pair'),
   buttonText: t('Delete'),
   actionName: t('delete allowed address pair'),
@@ -622,6 +637,7 @@ export const deleteAllowedAddressPairAction = ({ getPort } = {}) => ({
 export const detachSecurityGroupAction = ({ getPort } = {}) => ({
   id: 'detach',
   type: 'confirm',
+  policy: 'update_port',
   title: t('Detach Security Group'),
   buttonText: t('Detach'),
   actionName: t('detach security group'),

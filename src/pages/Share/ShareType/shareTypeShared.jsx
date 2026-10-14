@@ -67,6 +67,7 @@ const uniqueName = (names) => ({
 export const createShareTypeAction = ({ existingNames = () => [] } = {}) => ({
   id: 'create',
   type: 'modal',
+  policy: 'share_type:create',
   title: t('Create Share Type'),
   width: 960,
   getDefaultValues: () => ({ isPublic: true, accessControl: [], extra: [] }),
@@ -110,6 +111,7 @@ export const createShareTypeAction = ({ existingNames = () => [] } = {}) => ({
 export const editShareTypeAction = ({ existingNames = () => [] } = {}) => ({
   id: 'edit',
   type: 'modal',
+  policy: 'share_type:update',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   getFormItems: (item) => [
@@ -131,12 +133,18 @@ export const deleteShareTypeAction = () => ({
     title: t('Delete Share Type'),
     onDelete: (it) => manilaApi.deleteShareType(it.id),
   }),
+  policy: 'share_type:delete',
   actionName: t('Delete Share Type'),
 });
 
 export const manageShareTypeAccessAction = () => ({
   id: 'manage-access',
   type: 'modal',
+  policy: [
+    'share_type:list_project_access',
+    'share_type:add_project_access',
+    'share_type:remove_project_access',
+  ],
   title: t('Manage Access'),
   width: 960,
   getDefaultValues: async (item) => {

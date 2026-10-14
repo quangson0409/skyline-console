@@ -194,6 +194,7 @@ export const userNameRule = (getDomainId, selfId) => ({
 export const editUserAction = () => ({
   id: 'user-edit',
   type: 'modal',
+  policy: 'identity:update_user',
   title: t('Edit User'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({
@@ -228,6 +229,7 @@ export const editUserAction = () => ({
 export const systemRoleAction = () => ({
   id: 'edit-system-permission',
   type: 'modal',
+  policy: 'identity:list_roles',
   title: t('Edit System Permission'),
   getDefaultValues: (item) => {
     const role = (item.systemRoles || [])[0]?.id;
@@ -258,6 +260,7 @@ export const systemRoleAction = () => ({
 export const userPasswordAction = () => ({
   id: 'update-user-password',
   type: 'modal',
+  policy: 'identity:update_user',
   title: t('Update User Password'),
   getDefaultValues: (item) => ({ name: item.name, password: '', confirmPassword: '' }),
   formItems: [
@@ -276,6 +279,7 @@ export const userPasswordAction = () => ({
 
 export const deleteUserAction = () => ({
   ...deleteAction({ name: t('User'), onDelete: (it) => keystoneApi.deleteUser(it.id) }),
+  policy: 'identity:delete_user',
   title: t('Delete User'),
   actionName: t('delete user'),
 });
@@ -283,6 +287,7 @@ export const deleteUserAction = () => ({
 export const enableUserAction = () => ({
   id: 'Enable',
   type: 'confirm',
+  policy: 'identity:update_user',
   title: t('Enable User'),
   actionName: t('Enable User'),
   allowed: (item) => item.enabled !== true,
@@ -292,6 +297,7 @@ export const enableUserAction = () => ({
 export const disableUserAction = () => ({
   id: 'Disable',
   type: 'confirm',
+  policy: 'identity:update_user',
   title: t('Disable User'),
   actionName: t('Disable User'),
   isDanger: true,
@@ -336,6 +342,7 @@ export default function UserList() {
         {
           id: 'user-create',
           type: 'custom',
+          policy: ['identity:create_user', 'identity:update_user', 'identity:list_roles'],
           title: t('Create User'),
           onExecute: () => navigate('/identity/user-admin/create'),
         },

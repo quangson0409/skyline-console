@@ -228,6 +228,7 @@ const imageColumns = () => [
 export const editVolumeAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'volume:update',
   title: t('Edit'),
   allowed: isAvailableOrInUse,
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
@@ -245,6 +246,7 @@ export const deleteVolumeAction = () => {
   return {
     id: 'delete',
     type: 'confirm',
+    policy: 'volume:delete',
     title: t('Delete Volume'),
     actionName: t('delete volume'),
     isDanger: true,
@@ -316,6 +318,7 @@ export const createVolumeAction = () => {
   return {
     id: 'volume-create',
     type: 'modal',
+    policy: 'volume:create',
     title: t('Create Volume'),
     width: 960,
     getDefaultValues: async () => {
@@ -467,6 +470,7 @@ export const createVolumeAction = () => {
 export const acceptTransferAction = () => ({
   id: 'accept-volume-transfer',
   type: 'modal',
+  policy: () => 'volume:accept_transfer',
   title: t('Accept Volume Transfer'),
   formItems: [
     { name: 'transfer_id', label: t('Transfer ID'), type: 'input', required: true, placeholder: t('Please input Transfer ID') },
@@ -478,6 +482,7 @@ export const acceptTransferAction = () => ({
 export const restoreFromSnapshotAction = () => ({
   id: 'Restore from snapshot',
   type: 'modal',
+  policy: 'volume:create',
   title: t('Restore From Snapshot'),
   width: 900,
   allowed: (item) => item.status === 'available',
@@ -525,6 +530,7 @@ const instanceColumns = () => [
 export const attachVolumeAction = () => ({
   id: 'attach',
   type: 'modal',
+  policy: 'os_compute_api:os-volumes-attachments:create',
   title: t('Attach'),
   width: 900,
   allowed: (item) => isAvailable(item) || isMultiAttach(item),
@@ -550,6 +556,7 @@ export const attachVolumeAction = () => ({
 export const detachVolumeAction = () => ({
   id: 'detach',
   type: 'modal',
+  policy: 'os_compute_api:os-volumes-attachments:delete',
   title: t('Detach'),
   isDanger: true,
   width: 900,
@@ -589,6 +596,7 @@ export const detachVolumeAction = () => ({
 export const createVolumeSnapshotAction = () => ({
   id: 'create-snapshot',
   type: 'modal',
+  policy: 'volume:create_snapshot',
   title: t('Create Volume Snapshot'),
   buttonText: t('Create Snapshot'),
   allowed: isAvailableOrInUse,
@@ -617,6 +625,8 @@ export const createVolumeSnapshotAction = () => ({
 export const createVolumeBackupAction = () => ({
   id: 'create-backup',
   type: 'modal',
+  policy: 'backup:create',
+  aliasPolicy: 'cinder:backup:create',
   title: t('Create Volume Backup'),
   buttonText: t('Create Backup'),
   description: t(
@@ -660,6 +670,7 @@ export const createVolumeBackupAction = () => ({
 export const createImageAction = () => ({
   id: 'create-image',
   type: 'modal',
+  policy: 'volume_extension:volume_actions:upload_image',
   title: t('Create Image'),
   allowed: isAvailable,
   getDefaultValues: () => ({ disk_format: 'raw' }),
@@ -682,6 +693,7 @@ export const createImageAction = () => ({
 export const cloneVolumeAction = () => ({
   id: 'clone-volume',
   type: 'modal',
+  policy: 'volume:create',
   title: t('Clone Volume'),
   description: t('It is recommended that you perform this cloning operation on a disk without any reading/writing'),
   allowed: isAvailableOrInUse,
@@ -721,6 +733,7 @@ export const cloneVolumeAction = () => ({
 export const bootableAction = () => ({
   id: 'volume-bootable',
   type: 'modal',
+  policy: 'volume:update',
   title: t('Bootable'),
   buttonText: t('Bootable'),
   getDefaultValues: (item) => ({ bootable: String(item.bootable) === 'true' }),
@@ -731,6 +744,7 @@ export const bootableAction = () => ({
 export const createInstanceAction = (navigate) => ({
   id: 'instance-create',
   type: 'custom',
+  policy: 'os_compute_api:servers:create:attach_volume',
   title: t('Create Instance'),
   allowed: canCreateInstance,
   onExecute: (item) => {
@@ -743,6 +757,7 @@ export const createInstanceAction = (navigate) => ({
 export const extendVolumeAction = () => ({
   id: 'extend-snapshot',
   type: 'modal',
+  policy: 'volume:extend',
   title: t('Extend Volume'),
   description: t('After the volume is expanded, the volume cannot be reduced.'),
   allowed: isAvailableOrInUse,
@@ -773,6 +788,7 @@ export const extendVolumeAction = () => ({
 export const changeTypeAction = () => ({
   id: 'change-type',
   type: 'modal',
+  policy: 'volume:retype',
   title: t('Change Type'),
   description: t('If the capacity of the disk is large, the type modify operation may take several hours. Please be cautious.'),
   allowed: (item) => isAvailableOrInUse(item) && !isOsDisk(item),
@@ -818,6 +834,7 @@ export const changeTypeAction = () => ({
 export const createTransferAction = () => ({
   id: 'create-transfer',
   type: 'modal',
+  policy: 'volume:create_transfer',
   title: t('Create Transfer'),
   description: t(
     'Ownership of a volume can be transferred from one project to another. The transfer process of the volume needs to perform the transfer operation in the original owner\'s project, and complete the "accept" operation in the receiver\'s project.'
@@ -841,6 +858,7 @@ export const createTransferAction = () => ({
 export const cancelTransferAction = () => ({
   id: 'cancel-transfer',
   type: 'confirm',
+  policy: 'volume:delete_transfer',
   title: t('Cancel Transfer'),
   actionName: t('Cancel Transfer'),
   allowed: (item) => item.status === 'awaiting-transfer',
@@ -856,6 +874,7 @@ export const cancelTransferAction = () => ({
 export const updateStatusAction = () => ({
   id: 'update-status',
   type: 'modal',
+  policy: 'volume_extension:volume_admin_actions:reset_status',
   title: t('Update Status'),
   description: t(
     'Do not reset the normally mounted volume to the "available"、"maintenance" or "error" status. The reset state does not remove the volume from the instance. If you need to remove the volume from the instance, please go to the console of the corresponding project and use the "detach" operation.'
@@ -888,6 +907,7 @@ export const updateStatusAction = () => ({
 export const migrateVolumeAction = () => ({
   id: 'migrate-volume',
   type: 'modal',
+  policy: 'volume_extension:volume_admin_actions:migrate_volume',
   title: t('Migrate Volume'),
   width: 900,
   allowed: isAvailableOrInUse,

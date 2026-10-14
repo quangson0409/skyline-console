@@ -23,6 +23,7 @@ export const forceDeleteShareInstanceAction = () => ({
     title: t('Force Delete Share Instance'),
     onDelete: (it) => manilaApi.shareInstanceAction(it.id, { force_delete: null }),
   }),
+  policy: 'share_instance:force_delete',
   actionName: t('Force Delete Share Instance'),
   buttonText: t('Force Delete'),
 });

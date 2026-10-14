@@ -8,6 +8,8 @@ import { backupStatus } from '../shared';
 export const createBackupAction = () => ({
   id: 'create-database-backup',
   type: 'modal',
+  policy: 'backup:create',
+  aliasPolicy: 'trove:backup:create',
   title: t('Create Database Backup'),
   width: 720,
   getFormItems: async () => {
@@ -26,12 +28,14 @@ export const createBackupAction = () => ({
 });
 
 /** legacy Backups/actions/Delete */
-export const deleteBackupAction = () =>
-  deleteAction({
+export const deleteBackupAction = () => ({
+  ...deleteAction({
     name: t('Database Backup'),
     title: t('Delete Database Backup'),
     onDelete: (it) => troveApi.deleteBackup(it.id),
-  });
+  }),
+  policy: 'instance:delete',
+});
 
 export const fetchBackups = async () => (await troveApi.listBackups())?.backups || [];
 

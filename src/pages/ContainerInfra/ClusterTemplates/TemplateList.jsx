@@ -55,6 +55,7 @@ export const templateColumns = ({ isAdmin, projectMap, inSelect } = {}) =>
 export const createTemplateAction = (navigate) => ({
   id: 'create-cluster-template',
   type: 'custom',
+  policy: 'clustertemplate:create',
   title: t('Create Cluster Template'),
   onExecute: () => navigate('/container-infra/cluster-template/create'),
 });
@@ -62,6 +63,7 @@ export const createTemplateAction = (navigate) => ({
 export const editTemplateAction = (navigate) => ({
   id: 'update-cluster-template',
   type: 'custom',
+  policy: 'clustertemplate:update',
   title: t('Edit'),
   onExecute: (item) => navigate(`/container-infra/cluster-template/update/${item.uuid || item.id}`),
 });
@@ -69,16 +71,19 @@ export const editTemplateAction = (navigate) => ({
 export const createClusterFromTemplateAction = (navigate) => ({
   id: 'create-cluster',
   type: 'custom',
+  policy: 'cluster:create',
   title: t('Create Cluster'),
   onExecute: (item) => navigate(`/container-infra/clusters/create?template=${item.uuid || item.id}`),
 });
 
-export const deleteTemplateAction = () =>
-  deleteAction({
+export const deleteTemplateAction = () => ({
+  ...deleteAction({
     name: t('Cluster Template'),
     title: t('Delete Cluster Template'),
     onDelete: (it) => magnumApi.deleteClusterTemplate(it.uuid || it.id),
-  });
+  }),
+  policy: 'clustertemplate:delete',
+});
 
 export const templateRowActions = (isAdmin, navigate) =>
   isAdmin

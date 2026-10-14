@@ -117,6 +117,7 @@ const algorithmOptionsFor = ({ requestType }) =>
 export const createSecretAction = () => ({
   id: 'create-secret',
   type: 'modal',
+  policy: ['secrets:post', 'orders:post'],
   title: t('Create Secret'),
   width: 800,
   getDefaultValues: () => ({
@@ -296,6 +297,7 @@ export const createSecretAction = () => ({
 export const deleteSecretAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'secret:delete',
   title: t('Delete Secret'),
   actionName: t('delete secret'),
   buttonText: t('Delete'),

@@ -44,6 +44,7 @@ const advancedVisible = (values) => Boolean(values.more);
 export const editImageAction = ({ isAdmin } = {}) => ({
   id: 'image-edit',
   type: 'modal',
+  policy: 'modify_image',
   title: t('Edit Image'),
   buttonText: t('Edit'),
   allowed: (item) => (item.status === 'active' && isOwner(item)) || isAdmin,
@@ -151,18 +152,21 @@ export const editImageAction = ({ isAdmin } = {}) => ({
 });
 
 /* ---------------- Delete ---------------- */
-export const deleteImageAction = ({ isAdmin } = {}) =>
-  deleteAction({
+export const deleteImageAction = ({ isAdmin } = {}) => ({
+  ...deleteAction({
     name: t('Image'),
     title: t('Delete Image'),
     allowed: (item) => item.status !== 'deleted' && !item.protected && (isOwner(item) || isAdmin),
     onDelete: (it) => glanceApi.deleteImage(it.id),
-  });
+  }),
+  policy: 'delete_image',
+});
 
 /* ---------------- Create Instance / Ironic (navigate) ---------------- */
 export const createInstanceFromImageAction = ({ isAdmin, navigate }) => ({
   id: 'instance-create',
   type: 'custom',
+  policy: 'os_compute_api:servers:create:trusted_certs',
   title: t('Create Instance'),
   allowed: (item) => !isAdmin && canImageCreateInstance(item),
   onExecute: (item) =>
@@ -172,6 +176,7 @@ export const createInstanceFromImageAction = ({ isAdmin, navigate }) => ({
 export const createIronicFromImageAction = ({ isAdmin, navigate }) => ({
   id: 'ironic-create',
   type: 'custom',
+  policy: 'os_compute_api:servers:create:trusted_certs',
   title: t('Create Ironic Instance'),
   allowed: (item) => !isAdmin && hasEndpoint('ironic') && canImageCreateIronicInstance(item),
   onExecute: (item) =>
@@ -185,6 +190,7 @@ const imageMinSize = (item) =>
 export const createVolumeFromImageAction = ({ isAdmin } = {}) => ({
   id: 'create-volume',
   type: 'modal',
+  policy: 'volume:create_from_image',
   title: t('Create Volume'),
   allowed: () => hasEndpoint('cinder') && !isAdmin,
   getDefaultValues: (item) => ({ image: item.name || item.id, size: imageMinSize(item) }),
@@ -235,6 +241,7 @@ export const manageAccessAction = () => {
   return {
     id: 'manage-access',
     type: 'modal',
+    policy: ['get_members', 'add_member', 'delete_member'],
     title: t('Manage Access'),
     width: 800,
     allowed: (item) => item.visibility === 'shared',
@@ -306,6 +313,7 @@ export const manageMetadataAction = ({ isAdmin } = {}) => {
   return {
     id: 'ManageMetadata',
     type: 'modal',
+    policy: 'modify_image',
     title: t('Manage Metadata'),
     width: 900,
     allowed: (item) => isOwner(item) || isAdmin,

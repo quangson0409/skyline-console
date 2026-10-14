@@ -49,6 +49,7 @@ export default function FlavorList() {
   const createAction = {
     id: 'flavor-create',
     type: 'custom',
+    policy: 'os_compute_api:os-flavor-manage:create',
     title: t('Create Flavor'),
     icon: <PlusOutlined />,
     onExecute: () =>

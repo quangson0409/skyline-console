@@ -78,6 +78,7 @@ const createCertificate = async (values) => {
 export const createCertificateAction = (mode = 'SERVER') => ({
   id: 'create-certificate',
   type: 'modal',
+  policy: ['secrets:post', 'containers:post'],
   title: t('Create Certificate'),
   width: 800,
   getDefaultValues: () => ({ mode }),
@@ -144,6 +145,8 @@ const runAll = async (target, fn) => {
 export const deleteContainerAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: ['secret:delete', 'container:delete'],
+  aliasPolicy: ['barbican:secret:delete', 'barbican:container:delete'],
   title: t('Delete Certificate'),
   actionName: t('delete certificate'),
   buttonText: t('Delete'),
@@ -161,6 +164,7 @@ export const deleteContainerAction = () => ({
 export const deleteCaSecretAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'secret:delete',
   title: t('Delete Certificate'),
   actionName: t('delete certificate'),
   buttonText: t('Delete'),

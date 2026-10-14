@@ -11,13 +11,14 @@ import { templateColumns, fetchTemplates } from '../ClusterTemplates/TemplateLis
 export const createClusterAction = (navigate) => ({
   id: 'create-cluster',
   type: 'custom',
+  policy: 'cluster:create',
   title: t('Create Cluster'),
   onExecute: () => navigate('/container-infra/clusters/create'),
 });
 
 /** Legacy Delete.allowedCheckFunc */
-export const deleteClusterAction = () =>
-  deleteAction({
+export const deleteClusterAction = () => ({
+  ...deleteAction({
     name: t('Cluster'),
     title: t('Delete Cluster'),
     allowed: (item) => {
@@ -25,7 +26,9 @@ export const deleteClusterAction = () =>
       return !(status === 'DELETE_IN_PROGRESS' || (status === 'CREATE_IN_PROGRESS' && !stack_id));
     },
     onDelete: (it) => magnumApi.deleteCluster(it.uuid || it.id),
-  });
+  }),
+  policy: 'cluster:delete',
+});
 
 const selectRule = (message) => ({
   validator: (_, value) =>
@@ -36,6 +39,7 @@ const selectRule = (message) => ({
 export const resizeClusterAction = () => ({
   id: 'resize-cluster',
   type: 'modal',
+  policy: 'cluster:resize',
   title: t('Resize Cluster'),
   width: 640,
   allowed: (item) => String(item?.status || '').includes('COMPLETE'),
@@ -112,6 +116,7 @@ export const resizeClusterAction = () => ({
 export const upgradeClusterAction = () => ({
   id: 'upgrade-cluster',
   type: 'modal',
+  policy: 'cluster:upgrade',
   title: t('Upgrade Cluster'),
   width: 960,
   getFormItems: async (item) => {

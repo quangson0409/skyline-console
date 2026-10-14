@@ -159,6 +159,7 @@ export const allocateAction = () => {
   return {
     id: 'allocate',
     type: 'modal',
+    policy: 'create_floatingip',
     title: t('Allocate IP'),
     buttonText: t('Allocate IP'),
     width: qosEnabled() || isAdminPath() ? 820 : 600,
@@ -258,6 +259,7 @@ export const allocateAction = () => {
 export const editFloatingIpAction = () => ({
   id: 'edit-floating-ip',
   type: 'modal',
+  policy: 'update_floatingip',
   title: t('Edit'),
   buttonText: t('Edit'),
   width: qosEnabled() ? 760 : 600,
@@ -429,6 +431,7 @@ function AssociateTarget({ fip, value, onChange }) {
 export const associateAction = () => ({
   id: 'associate',
   type: 'modal',
+  policy: 'update_floatingip',
   title: t('Associate Floating IP'),
   buttonText: t('Associate'),
   width: 960,
@@ -463,6 +466,7 @@ export const associateAction = () => ({
 export const disassociateAction = () => ({
   id: 'disassociate',
   type: 'confirm',
+  policy: 'update_floatingip',
   title: t('Disassociate'),
   buttonText: t('Disassociate'),
   actionName: t('Disassociate'),
@@ -506,6 +510,7 @@ function ForceReleaseBox() {
 export const releaseAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_floatingip',
   title: t('Release'),
   buttonText: t('Release'),
   actionName: t('Release'),
@@ -837,6 +842,7 @@ export const createPortForwardingAction = ({ fip, enabled } = {}) => {
   return {
     id: 'create-port-forwarding',
     type: 'modal',
+    policy: 'create_floatingip_port_forwarding',
     title: t('Create Port Forwarding'),
     buttonText: t('Create Port Forwarding'),
     width: 960,
@@ -883,6 +889,7 @@ export const editPortForwardingAction = ({ fip }) => {
   return {
     id: 'edit',
     type: 'modal',
+    policy: 'update_floatingip_port_forwarding',
     title: t('Edit Port Forwarding'),
     buttonText: t('Edit'),
     width: 960,
@@ -911,6 +918,7 @@ export const editPortForwardingAction = ({ fip }) => {
 export const deletePortForwardingAction = ({ fip }) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_floatingip_port_forwarding',
   title: t('Delete Port Forwarding'),
   buttonText: t('Delete'),
   actionName: t('delete port forwarding'),

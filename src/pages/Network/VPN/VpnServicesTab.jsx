@@ -19,6 +19,7 @@ import {
 export const createVpnServiceAction = (ctx) => ({
   id: 'create-vpn',
   type: 'modal',
+  policy: 'create_vpnservice',
   title: t('Create VPN'),
   buttonText: t('Create'),
   width: 960,
@@ -45,6 +46,7 @@ export const createVpnServiceAction = (ctx) => ({
 export const editVpnServiceAction = () => ({
   id: 'edit-vpn',
   type: 'modal',
+  policy: 'update_vpnservice',
   title: t('Edit VPN'),
   buttonText: t('Edit'),
   allowed: (item) => item.status === 'ACTIVE',
@@ -57,6 +59,7 @@ export const editVpnServiceAction = () => ({
 export const deleteVpnServiceAction = () =>
   deleteWithCheck({
     id: 'delete-vpnservice',
+    policy: 'delete_vpnservice',
     title: t('Delete VPN'),
     actionName: t('Delete VPN'),
     reason: t('The VPN gateway is in use'),

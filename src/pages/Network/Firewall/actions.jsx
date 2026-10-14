@@ -48,6 +48,7 @@ export const portTabs = (instancePorts, routerPorts) => [
 export const createFirewallAction = (navigate) => ({
   id: 'firewall-create',
   type: 'custom',
+  policy: 'create_firewall_group',
   title: t('Create Firewall'),
   onExecute: () => navigate('/network/firewall/create'),
 });
@@ -55,6 +56,7 @@ export const createFirewallAction = (navigate) => ({
 export const editFirewallAction = ({ projectId }) => ({
   id: 'edit',
   type: 'modal',
+  policy: 'update_firewall_group',
   title: t('Edit'),
   width: 1000,
   allowed: (item) => !isDefaultFirewall(item) && isMine(item, projectId),
@@ -101,6 +103,7 @@ export const editFirewallAction = ({ projectId }) => ({
 export const managePortAction = ({ projectId }) => ({
   id: 'manage-port',
   type: 'modal',
+  policy: 'update_firewall_group',
   title: t('Manage Ports'),
   width: 1000,
   allowed: (item) => isMine(item, projectId),
@@ -131,6 +134,7 @@ export const managePortAction = ({ projectId }) => ({
 export const deleteFirewallAction = ({ isAdmin, projectId, projectMap = {} }) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_firewall_group',
   title: t('Delete Firewall'),
   buttonText: t('Delete'),
   actionName: t('delete firewall'),
@@ -164,6 +168,7 @@ export const firewallActions = (ctx) => {
 export const createPolicyAction = (navigate) => ({
   id: 'create-simple',
   type: 'custom',
+  policy: 'create_firewall_policy',
   title: t('Create Policy'),
   onExecute: () => navigate('/network/firewall-policy/add'),
 });
@@ -171,6 +176,7 @@ export const createPolicyAction = (navigate) => ({
 export const editPolicyAction = ({ projectId, navigate }) => ({
   id: 'edit',
   type: 'custom',
+  policy: 'update_firewall_policy',
   title: t('Edit'),
   allowed: (item) => !isDefaultPolicy(item) && isMine(item, projectId),
   onExecute: (item) => navigate(`/network/firewall-policy/edit/${item.id}`),
@@ -186,6 +192,7 @@ const ruleInsertTips = (item) => {
 export const insertRuleAction = ({ projectId }) => ({
   id: 'insert-rule',
   type: 'modal',
+  policy: 'update_firewall_policy',
   title: t('Insert Rule'),
   width: 1100,
   allowed: (item) => isMine(item, projectId),
@@ -246,6 +253,7 @@ export const insertRuleAction = ({ projectId }) => ({
 export const removeRuleAction = ({ projectId }) => ({
   id: 'remove-rule',
   type: 'modal',
+  policy: 'update_firewall_policy',
   title: t('Remove Rule'),
   width: 1100,
   allowed: (item) => isMine(item, projectId),
@@ -266,6 +274,7 @@ export const removeRuleAction = ({ projectId }) => ({
 export const deletePolicyAction = ({ isAdmin, projectId }) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_firewall_policy',
   title: t('Delete Policy'),
   buttonText: t('Delete'),
   actionName: t('delete policy'),
@@ -296,6 +305,7 @@ export const policyActions = (ctx) => {
 export const createRuleAction = (navigate) => ({
   id: 'rule-create',
   type: 'custom',
+  policy: 'create_firewall_rule',
   title: t('Create Rule'),
   onExecute: () => navigate('/network/firewall-rule/create'),
 });
@@ -303,6 +313,7 @@ export const createRuleAction = (navigate) => ({
 export const editRuleAction = ({ projectId, navigate }) => ({
   id: 'rule-edit',
   type: 'custom',
+  policy: 'update_firewall_rule',
   title: t('Edit Rule'),
   buttonText: t('Edit'),
   allowed: (item) => isMine(item, projectId),
@@ -312,6 +323,7 @@ export const editRuleAction = ({ projectId, navigate }) => ({
 export const deleteRuleAction = ({ isAdmin, projectId }) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_firewall_rule',
   title: t('Delete Rule'),
   buttonText: t('Delete'),
   actionName: t('delete rule'),

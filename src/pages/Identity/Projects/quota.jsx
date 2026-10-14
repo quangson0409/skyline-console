@@ -427,6 +427,7 @@ export const manageQuotaAction = () => {
   return {
     id: 'quota-management',
     type: 'modal',
+    policy: ['os_compute_api:os-quota-sets:update', 'os_compute_api:os-quota-sets:defaults'],
     title: t('Edit Quota'),
     width: 860,
     description: t('Quota set to -1 means there is no quota limit on the current resource.'),

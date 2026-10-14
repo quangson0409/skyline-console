@@ -71,6 +71,7 @@ export const fetchSnapshotVolumeInfo = async (item) => {
 export const editSnapshotAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'modify_image',
   title: t('Edit Instance Snapshot'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
@@ -85,16 +86,19 @@ export const editSnapshotAction = () => ({
   },
 });
 
-export const deleteSnapshotAction = () =>
-  deleteAction({
+export const deleteSnapshotAction = () => ({
+  ...deleteAction({
     name: t('Instance Snapshot'),
     title: t('Delete Instance Snapshot'),
     onDelete: (it) => glanceApi.deleteImage(it.id),
-  });
+  }),
+  policy: 'delete_image',
+});
 
 export const createInstanceFromSnapshotAction = ({ navigate }) => ({
   id: 'instance-create',
   type: 'custom',
+  policy: 'os_compute_api:servers:create',
   title: t('Create Instance'),
   allowed: canSnapshotCreateInstance,
   onExecute: (item) => navigate(`/compute/instance?snapshot=${item.id}`),
@@ -117,6 +121,7 @@ export const createVolumeFromSnapshotAction = () => {
   return {
     id: 'create-volume',
     type: 'modal',
+    policy: 'volume:create_from_image',
     title: t('Create Volume'),
     description: t('Snapshots can be converted into volume and used to create an instance from the volume.'),
     getFormItems: async (item) => {

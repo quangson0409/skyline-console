@@ -49,6 +49,7 @@ const floatingIpStatus = () => ({
 const fipEditAction = () => ({
   id: 'edit-fip',
   type: 'modal',
+  policy: 'update_floatingip',
   title: t('Edit Floating IP'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ description: item.description, qos_policy_id: item.qos_policy_id || undefined }),
@@ -75,6 +76,7 @@ const fipEditAction = () => ({
 const fipDisassociateAction = () => ({
   id: 'disassociate',
   type: 'confirm',
+  policy: 'update_floatingip',
   title: t('Disassociate'),
   actionName: t('Disassociate'),
   allowed: (item) => item.fixed_ip_address !== null && item.fixed_ip_address !== undefined && item.status !== 'DOWN',
@@ -84,6 +86,7 @@ const fipDisassociateAction = () => ({
 const fipReleaseAction = () => ({
   id: 'release',
   type: 'modal',
+  policy: 'delete_floatingip',
   title: t('Release'),
   getDefaultValues: (item) => ({ forceRelease: false, ip: item.floating_ip_address }),
   getFormItems: (item) => [

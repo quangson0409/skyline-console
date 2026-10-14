@@ -33,7 +33,17 @@ export default function ShareGroupTypeDetail() {
         {
           key: 'extraSpec',
           label: t('Extra Specs'),
-          render: () => <KeyValueTab api={groupSpecApi(d.id)} kind="extra" />,
+          render: () => (
+            <KeyValueTab
+              api={groupSpecApi(d.id)}
+              kind="extra"
+              policies={{
+                create: 'share_group_types_spec:create',
+                edit: 'share_group_types_spec:update',
+                del: 'share_group_types_spec:delete',
+              }}
+            />
+          ),
         },
       ]}
       actions={() => shareGroupTypeActionConfigs().rowActions}

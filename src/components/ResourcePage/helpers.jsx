@@ -197,7 +197,7 @@ export const projectColumn = (projectMap = {}, dataIndex = 'project_id') => ({
 });
 
 /** Standard batch/row delete action builder */
-export const deleteAction = ({ name, onDelete, allowed, title }) => ({
+export const deleteAction = ({ name, onDelete, allowed, title, ...rest }) => ({
   id: 'delete',
   type: 'confirm',
   title: title || `${t('Delete')} ${name}`,
@@ -211,6 +211,8 @@ export const deleteAction = ({ name, onDelete, allowed, title }) => ({
       await onDelete(it);
     }
   },
+  // policy / aliasPolicy / enableSystemReader ... pass through
+  ...rest,
 });
 
 /** Normalizes key/value text ("a=1\nb=2") to object, used for metadata / extra specs forms */

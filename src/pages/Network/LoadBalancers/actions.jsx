@@ -47,6 +47,7 @@ const isActive = (it) => it?.provisioning_status === 'ACTIVE';
 export const createLoadBalancerAction = ({ navigate }) => ({
   id: 'lb-create',
   type: 'custom',
+  policy: 'os_load-balancer_api:loadbalancer:post',
   title: t('Create Load Balancer'),
   onExecute: () => navigate('/network/load-balancers/create'),
 });
@@ -54,6 +55,7 @@ export const createLoadBalancerAction = ({ navigate }) => ({
 export const editLoadBalancerAction = ({ isAdmin } = {}) => ({
   id: 'edit_load_balancer',
   type: 'modal',
+  policy: 'os_load-balancer_api:loadbalancer:put',
   title: t('Edit Load Balancer'),
   buttonText: t('Edit'),
   allowed: (item) => !isAdmin && isActive(item),
@@ -69,6 +71,7 @@ export const editLoadBalancerAction = ({ isAdmin } = {}) => ({
 export const deleteLoadBalancerAction = ({ hasAdminRole, projectId } = {}) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'os_load-balancer_api:loadbalancer:delete',
   title: t('Delete Load Balancer'),
   buttonText: t('Delete'),
   actionName: t('delete load balancer'),
@@ -104,6 +107,7 @@ const vipPort = (item) => ({
 export const associateFipAction = ({ isAdmin } = {}) => ({
   id: 'AssociateFip',
   type: 'modal',
+  policy: 'update_floatingip',
   title: t('Associate Floating IP'),
   width: 760,
   allowed: (item) => !isAdmin && isActive(item) && (item.fip === null || item.fip === undefined),
@@ -163,6 +167,7 @@ function FipSelect({ value, onChange, form, fipsFor }) {
 export const disassociateFipAction = () => ({
   id: 'disassociate-fip-from-lb',
   type: 'confirm',
+  policy: 'update_floatingip',
   title: t('Disassociate Floating IP'),
   buttonText: t('Disassociate Floating IP'),
   actionName: t('Disassociate Floating IP'),
@@ -282,6 +287,7 @@ const loadCertificates = async () => {
 export const createListenerAction = (lb) => ({
   id: 'create_listener',
   type: 'modal',
+  policy: 'os_load-balancer_api:listener:post',
   title: t('Create Listener'),
   width: 900,
   allowed: () => isActive(lb),
@@ -330,6 +336,7 @@ const certsFor = (key) => {
 export const editListenerAction = (lb) => ({
   id: 'edit-listener',
   type: 'modal',
+  policy: 'os_load-balancer_api:listener:put',
   title: t('Edit Listener'),
   buttonText: t('Edit'),
   width: 900,
@@ -418,6 +425,7 @@ export const editListenerAction = (lb) => ({
 export const deleteListenerAction = (lb) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'os_load-balancer_api:listener:delete',
   title: t('Delete Listener'),
   buttonText: t('Delete'),
   actionName: t('delete listener'),
@@ -451,6 +459,7 @@ const isOvnOf = (item, lb) => lbOf(item, lb)?.provider === 'ovn';
 export const createPoolAction = (lb) => ({
   id: 'pool-create',
   type: 'modal',
+  policy: 'os_load-balancer_api:pool:post',
   title: t('Create Default Pool'),
   buttonText: t('Create Default Pool'),
   allowed: (item) => !item.default_pool_id && listenerReady(item, lb),
@@ -484,6 +493,7 @@ export const createPoolAction = (lb) => ({
 export const editPoolAction = (lb) => ({
   id: 'pool-edit',
   type: 'modal',
+  policy: 'os_load-balancer_api:pool:put',
   title: t('Edit Default Pool'),
   buttonText: t('Edit Default Pool'),
   allowed: (item) => !!item.default_pool_id && listenerReady(item, lb),
@@ -528,6 +538,7 @@ export const editPoolAction = (lb) => ({
 export const deletePoolAction = (lb) => ({
   id: 'delete-default-pool',
   type: 'confirm',
+  policy: 'os_load-balancer_api:pool:delete',
   title: t('Delete Default Pool'),
   buttonText: t('Delete Default Pool'),
   actionName: t('delete default pool'),
@@ -572,6 +583,7 @@ const loadHm = (item) => {
 export const editHealthMonitorAction = (lb) => ({
   id: 'health-monitor-edit',
   type: 'modal',
+  policy: 'os_load-balancer_api:healthmonitor:put',
   title: t('Edit Health Monitor'),
   buttonText: t('Edit Health Monitor'),
   allowed: (item) => !!item.default_pool_id && listenerReady(item, lb),
@@ -722,6 +734,7 @@ const uniqMembers = (list) => {
 export const addMemberAction = ({ listener, projectId, isAdmin }) => ({
   id: 'manage-member',
   type: 'modal',
+  policy: 'os_load-balancer_api:member:post',
   title: t('Add Member'),
   width: 980,
   allowed: () => isActive(listener) && !!listener.default_pool_id,
@@ -766,6 +779,7 @@ export const addMemberAction = ({ listener, projectId, isAdmin }) => ({
 export const editMemberAction = ({ listener }) => ({
   id: 'member-edit',
   type: 'modal',
+  policy: 'os_load-balancer_api:member:put',
   title: t('Edit Member'),
   buttonText: t('Edit Member'),
   allowed: (item) => isActive(item),
@@ -805,6 +819,7 @@ export const editMemberAction = ({ listener }) => ({
 export const deleteMemberAction = ({ listener }) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'os_load-balancer_api:member:delete',
   title: t('Delete Member'),
   buttonText: t('Delete'),
   actionName: t('delete member'),
@@ -821,6 +836,7 @@ export const deleteMemberAction = ({ listener }) => ({
 export const disableMemberAction = ({ listener }) => ({
   id: 'disable',
   type: 'confirm',
+  policy: 'os_load-balancer_api:member:put',
   title: t('Disable Member'),
   buttonText: t('Disable'),
   actionName: t('disable member'),
@@ -831,6 +847,7 @@ export const disableMemberAction = ({ listener }) => ({
 export const enableMemberAction = ({ listener }) => ({
   id: 'enable',
   type: 'confirm',
+  policy: 'os_load-balancer_api:member:put',
   title: t('Enable Member'),
   buttonText: t('Enable'),
   actionName: t('enable member'),

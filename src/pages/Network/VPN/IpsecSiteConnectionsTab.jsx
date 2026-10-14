@@ -41,6 +41,7 @@ const selectOptions = (list) => list.map((i) => ({ label: i.name || i.id, value:
 export const createIpsecSiteConnectionAction = (ctx) => ({
   id: 'create-ipsec-site-connection',
   type: 'modal',
+  policy: 'create_ipsec_site_connection',
   title: t('Create IPsec Site Connection'),
   buttonText: t('Create'),
   width: 760,
@@ -184,6 +185,7 @@ export const createIpsecSiteConnectionAction = (ctx) => ({
 export const editIpsecSiteConnectionAction = () => ({
   id: 'edit-ipsec-site-connection',
   type: 'modal',
+  policy: 'update_ipsec_site_connection',
   title: t('Edit IPsec Site Connection'),
   buttonText: t('Edit'),
   allowed: (item) => ['ACTIVE', 'DOWN'].includes(item.status),
@@ -195,6 +197,7 @@ export const editIpsecSiteConnectionAction = () => ({
 export const deleteIpsecSiteConnectionAction = (ctx) => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_ipsec_site_connection',
   title: t('Delete IPsec Site Connection'),
   actionName: t('delete ipsec site connection'),
   buttonText: t('Delete'),

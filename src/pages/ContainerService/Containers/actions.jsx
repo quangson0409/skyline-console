@@ -13,9 +13,11 @@ import { checkItemAction } from '../common';
 
 const uuidOf = (it) => it.uuid || it.id;
 
-const confirmAction = ({ id, title, actionName, check, run, isDanger }) => ({
+const confirmAction = ({ id, title, actionName, check, run, isDanger, policy, aliasPolicy }) => ({
   id,
   type: 'confirm',
+  policy,
+  aliasPolicy,
   title,
   actionName: actionName || title,
   isDanger,
@@ -32,21 +34,28 @@ const confirmAction = ({ id, title, actionName, check, run, isDanger }) => ({
 export const createContainerAction = (navigate) => ({
   id: 'create-container',
   type: 'custom',
+  policy: 'container:create',
+  aliasPolicy: 'zun:container:create',
   title: t('Create Container'),
   onExecute: () => navigate('/container-service/containers/create'),
 });
 
-export const deleteContainerAction = () =>
-  deleteAction({
+export const deleteContainerAction = () => ({
+  ...deleteAction({
     name: t('Container'),
     title: t('Delete Container'),
     allowed: (item) => checkItemAction(item, 'delete'),
     onDelete: (it) => zunApi.deleteContainer(uuidOf(it)),
-  });
+  }),
+  policy: 'container:delete',
+  aliasPolicy: 'zun:container:delete',
+});
 
 export const forceDeleteContainerAction = () =>
   confirmAction({
     id: 'force-delete',
+    policy: 'container:delete_force',
+    aliasPolicy: 'zun:container:delete_force',
     title: t('Force Delete Container'),
     check: 'delete_force',
     isDanger: true,
@@ -54,19 +63,56 @@ export const forceDeleteContainerAction = () =>
   });
 
 export const startContainerAction = () =>
-  confirmAction({ id: 'start', title: t('Start Container'), check: 'start', run: (id) => zunApi.startContainer(id) });
+  confirmAction({
+    id: 'start',
+    policy: 'container:start',
+    aliasPolicy: 'zun:container:start',
+    title: t('Start Container'),
+    check: 'start',
+    run: (id) => zunApi.startContainer(id),
+  });
 export const stopContainerAction = () =>
-  confirmAction({ id: 'stop', title: t('Stop Container'), check: 'stop', run: (id) => zunApi.stopContainer(id) });
+  confirmAction({
+    id: 'stop',
+    policy: 'container:stop',
+    aliasPolicy: 'zun:container:stop',
+    title: t('Stop Container'),
+    check: 'stop',
+    run: (id) => zunApi.stopContainer(id),
+  });
 export const rebootContainerAction = () =>
-  confirmAction({ id: 'reboot', title: t('Reboot Container'), check: 'reboot', run: (id) => zunApi.rebootContainer(id) });
+  confirmAction({
+    id: 'reboot',
+    policy: 'container:reboot',
+    aliasPolicy: 'zun:container:reboot',
+    title: t('Reboot Container'),
+    check: 'reboot',
+    run: (id) => zunApi.rebootContainer(id),
+  });
 export const pauseContainerAction = () =>
-  confirmAction({ id: 'pause', title: t('Pause Container'), check: 'pause', run: (id) => zunApi.pauseContainer(id) });
+  confirmAction({
+    id: 'pause',
+    policy: 'container:pause',
+    aliasPolicy: 'zun:container:pause',
+    title: t('Pause Container'),
+    check: 'pause',
+    run: (id) => zunApi.pauseContainer(id),
+  });
 export const unpauseContainerAction = () =>
-  confirmAction({ id: 'unpause', title: t('Unpause Container'), check: 'unpause', run: (id) => zunApi.unpauseContainer(id) });
+  confirmAction({
+    id: 'unpause',
+    policy: 'container:unpause',
+    aliasPolicy: 'zun:container:unpause',
+    title: t('Unpause Container'),
+    check: 'unpause',
+    run: (id) => zunApi.unpauseContainer(id),
+  });
 
 export const killContainerAction = () => ({
   id: 'kill',
   type: 'modal',
+  policy: 'container:kill',
+  aliasPolicy: 'zun:container:kill',
   title: t('Kill Container'),
   buttonText: t('Kill'),
   allowed: (item) => checkItemAction(item, 'kill'),
@@ -89,6 +135,8 @@ export const killContainerAction = () => ({
 export const rebuildContainerAction = () => ({
   id: 'rebuild',
   type: 'modal',
+  policy: 'container:rebuild',
+  aliasPolicy: 'zun:container:rebuild',
   title: t('Rebuild Container'),
   buttonText: t('Rebuild'),
   allowed: (item) => checkItemAction(item, 'rebuild'),
@@ -135,6 +183,8 @@ export const rebuildContainerAction = () => ({
 export const editContainerAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'container:update',
+  aliasPolicy: 'zun:container:update',
   title: t('Edit Container'),
   buttonText: t('Edit'),
   allowed: (item) => checkItemAction(item, 'update'),
@@ -150,6 +200,8 @@ export const editContainerAction = () => ({
 export const executeCommandAction = () => ({
   id: 'execute-command',
   type: 'modal',
+  policy: 'container:execute',
+  aliasPolicy: 'zun:container:execute',
   title: t('Execute Command'),
   buttonText: t('Execute Command'),
   allowed: (item) => checkItemAction(item, 'execute'),
@@ -194,6 +246,8 @@ const selectRule = (label) => ({
 export const attachNetworkAction = () => ({
   id: 'AttachNetwork',
   type: 'modal',
+  policy: 'container:network_attach',
+  aliasPolicy: 'zun:container:network_attach',
   title: t('Attach Network'),
   width: 1000,
   allowed: (item) => checkItemAction(item, 'network_attach_detach'),
@@ -218,6 +272,8 @@ export const attachNetworkAction = () => ({
 export const detachNetworkAction = () => ({
   id: 'DetachNetwork',
   type: 'modal',
+  policy: 'container:network_detach',
+  aliasPolicy: 'zun:container:network_detach',
   title: t('Detach Network'),
   width: 1000,
   allowed: (item) => checkItemAction(item, 'network_attach_detach'),

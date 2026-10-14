@@ -65,6 +65,7 @@ const optionsField = () => ({
 export const createMetadataAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'add_metadef_namespace',
   title: t('Import Metadata'),
   adminOnly: true,
   width: 760,
@@ -95,6 +96,7 @@ export const createMetadataAction = () => ({
 export const editMetadataAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: 'modify_metadef_namespace',
   title: t('Edit Metadata'),
   buttonText: t('Edit'),
   adminOnly: true,
@@ -156,6 +158,11 @@ function ResourceTypeSelect({ value, onChange, data = [] }) {
 export const manageResourceTypesAction = () => ({
   id: 'manage',
   type: 'modal',
+  policy: [
+    'list_metadef_resource_types',
+    'add_metadef_resource_type_association',
+    'remove_metadef_resource_type_association',
+  ],
   title: t('Manage Resource Types'),
   adminOnly: true,
   width: 900,
@@ -195,6 +202,7 @@ export const manageResourceTypesAction = () => ({
 export const deleteMetadataAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'delete_metadef_namespace',
   title: t('Delete Metadata'),
   buttonText: t('Delete'),
   actionName: t('Delete metadata'),

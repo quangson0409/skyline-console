@@ -60,6 +60,7 @@ export const deleteCredentialAction = () => ({
     name: t('Application Credential'),
     onDelete: (it) => keystoneApi.deleteApplicationCredential(it.user_id, it.id),
   }),
+  policy: 'identity:delete_application_credential',
   title: t('Delete Application Credential'),
   actionName: t('delete application credential'),
 });
@@ -74,6 +75,7 @@ const startOfToday = () => {
 export const createCredentialAction = () => ({
   id: 'create-application_credentials',
   type: 'modal',
+  policy: 'identity:create_application_credential',
   title: t('Create Application Credentials'),
   width: 640,
   getFormItems: async () => {

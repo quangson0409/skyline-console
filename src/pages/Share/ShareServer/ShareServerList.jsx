@@ -25,6 +25,7 @@ export const deleteShareServerAction = () => ({
     title: t('Delete Share Server'),
     onDelete: (it) => manilaApi.deleteShareServer(it.id),
   }),
+  policy: 'share_server:delete',
   actionName: t('Delete Share Server'),
 });
 

@@ -69,6 +69,7 @@ const publicTip = () =>
 export const createContainerAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Create Container'),
   description: t("Note: Please consider the container name carefully since it couldn't be changed after created."),
   getDefaultValues: () => ({ isPublic: false }),
@@ -86,6 +87,7 @@ export const createContainerAction = () => ({
 export const accessContainerAction = () => ({
   id: 'access',
   type: 'modal',
+  policy: { rules: ['admin', 'member'], every: false },
   title: t('Update Access'),
   getDefaultValues: async (item) => {
     try {
@@ -99,8 +101,8 @@ export const accessContainerAction = () => ({
   onSubmit: ({ isPublic = false }, item) => updatePublic(item.name, isPublic),
 });
 
-export const deleteContainerAction = () =>
-  deleteAction({
+export const deleteContainerAction = () => ({
+  ...deleteAction({
     name: t('Container'),
     title: t('Delete Container'),
     onDelete: async (it) => {
@@ -113,7 +115,9 @@ export const deleteContainerAction = () =>
         throw error;
       }
     },
-  });
+  }),
+  policy: { rules: ['admin', 'member'], every: false },
+});
 
 /* ------------------------------------------------------------------ detail popover */
 function ContainerPopContent({ name }) {

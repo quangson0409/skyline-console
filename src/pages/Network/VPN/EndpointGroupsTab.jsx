@@ -64,6 +64,8 @@ function LocalSubnetPicker({ value, onChange, form, allSubnets }) {
 export const createEndpointGroupAction = (ctx) => ({
   id: 'create-vpn-endpoint-group',
   type: 'modal',
+  policy: 'create_endpoint_group',
+  aliasPolicy: 'neutron:create_endpoint_group',
   title: t('Create VPN Endpoint Group'),
   buttonText: t('Create'),
   width: 960,
@@ -143,6 +145,8 @@ export const createEndpointGroupAction = (ctx) => ({
 export const editEndpointGroupAction = () => ({
   id: 'edit-vpn-endpoint-groups',
   type: 'modal',
+  policy: 'update_endpoint_group',
+  aliasPolicy: 'neutron:update_endpoint_group',
   title: t('Edit VPN Endpoint Groups'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
@@ -153,6 +157,8 @@ export const editEndpointGroupAction = () => ({
 export const deleteEndpointGroupAction = (ctx) =>
   deleteWithCheck({
     id: 'delete-vpn-endpoint-group',
+    policy: 'delete_endpoint_group',
+    aliasPolicy: 'neutron:delete_endpoint_group',
     title: t('Delete VPN Endpoint Groups'),
     actionName: t('Delete VPN Endpoint Groups'),
     reason: t('the VPN Endpoint policy is in use'),

@@ -52,6 +52,7 @@ export const fetchAvailableComputeHosts = async () => {
 export const updateSegmentAction = () => ({
   id: 'UpdateSegment',
   type: 'modal',
+  policy: 'baremetal:port:Update',
   title: t('Update Segment'),
   buttonText: t('Update'),
   adminOnly: true,
@@ -77,6 +78,7 @@ export const updateSegmentAction = () => ({
 export const addHostAction = () => ({
   id: 'AddHost',
   type: 'modal',
+  policy: 'baremetal:port:create',
   title: t('Add Host'),
   adminOnly: true,
   getDefaultValues: (item) => ({ segment_name: item.name, reserved: false, on_maintenance: false }),
@@ -107,6 +109,7 @@ export const deleteSegmentAction = () => ({
     title: t('Delete'),
     onDelete: (it) => masakariApi.deleteSegment(it.uuid),
   }),
+  policy: 'os_compute_api:os-deferred-delete:force',
   actionName: t('delete segments'),
   adminOnly: true,
 });
@@ -114,6 +117,7 @@ export const deleteSegmentAction = () => ({
 export const createSegmentAction = (navigate) => ({
   id: 'instance-ha-create',
   type: 'custom',
+  policy: 'get_images',
   title: t('Create Segment'),
   onExecute: () => navigate('/ha/segments-admin/create-step-admin'),
 });

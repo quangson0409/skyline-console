@@ -142,6 +142,7 @@ const accessField = (name, projects, extra = {}) => ({
 export const createVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
   id: 'create',
   type: 'modal',
+  policy: 'volume_extension:type_create',
   title: t('Create Volume Type'),
   width: 900,
   getDefaultValues: () => ({ isPublic: true, multiattach: false }),
@@ -190,6 +191,7 @@ export const createVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
 export const editVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
   id: 'edit',
   type: 'modal',
+  policy: 'volume_extension:type_update',
   title: t('Edit'),
   getDefaultValues: (item) => ({ name: item.name, description: item.description }),
   getFormItems: (item) => {
@@ -213,12 +215,15 @@ export const editVolumeTypeAction = ({ existingNames = () => [] } = {}) => ({
   onSubmit: (values, item) => cinderApi.updateVolumeType(item.id, values),
 });
 
-export const deleteVolumeTypeAction = () =>
-  deleteAction({ name: t('Volume Type'), title: t('Delete Volume Type'), onDelete: (it) => cinderApi.deleteVolumeType(it.id) });
+export const deleteVolumeTypeAction = () => ({
+  ...deleteAction({ name: t('Volume Type'), title: t('Delete Volume Type'), onDelete: (it) => cinderApi.deleteVolumeType(it.id) }),
+  policy: 'volume_extension:type_delete',
+});
 
 export const manageQosAction = () => ({
   id: 'manage-qos',
   type: 'modal',
+  policy: 'volume_extension:qos_specs_manage:update',
   title: t('Manage QoS Spec'),
   width: 900,
   getDefaultValues: (item) => ({
@@ -251,6 +256,11 @@ export const manageQosAction = () => ({
 export const manageAccessAction = () => ({
   id: 'manage-access',
   type: 'modal',
+  policy: [
+    'volume_extension:volume_type_access',
+    'volume_extension:volume_type_access:addProjectAccess',
+    'volume_extension:volume_type_access:removeProjectAccess',
+  ],
   title: t('Manage Access'),
   width: 900,
   getDefaultValues: async (item) => {
@@ -299,6 +309,7 @@ export const manageAccessAction = () => ({
 export const createEncryptionAction = () => ({
   id: 'create-encryption',
   type: 'modal',
+  policy: 'volume_extension:volume_type_encryption:create',
   title: t('Create Encryption'),
   allowed: (item) => !hasEncryption(item),
   getDefaultValues: (item) => ({ name: item.name }),
@@ -331,6 +342,7 @@ export const createEncryptionAction = () => ({
 export const deleteEncryptionAction = () => ({
   id: 'delete-encryption',
   type: 'confirm',
+  policy: 'volume_extension:volume_type_encryption:delete',
   title: t('Delete Encryption'),
   actionName: t('Delete Encryption'),
   isDanger: true,
@@ -386,6 +398,7 @@ export const typeExtraSpecActions = (typeId) => {
   const create = {
     id: 'create',
     type: 'modal',
+    policy: 'volume_extension:types_extra_specs:create',
     title: t('Create Extra Spec'),
     formItems: [
       { name: 'keyname', label: t('Parameter'), type: 'input', required: true, placeholder: t('Please input a parameter') },
@@ -396,6 +409,7 @@ export const typeExtraSpecActions = (typeId) => {
   const edit = {
     id: 'edit',
     type: 'modal',
+    policy: 'volume_extension:types_extra_specs:update',
     title: t('Edit Extra Spec'),
     buttonText: t('Edit'),
     getDefaultValues: (item) => ({ keyname: item.keyname, value: item.value }),
@@ -405,11 +419,14 @@ export const typeExtraSpecActions = (typeId) => {
     ],
     onSubmit: ({ value }, item) => cinderApi.setVolumeTypeExtraSpecs(typeId, { [item.keyname]: value }),
   };
-  const del = deleteAction({
-    name: t('Extra Specs'),
-    title: t('Delete Extra Specs'),
-    onDelete: (it) => cinderApi.deleteVolumeTypeExtraSpec(typeId, it.keyname),
-  });
+  const del = {
+    ...deleteAction({
+      name: t('Extra Specs'),
+      title: t('Delete Extra Specs'),
+      onDelete: (it) => cinderApi.deleteVolumeTypeExtraSpec(typeId, it.keyname),
+    }),
+    policy: 'volume_extension:types_extra_specs:delete',
+  };
   return { create, edit, del };
 };
 
@@ -417,6 +434,7 @@ export const typeExtraSpecActions = (typeId) => {
 export const createQosAction = () => ({
   id: 'create',
   type: 'modal',
+  policy: 'volume_extension:qos_specs_manage:create',
   title: t('Create QoS Spec'),
   formItems: [
     { name: 'name', label: t('Name'), type: 'input', required: true, placeholder: t('Please input name') },
@@ -428,6 +446,7 @@ export const createQosAction = () => ({
 export const editConsumerAction = () => ({
   id: 'editConsumer',
   type: 'modal',
+  policy: 'volume_extension:qos_specs_manage:update',
   title: t('Edit Consumer'),
   buttonText: t('Edit'),
   getDefaultValues: (item) => ({ consumer: item.consumer }),
@@ -435,8 +454,10 @@ export const editConsumerAction = () => ({
   onSubmit: ({ consumer }, item) => cinderApi.updateQosSpec(item.id, { consumer }),
 });
 
-export const deleteQosAction = () =>
-  deleteAction({ name: t('QoS Spec'), title: t('Delete QoS Spec'), onDelete: (it) => cinderApi.deleteQosSpec(it.id) });
+export const deleteQosAction = () => ({
+  ...deleteAction({ name: t('QoS Spec'), title: t('Delete QoS Spec'), onDelete: (it) => cinderApi.deleteQosSpec(it.id) }),
+  policy: 'volume_extension:qos_specs_manage:delete',
+});
 
 export const qosColumns = () => [
   nameColumn({ linkTo: (r) => `/storage/volume-type-admin/qos/detail/${r.id}` }),
@@ -449,6 +470,7 @@ export const qosKeyActions = (qosId) => {
   const create = {
     id: 'create',
     type: 'modal',
+    policy: 'volume_extension:qos_specs_manage:update',
     title: t('Create Extra Spec'),
     getDefaultValues: () => ({ keyname: QOS_KEYS[0] }),
     formItems: [
@@ -460,6 +482,7 @@ export const qosKeyActions = (qosId) => {
   const edit = {
     id: 'edit',
     type: 'modal',
+    policy: 'volume_extension:qos_specs_manage:update',
     title: t('Edit Extra Spec'),
     buttonText: t('Edit'),
     getDefaultValues: (item) => ({ keyname: item.keyname, value: Number.isNaN(Number(item.value)) ? undefined : Number(item.value) }),
@@ -470,10 +493,13 @@ export const qosKeyActions = (qosId) => {
     onSubmit: ({ value }, item) =>
       cinderApi.updateQosSpec(qosId, { [item.keyname]: typeof value === 'number' ? String(value) : null }),
   };
-  const del = deleteAction({
-    name: t('Extra Specs'),
-    title: t('Delete Extra Specs'),
-    onDelete: (it) => cinderApi.deleteQosSpecKeys(qosId, [it.keyname]),
-  });
+  const del = {
+    ...deleteAction({
+      name: t('Extra Specs'),
+      title: t('Delete Extra Specs'),
+      onDelete: (it) => cinderApi.deleteQosSpecKeys(qosId, [it.keyname]),
+    }),
+    policy: 'volume_extension:qos_specs_manage:update',
+  };
   return { create, edit, del };
 };

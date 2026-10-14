@@ -27,6 +27,7 @@ const jsonRule = () => ({
 export const createQueueAction = () => ({
   id: 'create-queue',
   type: 'modal',
+  policy: 'queues:create',
   title: t('Create Queue'),
   formItems: [
     {
@@ -53,6 +54,7 @@ export const createQueueAction = () => ({
 export const deleteQueueAction = () => ({
   id: 'delete',
   type: 'confirm',
+  policy: 'queues:delete',
   title: t('Delete Queue'),
   buttonText: t('Delete'),
   actionName: t('Delete queue'),
@@ -79,6 +81,7 @@ export const purgeQueue = async (name) => {
 export const purgeQueueAction = () => ({
   id: 'purge-queue',
   type: 'confirm',
+  policy: 'queues:purge',
   title: t('Purge Queue'),
   buttonText: t('Purge'),
   actionName: t('Purge all messages from queue'),
@@ -96,6 +99,7 @@ export const purgeQueueAction = () => ({
 export const editMetadataAction = () => ({
   id: 'edit-queue-metadata',
   type: 'modal',
+  policy: 'queues:update',
   title: t('Edit Queue Metadata'),
   buttonText: t('Edit Metadata'),
   getDefaultValues: async (item) => {

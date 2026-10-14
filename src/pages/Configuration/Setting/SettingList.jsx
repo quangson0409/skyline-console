@@ -30,6 +30,8 @@ export const fetchSettings = async () => {
 export const viewSettingAction = () => ({
   id: 'view',
   type: 'custom',
+  policy: { rules: ['admin', 'reader'], every: false },
+  enableSystemReader: true,
   title: t('View Detail'),
   onExecute: (item) =>
     Modal.info({
@@ -52,6 +54,7 @@ export const viewSettingAction = () => ({
 export const editSettingAction = () => ({
   id: 'edit',
   type: 'modal',
+  policy: { rules: ['admin'], every: false },
   title: t('Edit'),
   adminOnly: true,
   width: 760,
@@ -74,6 +77,7 @@ export const editSettingAction = () => ({
 export const resetSettingAction = () => ({
   id: 'reset',
   type: 'confirm',
+  policy: { rules: ['admin'], every: false },
   title: t('Reset To Initial Value'),
   actionName: t('Reset To Initial Value'),
   isDanger: true,
