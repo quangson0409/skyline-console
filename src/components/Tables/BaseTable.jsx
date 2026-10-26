@@ -147,6 +147,7 @@ export default function BaseTable({
         <ItemActionButtons
           firstAction={rowActions.firstAction}
           moreActions={rowActions.moreActions}
+          menuVariant={rowActions.menuVariant}
           item={record}
           isAdmin={isAdmin}
           onActionClick={onActionClick}

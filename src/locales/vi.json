@@ -1434,7 +1434,7 @@
   "Only a MAC address or an OpenFlow based datapath_id of the switch are accepted in this field": "Trường này chỉ chấp nhận địa chỉ MAC hoặc datapath_id dựa trên OpenFlow của switch",
   "Open External Gateway": "Mở cổng ngoài",
   "OpenStack Service": "Dịch vụ OpenStack",
-  "OpenStack Yoga / 2024.1 Ready": "Sẵn sàng cho OpenStack Yoga / 2024.1",
+  "OpenStack 2026.1 Ready": "Sẵn sàng cho OpenStack 2026.1",
   "operate": "thao tác",
   "Operating System": "Hệ điều hành",
   "Operation completed successfully": "Thao tác hoàn tất thành công",

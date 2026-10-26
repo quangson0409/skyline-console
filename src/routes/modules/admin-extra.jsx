@@ -25,6 +25,7 @@ const MetadataDetail = lazy(() => import('@/pages/Configuration/Metadata/Metadat
 
 /* Maintenance (legacy pages/management/routes/index.js) */
 const RecycleBinList = lazy(() => import('@/pages/Management/RecycleBin/RecycleBinList'));
+const AuditLogList = lazy(() => import('@/pages/Management/AuditLogs/AuditLogList'));
 const RecycleBinDetail = lazy(() => import('@/pages/Management/RecycleBin/RecycleBinDetail'));
 
 export default [
@@ -52,4 +53,8 @@ export default [
   { path: 'management/recycle-bin/detail/:id', component: RecycleBinDetail },
   { path: 'management/recycle-bin-admin', component: RecycleBinList },
   { path: 'management/recycle-bin-admin/detail/:id', component: RecycleBinDetail },
+
+  // audit trail written by audit-proxy: own activity / all users (administrators)
+  { path: 'management/audit-logs', component: AuditLogList },
+  { path: 'management/audit-logs-admin', component: AuditLogList },
 ];

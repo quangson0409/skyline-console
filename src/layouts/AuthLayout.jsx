@@ -115,7 +115,7 @@ export default function AuthLayout() {
               }}
             />
             <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0', letterSpacing: 0.3 }}>
-              {t('OpenStack Yoga / 2024.1 Ready')}
+              {t('OpenStack 2026.1 Ready')}
             </span>
           </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { checkActionPolicy, usePolicyStore } from '@/core/policy';
+import { buildGroupedMenuItems } from '@/components/Action/moreMenu';
 import { useParams, useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Card,
@@ -763,33 +764,12 @@ export default function InstanceDetail() {
   const rowActionConfig = useMemo(() => A.getRowActions(), [A]);
   const moreMenuItems = useMemo(() => {
     if (!actionItem) return [];
-    const toItem = (act) => ({
-      key: act.id,
-      label: act.title,
-      title: act.description || act.title,
-      danger: Boolean(act.isDanger),
-      onClick: () => (act.id === 'delete' ? handleDeleteInstance() : handleAction(act, actionItem)),
+    // same builder as the Instance list rows (components/Action/moreMenu.jsx)
+    return buildGroupedMenuItems(rowActionConfig.moreActions, {
+      can,
+      tooltip: (act) => act.description || act.title,
+      onClick: (act) => (act.id === 'delete' ? handleDeleteInstance() : handleAction(act, actionItem)),
     });
-    const groupLabel = (text) => (
-      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-        {text}
-      </span>
-    );
-    const items = [];
-    const singles = [];
-    rowActionConfig.moreActions.forEach((group, idx) => {
-      if (group.actions) {
-        const children = group.actions.filter(can).map(toItem);
-        if (children.length) items.push({ type: 'group', key: `group-${idx}`, label: groupLabel(group.title), children });
-      } else if (group.action && can(group.action)) {
-        singles.push(toItem(group.action));
-      }
-    });
-    if (singles.length) {
-      if (items.length) items.push({ type: 'divider' });
-      items.push(...singles);
-    }
-    return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionItem, rowActionConfig, isAdmin, handleAction]);
 

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { nextRun, nextRuns, parseCron } from './cron.js';
 import { encrypt } from './crypto.js';
 import { authenticateAppCredential, HttpError, validateToken } from './openstack.js';
+import { normalizeRetention } from './retention.js';
 
 const BASE = '/api/v1';
 const MAX_BODY = 64 * 1024;
@@ -107,10 +108,33 @@ export function createApp({ cfg, store, key, runner, log }) {
     if (!['full', 'incremental'].includes(v)) throw bad("mode must be 'full' or 'incremental'");
     return v;
   }
+  /** instances to back up: [{ id, name? }], 1..maxVms, unique; every volume attached to them is backed up */
+  function validVms(v) {
+    if (!Array.isArray(v) || !v.length) throw bad('vms must be a non-empty list of instances');
+    if (v.length > cfg.maxVms) throw bad(`a schedule can back up at most ${cfg.maxVms} instances`);
+    const seen = new Set();
+    return v.map((x) => {
+      const id = typeof x === 'string' ? x : x?.id;
+      if (typeof id !== 'string' || !/^[0-9a-zA-Z-]{8,64}$/.test(id)) throw bad('every vms entry needs a valid instance id');
+      if (seen.has(id)) throw bad(`instance ${id} is listed twice`);
+      seen.add(id);
+      const name = typeof x === 'object' && typeof x.name === 'string' ? x.name.slice(0, 255) : '';
+      return { id, name };
+    });
+  }
+  /** max minutes to wait for the backup to become available (null/undefined = service default BACKUP_WAIT_SECONDS) */
+  function validTimeout(v) {
+    if (v === null || v === undefined || v === '') return null;
+    if (!Number.isInteger(v) || v < 5 || v > 2880) throw bad('timeout_minutes must be an integer between 5 and 2880');
+    return v;
+  }
+  /** Proxmox style prune options: keep_last / keep_hourly / keep_daily / keep_weekly / keep_monthly / keep_yearly / keep_all */
   function validKeep(r) {
-    const n = r?.keep_last;
-    if (!Number.isInteger(n) || n < 1 || n > 1000) throw bad('retention.keep_last must be an integer between 1 and 1000');
-    return { keep_last: n };
+    try {
+      return normalizeRetention(r);
+    } catch (e) {
+      throw bad(e.message);
+    }
   }
   async function validCredential(c, identity) {
     if (!c || typeof c.application_credential_id !== 'string' || typeof c.secret !== 'string' || !c.application_credential_id || !c.secret) {
@@ -169,7 +193,11 @@ export function createApp({ cfg, store, key, runner, log }) {
       if (method === 'POST') {
         const b = await readBody(req);
         const name = validName(b.name);
-        if (typeof b.volume_id !== 'string' || !/^[0-9a-zA-Z-]{8,64}$/.test(b.volume_id)) throw bad('volume_id is required');
+        // either instances (back up every attached volume) or a single volume (older schedules / API users)
+        const hasVms = b.vms !== undefined;
+        if (hasVms && b.volume_id !== undefined) throw bad('give either vms or volume_id, not both');
+        const vms = hasVms ? validVms(b.vms) : null;
+        if (!hasVms && (typeof b.volume_id !== 'string' || !/^[0-9a-zA-Z-]{8,64}$/.test(b.volume_id))) throw bad('vms (instances) or volume_id is required');
         const mode = validMode(b.mode);
         if (typeof b.cron !== 'string') throw bad('cron is required');
         const spec = checkCron(b.cron);
@@ -182,12 +210,13 @@ export function createApp({ cfg, store, key, runner, log }) {
           id: randomUUID(),
           name,
           project_id: identity.project_id,
-          volume_id: b.volume_id,
+          ...(vms ? { vms, volume_id: null } : { volume_id: b.volume_id }),
           mode,
           cron: spec.expr,
           retention,
           enabled,
-          force_in_use: b.force_in_use === true,
+          force_in_use: vms ? true : b.force_in_use === true, // attached volumes are always in-use
+          timeout_minutes: validTimeout(b.timeout_minutes),
           application_credential_id: b.credential.application_credential_id,
           credential_enc,
           created_by: identity.user_id,
@@ -222,6 +251,11 @@ export function createApp({ cfg, store, key, runner, log }) {
         if (b.mode !== undefined) s.mode = validMode(b.mode);
         if (b.retention !== undefined) s.retention = validKeep(b.retention);
         if (b.force_in_use !== undefined) s.force_in_use = b.force_in_use === true;
+        if (b.vms !== undefined) {
+          if (!s.vms) throw bad('this schedule backs up a single volume; create a new schedule to back up instances');
+          s.vms = validVms(b.vms);
+        }
+        if (b.timeout_minutes !== undefined) s.timeout_minutes = validTimeout(b.timeout_minutes);
         if (b.cron !== undefined) {
           if (typeof b.cron !== 'string') throw bad('cron must be a string');
           s.cron = checkCron(b.cron).expr;

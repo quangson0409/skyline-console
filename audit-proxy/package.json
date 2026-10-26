@@ -1,0 +1,19 @@
+{
+  "name": "audit-proxy",
+  "version": "1.0.0",
+  "description": "Audit-log reverse proxy for the Skyline console: records POST/PUT/PATCH/DELETE into MariaDB",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "maintenance": "node src/maintenance.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "mysql2": "3.24.6"
+  }
+}

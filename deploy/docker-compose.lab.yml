@@ -1,0 +1,71 @@
+# Lab deployment on the deployment node (10.0.29.5): console + audit-proxy + backup-scheduler.
+# Only the console publishes a port (8080); audit-proxy and backup-scheduler stay on the internal network.
+# The Kolla Skyline on the VIP (:9999) is untouched and remains the fallback UI.
+#
+#   cd /opt/skyline-console-new && docker compose -f docker-compose.lab.yml up -d
+#
+# Secrets live in /etc/kolla/audit-proxy (0600), never in this file:
+#   db.env          DB_PASSWORD                       (created by audit-proxy/scripts/provision-db.sh)
+#   scheduler.env   SCHEDULER_SECRET, AUDIT_INTERNAL_SECRET
+name: skyline-console
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  audit-proxy:
+    <<: *restart
+    image: 10.0.29.5:5000/skyline/audit-proxy:1.0.0
+    env_file:
+      - /etc/kolla/audit-proxy/db.env
+      - /etc/kolla/audit-proxy/scheduler.env
+    environment:
+      PORT: "8788"
+      DB_DRIVER: mariadb
+      DB_HOST: 10.0.29.10
+      DB_NAME: skyline_audit
+      DB_USER: audit_app
+      KEYSTONE_URL: http://10.0.29.10:5000
+      UPSTREAM_API: http://10.0.29.10:9999
+      UPSTREAM_SCHEDULER: http://backup-scheduler:8787
+      UPSTREAM_CINDER: http://10.0.29.10:8776
+      RETENTION_DAYS: "180"
+    networks: [skyline-net]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8788/audit-api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  backup-scheduler:
+    <<: *restart
+    image: 10.0.29.5:5000/skyline/backup-scheduler:1.0.0
+    env_file:
+      - /etc/kolla/audit-proxy/scheduler.env
+    environment:
+      PORT: "8787"
+      DATA_DIR: /data
+      TZ: Asia/Ho_Chi_Minh
+      KEYSTONE_URL: http://10.0.29.10:5000
+      # automatic backups go through audit-proxy so they are recorded as actor "backup-scheduler"
+      CINDER_URL: http://audit-proxy:8788/upstream/cinder/v3/{project_id}
+      # run / per volume results (including failures) are reported to audit-proxy
+      AUDIT_URL: http://audit-proxy:8788
+    volumes:
+      - backup-scheduler-data:/data
+    networks: [skyline-net]
+    depends_on: [audit-proxy]
+
+  console:
+    <<: *restart
+    image: 10.0.29.5:5000/skyline/console:2.0.0
+    ports:
+      - "8080:80"
+    networks: [skyline-net]
+    depends_on: [audit-proxy]
+
+networks:
+  skyline-net:
+
+volumes:
+  backup-scheduler-data:

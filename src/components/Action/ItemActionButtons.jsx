@@ -5,6 +5,7 @@ import { useTranslation } from '@/core/i18n';
 import { useLocation } from 'react-router-dom';
 import { checkActionPolicy, usePolicyStore } from '@/core/policy';
 import { useAuthStore } from '@/store/authStore';
+import { buildGroupedMenuItems } from './moreMenu';
 
 /**
  * ItemActionButtons - Ant Design 5 Table Row Action Toolbar
@@ -19,6 +20,8 @@ export default function ItemActionButtons({
   item = {},
   onActionClick,
   isAdmin = false,
+  // 'grouped': same menu as the Instance detail page (group headers, titles only, singles after a divider)
+  menuVariant,
 }) {
   const { t } = useTranslation();
   const { pathname } = useLocation();
@@ -52,7 +55,16 @@ export default function ItemActionButtons({
   // Build Antd 5 dropdown items
   const menuItems = [];
 
-  moreActions.forEach((group, gIdx) => {
+  if (menuVariant === 'grouped') {
+    menuItems.push(
+      ...buildGroupedMenuItems(moreActions, {
+        can: checkAllowed,
+        onClick: (act) => onActionClick && onActionClick(act, item),
+      })
+    );
+  }
+
+  (menuVariant === 'grouped' ? [] : moreActions).forEach((group, gIdx) => {
     // If it's a categorized group with actions array
     if (group.actions && Array.isArray(group.actions)) {
       const groupChildren = group.actions

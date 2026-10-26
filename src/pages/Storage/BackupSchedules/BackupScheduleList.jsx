@@ -10,6 +10,8 @@ import {
   SchedulerUnavailable,
   VolumeCell,
   createScheduleAction,
+  describeRetention,
+  describeCounts,
   deleteScheduleAction,
   describeCron,
   disableScheduleAction,
@@ -42,10 +44,19 @@ export const scheduleColumns = ({ isAdmin, projectMap, onToggle }) =>
     nameColumn({ linkTo: (r) => `/storage/${isAdmin ? 'backup-schedule-admin' : 'backup-schedule'}/detail/${r.id}` }),
     isAdmin && projectColumn(projectMap),
     {
-      title: t('Volume ID/Name'),
+      title: t('Targets'),
       dataIndex: 'volume_name',
       key: 'volume_name',
-      render: (value, r) => <VolumeCell id={r.volume_id} name={value} isAdmin={isAdmin} />,
+      exportRender: (_v, r) => (r.vms?.length ? r.vms.map((x) => x.name || x.id).join('; ') : r.volume_name || r.volume_id || ''),
+      render: (value, r) =>
+        r.vms?.length ? (
+          <Tooltip title={r.vms.map((x) => x.name || x.id.slice(0, 8)).join(', ')}>
+            <span>{t('{n} instances', { n: r.vms.length })}</span>
+            <div style={{ fontSize: 12, color: '#64748b' }}>{r.vms.slice(0, 2).map((x) => x.name || x.id.slice(0, 8)).join(', ')}{r.vms.length > 2 ? '…' : ''}</div>
+          </Tooltip>
+        ) : (
+          <VolumeCell id={r.volume_id} name={value} isAdmin={isAdmin} />
+        ),
     },
     { title: t('Backup Mode'), dataIndex: 'mode', key: 'mode', render: (v) => modeText(v) },
     {
@@ -65,7 +76,8 @@ export const scheduleColumns = ({ isAdmin, projectMap, onToggle }) =>
       title: t('Retention'),
       dataIndex: 'retention',
       key: 'retention',
-      render: (v) => (v?.keep_last ? t('Keep last {n}', { n: v.keep_last }) : '-'),
+      exportRender: (v) => describeRetention(v),
+      render: (v) => describeRetention(v),
     },
     {
       title: t('Enabled'),
@@ -79,10 +91,16 @@ export const scheduleColumns = ({ isAdmin, projectMap, onToggle }) =>
       key: 'last_run',
       render: (v) =>
         v ? (
-          <div>
-            {runStatusTag(v.status)}
-            <div style={{ fontSize: 12, color: '#64748b' }}>{formatTime(v.started_at)}</div>
-          </div>
+          <Tooltip title={v.error || ''}>
+            <div>
+              {runStatusTag(v.status)}
+              <div style={{ fontSize: 12, color: '#64748b' }}>{formatTime(v.started_at)}</div>
+              {describeCounts(v.counts) ? <div style={{ fontSize: 12, color: '#64748b' }}>{describeCounts(v.counts)}</div> : null}
+              {v.error ? (
+                <div style={{ fontSize: 12, color: '#cf1322', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.error}</div>
+              ) : null}
+            </div>
+          </Tooltip>
         ) : (
           runStatusTag(null)
         ),

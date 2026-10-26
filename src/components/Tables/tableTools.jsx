@@ -1,4 +1,6 @@
 import React, { isValidElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router-dom';
 import { Button, Checkbox, Dropdown, Space, Tooltip, message } from 'antd';
 import { DownloadOutlined, SettingOutlined } from '@ant-design/icons';
 import { t } from '@/core/i18n';
@@ -18,10 +20,30 @@ const getPath = (obj, path) => {
   return parts.reduce((acc, k) => (acc === undefined || acc === null ? undefined : acc[k]), obj);
 };
 
+const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#x27;': "'", '&#39;': "'", '&nbsp;': ' ' };
+
+/** displayed text of a React node (what the user sees in the cell), '' when it cannot be rendered */
+const nodeText = (node) => {
+  try {
+    const html = renderToStaticMarkup(<MemoryRouter>{node}</MemoryRouter>);
+    return html
+      .replace(/<(br|\/div|\/p|\/li)\s*\/?>/gi, '; ')
+      .replace(/<[^>]*>/g, '')
+      .replace(/&(amp|lt|gt|quot|#x27|#39|nbsp);/g, (m) => ENTITIES[m])
+      .replace(/\s+/g, ' ')
+      .replace(/(\s*;)+\s*/g, '; ')
+      .replace(/^;\s*|;\s*$/g, '')
+      .trim();
+  } catch {
+    return '';
+  }
+};
+
 const toText = (value) => {
   if (value === undefined || value === null || value === '') return '';
-  if (Array.isArray(value)) return value.map(toText).filter(Boolean).join('\n');
-  if (isValidElement(value)) return '';
+  if (typeof value === 'boolean') return value ? t('Yes') : t('No');
+  if (Array.isArray(value)) return value.map(toText).filter(Boolean).join('; ');
+  if (isValidElement(value)) return nodeText(value);
   if (typeof value === 'object') {
     if ('name' in value && value.name) return String(value.name);
     try {
@@ -33,14 +55,18 @@ const toText = (value) => {
   return String(value);
 };
 
-/** text of a cell: column.exportRender > plain render output > raw value */
+/** text of a cell: column.exportRender > what render shows (string, number or JSX) > raw value */
 const cellText = (col, record, index) => {
   const raw = getPath(record, col.dataIndex);
   if (typeof col.exportRender === 'function') return toText(col.exportRender(raw, record, index));
   if (typeof col.render === 'function') {
     try {
       const out = col.render(raw, record, index);
-      if (typeof out === 'string' || typeof out === 'number') return String(out);
+      if (out !== undefined && out !== null && typeof out !== 'object') return toText(out);
+      if (isValidElement(out) || Array.isArray(out)) {
+        const text = toText(out);
+        if (text) return text;
+      }
     } catch {
       // fall back to the raw value
     }
@@ -55,7 +81,9 @@ const titleText = (col) => {
 };
 
 const csvEscape = (v) => {
-  const s = String(v ?? '');
+  let s = String(v ?? '');
+  // spreadsheet formula injection: a cell starting with = + - @ would be evaluated by Excel
+  if (/^[=+@\t\r]|^-(?![\d.\s]|$)/.test(s)) s = `'${s}`;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
@@ -72,8 +100,9 @@ export const exportCsv = (columns, rows, filename) => {
   );
   const lines = [cols.map((c) => csvEscape(titleText(c))).join(',')];
   rows.forEach((r, i) => lines.push(cols.map((c) => csvEscape(cellText(c, r, i))).join(',')));
-  // BOM so Excel reads UTF-8 (Vietnamese) correctly
-  const blob = new Blob([`\uFEFF${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
+  // BOM so Excel reads UTF-8 (Vietnamese) correctly; `sep=,` pins the delimiter (a ';' list separator,
+  // e.g. vi-VN, would otherwise put the whole row in one column)
+  const blob = new Blob([`\uFEFFsep=,\r\n${lines.join('\r\n')}`], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -127,7 +156,10 @@ export function TableTools({
       return;
     }
     const visible = columns.filter((c) => !hidden.includes(columnKey(c)));
-    const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+    // local time like legacy (toISOString would stamp UTC)
+    const d = new Date();
+    const p2 = (n) => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}-${p2(d.getMinutes())}-${p2(d.getSeconds())}`;
     exportCsv(visible, rows, `${(resourceName || 'data').replace(/[\\/:*?"<>|\s]+/g, '-')}-${stamp}.csv`);
   };
 

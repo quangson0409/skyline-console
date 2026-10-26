@@ -32,8 +32,14 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/scheduler-api/, '/api/v1'),
       },
+      // audit log viewer API (audit-proxy/)
+      '/audit-api': {
+        target: process.env.AUDIT_PROXY_URL || 'http://127.0.0.1:8788',
+        changeOrigin: true,
+      },
       '/api': {
-        target: 'http://10.0.29.10:9999',
+        // set AUDIT_PROXY_URL to record POST/PUT/PATCH/DELETE made from the dev server as well
+        target: process.env.AUDIT_PROXY_URL || 'http://10.0.29.10:9999',
         changeOrigin: true,
         secure: false,
       },

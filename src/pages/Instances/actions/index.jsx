@@ -56,6 +56,7 @@ export function buildInstanceActions(isAdminPage = false) {
     isAdminPage
       ? {
           firstAction: s.Console,
+          menuVariant: 'grouped',
           moreActions: [
             { title: t('Instance Status'), actions: statusActions },
             { action: c.Migrate },
@@ -67,6 +68,7 @@ export function buildInstanceActions(isAdminPage = false) {
         }
       : {
           firstAction: s.Console,
+          menuVariant: 'grouped',
           moreActions: [
             { title: t('Instance Status'), actions: statusActions },
             { title: t('Related Resources'), actions: resourceActions },

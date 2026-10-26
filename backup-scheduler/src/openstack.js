@@ -99,12 +99,32 @@ export async function authenticateAppCredential(cfg, credential) {
 }
 
 /** Cinder client bound to one authenticated session. */
-export function cinderClient(cfg, session) {
+export function cinderClient(cfg, session, { onBehalfOf } = {}) {
   const h = { 'X-Auth-Token': session.token, 'OpenStack-API-Version': 'volume 3.51' };
+  if (cfg.auditSecret) {
+    // audit-proxy trusts these only together with the shared secret
+    h['X-Audit-Secret'] = cfg.auditSecret;
+    h['X-Audit-Actor'] = 'backup-scheduler';
+    if (onBehalfOf) h['X-Audit-On-Behalf-Of'] = String(onBehalfOf).slice(0, 200).replace(/[\r\n]+/g, ' ');
+  }
   const u = (p) => `${session.cinderUrl}${p}`;
   return {
     async getVolume(id) {
       return (await request(u(`/volumes/${encodeURIComponent(id)}`), { headers: h })).json?.volume;
+    },
+    /** All volumes of the project with their attachments (detail), following marker paging. */
+    async listVolumes() {
+      const out = [];
+      let marker = null;
+      for (let i = 0; i < 50; i++) {
+        const qs = new URLSearchParams({ limit: '500' });
+        if (marker) qs.set('marker', marker);
+        const page = (await request(u(`/volumes/detail?${qs}`), { headers: h })).json?.volumes || [];
+        out.push(...page);
+        if (page.length < 500) break;
+        marker = page[page.length - 1].id;
+      }
+      return out;
     },
     async createBackup(body) {
       return (await request(u('/backups'), { method: 'POST', headers: h, body: { backup: body } })).json?.backup;

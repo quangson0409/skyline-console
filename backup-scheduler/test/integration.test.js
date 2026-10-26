@@ -11,8 +11,28 @@ const silent = () => {};
 const SECRET = 'integration-test-secret-0123456789';
 const USER = { 'X-Auth-Token': 'user-token' };
 
+/** audit-proxy stand-in: collects the events the scheduler reports */
+function startAuditFake() {
+  const events = [];
+  const server = createServer((req, res) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      if (req.url === '/audit-api/internal/events' && req.headers['x-audit-secret'] === 'audit-test-secret') {
+        events.push(...JSON.parse(Buffer.concat(chunks).toString()).events);
+        return res.writeHead(202).end('{}');
+      }
+      return res.writeHead(403).end('{}');
+    });
+  });
+  return new Promise((r) => server.listen(0, '127.0.0.1', () => r({ server, events, url: `http://127.0.0.1:${server.address().port}` })));
+}
+
 function startFake() {
-  const state = { backups: [], volumes: { 'vol-aaaaaaaa': { id: 'vol-aaaaaaaa', status: 'available' }, 'vol-inuse01': { id: 'vol-inuse01', status: 'in-use' } }, seq: 0, created: [] };
+  const state = { backups: [], volumes: { 'vol-aaaaaaaa': { id: 'vol-aaaaaaaa', status: 'available' }, 'vol-inuse01': { id: 'vol-inuse01', status: 'in-use' },
+      'vol-boot-vm1': { id: 'vol-boot-vm1', name: 'boot', status: 'in-use', attachments: [{ server_id: 'vm-0001-aaaa' }] },
+      'vol-data-vm1': { id: 'vol-data-vm1', name: 'data', status: 'in-use', attachments: [{ server_id: 'vm-0001-aaaa' }] },
+      'vol-bad-vm2': { id: 'vol-bad-vm2', name: 'bad', status: 'in-use', attachments: [{ server_id: 'vm-0002-bbbb' }] } }, seq: 0, created: [] };
   const server = createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
     const chunks = [];
@@ -46,6 +66,7 @@ function startFake() {
         if (req.headers['x-auth-token'] !== 'app-token') return send(401, {});
         const rest = p.slice('/volume/v3/p1'.length);
         let m;
+        if (rest === '/volumes/detail' && req.method === 'GET') return send(200, { volumes: Object.values(state.volumes) });
         if ((m = rest.match(/^\/volumes\/(.+)$/)) && req.method === 'GET') {
           const v = state.volumes[m[1]];
           return v ? send(200, { volume: v }) : send(404, {});
@@ -69,7 +90,11 @@ function startFake() {
             state.backups = state.backups.filter((x) => x !== b);
             return send(404, {});
           }
-          if (b.status === 'creating' && ++b.polls >= 2) b.status = 'available';
+          if (b.status === 'creating' && b.volume_id === 'vol-bad-vm2') {
+            b.status = 'error';
+            b.fail_reason = 'simulated failure';
+          }
+          if (b.status === 'creating' && !state.stuck && ++b.polls >= 2) b.status = 'available';
           return send(200, { backup: b });
         }
       }
@@ -91,6 +116,7 @@ const waitFor = async (fn, ms = 15000) => {
 
 test('scheduler end to end', async (t) => {
   const fake = await startFake();
+  const audit = await startAuditFake();
   const dataDir = mkdtempSync(join(tmpdir(), 'bs-'));
   const env = {
     HOST: '127.0.0.1',
@@ -99,6 +125,8 @@ test('scheduler end to end', async (t) => {
     KEYSTONE_URL: fake.url,
     SCHEDULER_SECRET: SECRET,
     TZ: 'UTC',
+    AUDIT_URL: audit.url,
+    AUDIT_INTERNAL_SECRET: 'audit-test-secret',
     TICK_SECONDS: '1',
     BACKUP_POLL_MS: '30',
     MIN_INTERVAL_MINUTES: '1',
@@ -108,6 +136,8 @@ test('scheduler end to end', async (t) => {
     await svc.stop().catch(() => {});
     fake.server.close();
     fake.server.closeAllConnections?.();
+    audit.server.close();
+    audit.server.closeAllConnections?.();
     rmSync(dataDir, { recursive: true, force: true });
   });
   const api = async (method, path, { token = 'user-token', body } = {}) => {
@@ -136,6 +166,9 @@ test('scheduler end to end', async (t) => {
     assert.equal((await api('POST', '/schedules', { body: { ...base, cron: 'nope' } })).status, 400);
     assert.equal((await api('POST', '/schedules', { body: { ...base, mode: 'x' } })).status, 400);
     assert.equal((await api('POST', '/schedules', { body: { ...base, retention: { keep_last: 0 } } })).status, 400);
+    assert.equal((await api('POST', '/schedules', { body: { ...base, timeout_minutes: 2 } })).status, 400);
+    assert.equal((await api('POST', '/schedules', { body: { ...base, timeout_minutes: 99999 } })).status, 400);
+    assert.equal((await api('POST', '/schedules', { body: { ...base, timeout_minutes: 'x' } })).status, 400);
     assert.equal((await api('POST', '/schedules', { body: { ...base, credential: { application_credential_id: 'ac1', secret: 'wrong' } } })).status, 400);
     assert.equal((await api('POST', '/schedules', { token: 'other-token', body: base })).status, 400); // credential is for p1
     const prev = await api('POST', '/cron/preview', { body: { cron: '0 3 * * *', count: 3 } });
@@ -210,6 +243,7 @@ test('scheduler end to end', async (t) => {
     await api('POST', `/schedules/${a.id}/run`);
     await waitFor(() => svc.store.listRuns(a.id)[0].status === 'error');
     assert.match(svc.store.listRuns(a.id)[0].error, /in-use/);
+    await waitFor(() => audit.events.some((e) => e.resource_id === a.id && e.outcome === 'failed' && /in-use/.test(e.error)));
     const b = (await mk(true)).json.schedule;
     await api('POST', `/schedules/${b.id}/run`);
     await waitFor(() => svc.store.listRuns(b.id)[0].status === 'success');
@@ -250,6 +284,76 @@ test('scheduler end to end', async (t) => {
     await waitFor(() => svc.store.listRuns(schedule.id)[0].status === 'error');
     await svc.stop();
     svc = await startService(env, silent);
+  });
+
+  await t.test('per-schedule timeout: a stuck backup fails the run instead of waiting forever', async () => {
+    const mk = await api('POST', '/schedules', {
+      body: { name: 'stuck', volume_id: 'vol-aaaaaaaa', mode: 'full', cron: '0 * * * *', retention: { keep_last: 1 }, timeout_minutes: 5, credential: { application_credential_id: 'ac1', secret: 'good' } },
+    });
+    assert.equal(mk.status, 201);
+    assert.equal(mk.json.schedule.timeout_minutes, 5);
+    const id = mk.json.schedule.id;
+    const st = svc.store.getSchedule(id);
+    st.timeout_minutes = 0.03; // ~2 s (the API minimum is 5 minutes)
+    svc.store.putSchedule(st);
+    fake.state.stuck = true;
+    await api('POST', `/schedules/${id}/run`);
+    await waitFor(() => svc.store.listRuns(id)[0].status === 'error', 20000);
+    assert.match(svc.store.listRuns(id)[0].error, /timed out/);
+    fake.state.stuck = false;
+    assert.equal((await api('PATCH', `/schedules/${id}`, { body: { timeout_minutes: 30 } })).json.schedule.timeout_minutes, 30);
+    assert.equal((await api('PATCH', `/schedules/${id}`, { body: { timeout_minutes: 1 } })).status, 400);
+    await api('DELETE', `/schedules/${id}`);
+  });
+
+  await t.test('instances: one schedule backs up every attached volume, one by one, and keeps going after a failure', async () => {
+    const cred = { application_credential_id: 'ac1', secret: 'good' };
+    const base = { name: 'vms', mode: 'full', cron: '0 * * * *', retention: { keep_last: 1 }, credential: cred };
+    const vm = (id) => ({ id, name: `name-${id.slice(3, 7)}` });
+    // validation
+    assert.equal((await api('POST', '/schedules', { body: { ...base, vms: [] } })).status, 400);
+    assert.equal((await api('POST', '/schedules', { body: { ...base, vms: [vm('vm-0001-aaaa'), vm('vm-0001-aaaa')] } })).status, 400);
+    assert.equal((await api('POST', '/schedules', { body: { ...base, vms: [vm('vm-0001-aaaa')], volume_id: 'vol-aaaaaaaa' } })).status, 400);
+    const many = Array.from({ length: 31 }, (_, i) => vm(`vm-${String(i).padStart(4, '0')}-zzzz`));
+    assert.equal((await api('POST', '/schedules', { body: { ...base, vms: many } })).status, 400);
+    assert.equal((await api('POST', '/schedules', { body: { ...base, vms: many.slice(0, 30) } })).status, 201); // 30 is the limit
+    // run
+    const mk = await api('POST', '/schedules', { body: { ...base, name: 'fleet', vms: [vm('vm-0001-aaaa'), vm('vm-0002-bbbb'), vm('vm-0003-cccc')] } });
+    assert.equal(mk.status, 201);
+    const s = mk.json.schedule;
+    assert.equal(s.vms.length, 3);
+    assert.equal(s.force_in_use, true);
+    const before = fake.state.created.length;
+    await api('POST', `/schedules/${s.id}/run`);
+    await waitFor(() => svc.store.listRuns(s.id)[0].status !== 'running');
+    const run = svc.store.listRuns(s.id)[0];
+    assert.equal(run.status, 'partial');
+    const byVol = Object.fromEntries(run.items.filter((i) => i.volume_id).map((i) => [i.volume_id, i]));
+    assert.equal(byVol['vol-boot-vm1'].status, 'success');
+    assert.equal(byVol['vol-data-vm1'].status, 'success');
+    assert.equal(byVol['vol-bad-vm2'].status, 'error');
+    assert.match(byVol['vol-bad-vm2'].error, /simulated failure/);
+    const noVol = run.items.find((i) => i.vm_id === 'vm-0003-cccc');
+    assert.equal(noVol.status, 'skipped');
+    assert.match(noVol.error, /no attached volumes/);
+    assert.equal(fake.state.created.length - before, 3); // boot, data, bad: sequential, failure did not stop the rest
+    // every volume and the run itself are reported to audit-proxy, failures and skips included
+    await waitFor(() => audit.events.some((e) => e.action === 'Backup Schedule Run (manual)' && e.resource_id === s.id));
+    const mine = audit.events.filter((e) => e.on_behalf_of?.startsWith(`schedule ${s.id}`));
+    const runEv = mine.find((e) => e.action === 'Backup Schedule Run (manual)');
+    assert.deepEqual([runEv.outcome, runEv.resource_name, runEv.user_id, runEv.project_id], ['partial', 'fleet', 'u1', 'p1']);
+    assert.deepEqual(runEv.fields, ['volumes=4', 'ok=2', 'failed=1', 'skipped=1']);
+    const vol = (name) => mine.find((e) => e.action === 'Backup Volume (manual)' && e.resource_name?.endsWith(name));
+    assert.equal(vol('boot').outcome, 'success');
+    assert.deepEqual([vol('bad').outcome, /simulated failure/.test(vol('bad').error)], ['failed', true]);
+    assert.equal(mine.find((e) => e.outcome === 'skipped').outcome, 'skipped');
+    assert.ok(fake.state.created.slice(before).every((c) => c.force === true));
+    assert.match(fake.state.created[before].name, /^fleet-name-0001-boot-\d{8}-\d{6}$/);
+    assert.deepEqual(svc.store.getSchedule(s.id).last_run.counts, { total: 4, success: 2, error: 1, skipped: 1 });
+    // edit the instance list; legacy single-volume schedules cannot take instances
+    assert.equal((await api('PATCH', `/schedules/${s.id}`, { body: { vms: [vm('vm-0001-aaaa')] } })).json.schedule.vms.length, 1);
+    assert.equal((await api('PATCH', `/schedules/${schedule.id}`, { body: { vms: [vm('vm-0001-aaaa')] } })).status, 400);
+    await api('DELETE', `/schedules/${s.id}`);
   });
 
   await t.test('delete', async () => {

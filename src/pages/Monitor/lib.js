@@ -22,10 +22,17 @@ export const METRICDICT = {
         (url) => `1 - (${url}) > 0.8`,
       ],
     },
-    physicalCPUUsage: { url: ['openstack_nova_vcpus_used', 'openstack_nova_vcpus_available'], finalFormatFunc: [sum, sum] },
-    physicalMemoryUsage: {
-      url: ['openstack_nova_memory_used_bytes', 'openstack_nova_memory_available_bytes'],
+    // openstack-exporter no longer exports the nova hypervisor metrics (openstack_nova_vcpus_* / memory_*_bytes);
+    // the placement collector reports the same physical capacity per compute node (MEMORY_MB is in MiB)
+    physicalCPUUsage: {
+      url: ['openstack_placement_resource_usage', 'openstack_placement_resource_total'],
+      baseParams: [{ resourcetype: 'VCPU' }, { resourcetype: 'VCPU' }],
       finalFormatFunc: [sum, sum],
+    },
+    physicalMemoryUsage: {
+      url: ['openstack_placement_resource_usage', 'openstack_placement_resource_total'],
+      baseParams: [{ resourcetype: 'MEMORY_MB' }, { resourcetype: 'MEMORY_MB' }],
+      finalFormatFunc: [(url) => `sum(${url}) * 1048576`, (url) => `sum(${url}) * 1048576`],
     },
     physicalStorageUsage: { url: ['ceph_cluster_total_used_bytes', 'ceph_cluster_total_bytes'] },
     computeNodeStatus: { url: ['openstack_nova_agent_state'], baseParams: [{ service: 'nova-compute' }] },
@@ -265,7 +272,11 @@ const baseFix = (value = []) => ({ x: Number(value[0]), y: parseFloat(parseFloat
 export function handleResponse(response, typeKey, deviceKey, modifyType) {
   const ret = [];
   resultOf(response).forEach((result) => {
-    const values = Array.isArray(result.values) ? result.values : Array.isArray(result.value) ? [result.value] : [];
+    // instant vector: value = [ts, v]; Prometheus matrix: values = [[ts, v], ...]; the Skyline query_range proxy
+    // returns the matrix pairs under `value` as well, so a nested array means "list of points"
+    let values = [];
+    if (Array.isArray(result.values)) values = result.values;
+    else if (Array.isArray(result.value)) values = Array.isArray(result.value[0]) ? result.value : [result.value];
     values.forEach((value) => {
       const item = baseFix(value);
       if (typeKey) item.type = getPath(result.metric || {}, typeKey);

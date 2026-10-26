@@ -133,6 +133,7 @@ export const networkColumns = ({ isAdmin, projectId, tab, projectMap }) => {
       title: t('External'),
       dataIndex: 'router:external',
       key: 'router:external',
+      exportRender: (v) => (v ? t('Yes') : t('No')),
       render: (v) =>
         v ? (
           <Tag color="cyan" icon={<GlobalOutlined />}>
@@ -146,6 +147,7 @@ export const networkColumns = ({ isAdmin, projectId, tab, projectMap }) => {
       title: t('Shared Network'),
       dataIndex: 'shared',
       key: 'shared',
+      exportRender: (v) => (v ? t('Yes') : t('No')),
       render: (v) => yesNo(v),
     },
     { ...statusColumn({ textMap: networkStatus() }), sortKey: 'status' },
@@ -153,6 +155,7 @@ export const networkColumns = ({ isAdmin, projectId, tab, projectMap }) => {
       title: t('Subnet Count'),
       dataIndex: 'subnets',
       key: 'subnets',
+      exportRender: (ids) => (Array.isArray(ids) ? ids.length : 0),
       render: (_, r) => <SubnetCount record={r} />,
     },
     {

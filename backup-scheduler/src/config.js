@@ -20,6 +20,13 @@ export function loadConfig(env = process.env) {
     deleteWaitSeconds: int(env.DELETE_WAIT_SECONDS, 600),
     minIntervalMinutes: int(env.MIN_INTERVAL_MINUTES, 5),
     adminRole: env.ADMIN_ROLE || 'admin',
+    maxVms: int(env.MAX_VMS_PER_SCHEDULE, 30),
+    runMaxHours: int(env.RUN_MAX_HOURS, 24),
+    maxConcurrentRuns: int(env.MAX_CONCURRENT_RUNS, 1),
+    // audit-proxy: when set, Cinder calls identify the scheduler (point CINDER_URL at audit-proxy /upstream/cinder/...)
+    auditSecret: env.AUDIT_INTERNAL_SECRET || '',
+    // base URL of audit-proxy (e.g. http://audit-proxy:8788): the scheduler reports run / per volume results there
+    auditUrl: (env.AUDIT_URL || '').replace(/\/+$/, ''),
   };
   if (!cfg.keystoneUrl) throw new Error('KEYSTONE_URL is required');
   assertTimezone(cfg.timezone);

@@ -284,7 +284,10 @@ export const getTenantMenu = (t = (s) => s) => [
     key: 'maintenance',
     label: t('Maintenance'),
     icon: <ToolOutlined />,
-    children: [{ key: '/management/recycle-bin', path: '/management/recycle-bin', label: t('Recycle Bin') }],
+    children: [
+      { key: '/management/recycle-bin', path: '/management/recycle-bin', label: t('Recycle Bin') },
+      { key: '/management/audit-logs', path: '/management/audit-logs', label: t('My Activity') },
+    ],
   },
 ];
 
@@ -550,6 +553,7 @@ export const getAdminMenu = (t = (s) => s) => [
     icon: <ToolOutlined />,
     children: [
       { key: '/management/recycle-bin-admin', path: '/management/recycle-bin-admin', label: t('Recycle Bin') },
+      { key: '/management/audit-logs-admin', path: '/management/audit-logs-admin', label: t('Audit Logs') },
     ],
   },
   {
