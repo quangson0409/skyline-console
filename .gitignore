@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 
 # Production builds
@@ -26,10 +26,22 @@ yarn-error.log*
 *.sln
 *.sw?
 
-# Local tooling
+# Local tooling & AI skills
 .claude/settings.local.json
-
 .claude/
+.agents/
+.agents/skills/archify/
+.agents/skills/brainstorming/
+.agents/skills/diagram-design/
+.agents/skills/find-skills/
+.agents/skills/fireworks-tech-graph/
+.agents/skills/systematic-debugging/
+.agents/skills/web-design-guidelines/
+skills-lock.json
 
 # local verification artefacts
 .build-*/
+.archify/
+
+*.sql
+*sqlite

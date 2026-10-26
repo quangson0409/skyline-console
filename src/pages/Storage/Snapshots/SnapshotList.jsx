@@ -86,9 +86,47 @@ export const deleteSnapshotAction = () => ({
     name: t('Volume Snapshot'),
     title: t('Delete Volume Snapshot'),
     allowed: (item) => !hasCreatedVolumes(item),
-    onDelete: (it) => cinderApi.deleteSnapshot(it.id),
+    onDelete: async (it) => {
+      if (String(it.status || '').toLowerCase() === 'error_deleting') {
+        await cinderApi.snapshotAction(it.id, 'os-reset_status', { status: 'error' });
+      }
+      return cinderApi.deleteSnapshot(it.id);
+    },
   }),
   policy: 'volume:delete_snapshot',
+});
+
+const snapshotLabel = (s = {}) => `${s.name || s.id} (${s.size ?? '-'}GiB)`;
+
+export const updateSnapshotStatusAction = () => ({
+  id: 'update-status',
+  type: 'modal',
+  policy: 'volume_extension:snapshot_admin_actions:reset_status',
+  title: t('Update Status'),
+  description: t(
+    'Resetting the snapshot status only updates the status in the database. Use this to recover snapshots stuck in transitional or error states (such as Error Deleting).'
+  ),
+  getDefaultValues: (item) => ({
+    snapshot: snapshotLabel(item),
+    status: String(item.status || '').toLowerCase() === 'error_deleting' ? 'error' : 'available',
+  }),
+  formItems: [
+    { name: 'snapshot', label: t('Volume Snapshot'), type: 'label' },
+    {
+      name: 'status',
+      label: t('Status'),
+      type: 'select',
+      required: true,
+      options: [
+        { value: 'available', label: t('Available') },
+        { value: 'error', label: t('Error') },
+        { value: 'creating', label: t('Creating') },
+        { value: 'deleting', label: t('Deleting') },
+        { value: 'error_deleting', label: t('Error Deleting') },
+      ],
+    },
+  ],
+  onSubmit: ({ status }, item) => cinderApi.snapshotAction(item.id, 'os-reset_status', { status }),
 });
 
 export const createVolumeFromSnapshotAction = () => ({
@@ -233,13 +271,24 @@ export const createSnapshotAction = () => {
 
 export const snapshotActionConfigs = ({ isAdmin } = {}) =>
   isAdmin
-    ? { primaryActions: [], batchActions: [deleteSnapshotAction()], rowActions: { firstAction: deleteSnapshotAction(), moreActions: [] } }
+    ? {
+        primaryActions: [],
+        batchActions: [deleteSnapshotAction()],
+        rowActions: {
+          firstAction: deleteSnapshotAction(),
+          moreActions: [{ action: updateSnapshotStatusAction() }],
+        },
+      }
     : {
         primaryActions: [createSnapshotAction()],
         batchActions: [deleteSnapshotAction()],
         rowActions: {
           firstAction: editSnapshotAction(),
-          moreActions: [{ action: createVolumeFromSnapshotAction() }, { action: deleteSnapshotAction() }],
+          moreActions: [
+            { action: createVolumeFromSnapshotAction() },
+            { action: updateSnapshotStatusAction() },
+            { action: deleteSnapshotAction() },
+          ],
         },
       };
 
@@ -282,6 +331,7 @@ export const snapshotFilters = ({ isAdmin } = {}) =>
       options: [
         { label: t('Available'), key: 'AVAILABLE' },
         { label: t('Error'), key: 'ERROR' },
+        { label: t('Error Deleting'), key: 'ERROR_DELETING' },
       ],
     },
     { name: 'volume_name', label: t('Volume Name') },

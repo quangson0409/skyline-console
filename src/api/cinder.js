@@ -104,6 +104,8 @@ export const cinderApi = {
     const pid = resolveProjectId(projectId);
     return apiClient.delete(`${base()}/${pid}/snapshots/${id}`);
   },
+  /** POST /snapshots/{id}/action { [key]: data } (os-reset_status, os-force_delete, ...) */
+  snapshotAction: (id, key, data) => apiClient.post(`${p()}/snapshots/${id}/action`, { [key]: data }, vh()),
   /** Skyline extension list: includes volume_name, child_volumes, project_name */
   listSnapshotsExtension: (params) =>
     apiClient.get(`${SKYLINE_EXT}/volume_snapshots`, { params, paramsSerializer: { indexes: null } }),
